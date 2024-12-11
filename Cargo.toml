@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 authors = ["lzpel"]
 description = "generate openapi-based server"
+readme = "README.md"
+repository = "https://github.com/lzpel/mandolin"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 openapiv3 = "^2.0.0"
