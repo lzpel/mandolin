@@ -1,5 +1,6 @@
-import dynamic from "next/dynamic";
+"use client";
 import React from "react";
+import type WasmModule from "@/public/webdemo_bg";
 
 //const wasm = dynamic(() => import('../../pkg'), {ssr: false});
 
@@ -23,16 +24,18 @@ const openapi = "openapi: 3.0.0\n" +
 	"                    type: string\n" +
 	"                    example: Hello, world!\n"
 export default function Home() {
+	React.useEffect(() =>
+	{
+		const loadWasm = async () => {
+			const wasm: WasmModule = await import("../public/");
+			console.log(wasm.export(openapi))
+		loadWasm();
+	}, []);
 	return (
 		<>
-			<textarea id="a" value="openapi"/>
-			<button id="addButton" onClick={onClick}>generate</button>
+			<textarea id="a"/>
+			<button id="addButton">generate</button>
 			<span id="result">output</span>
 		</>
 	)
-}
-
-function onClick() {
-	const value: string = document.getElementById('input')?.nodeValue ?? "";
-	//console.log(wasm.example(value))
 }

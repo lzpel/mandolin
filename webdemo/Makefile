@@ -1,12 +1,12 @@
 build:
-	wasm-pack build
+	wasm-pack build --target bundler --out-dir frontend/public
 tree:
 	cargo tree
 generate:
-	npm --prefix ./frontend install
+	bash -c "cd frontend && npm install"
 clean:
-	npm --prefix ./frontend cache clean --force
+	bash -c "cd frontend && npm run cache clean --force"
 run:
-	npm --prefix ./frontend run dev
+	bash -c "cd frontend && npm run dev"
 crate-next-app:
 	npx create-next-app@latest frontend --no-tailwind --no-turbopack --yes
