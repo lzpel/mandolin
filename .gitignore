@@ -1,3 +1,4 @@
 output/
 *.out.*
 target/
+node_modules/
