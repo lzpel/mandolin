@@ -163,9 +163,58 @@ pub struct Mandolin {
 }
 impl Mandolin {
 	pub fn new<R: Read>(reader: R) -> Result<Self, serde_yaml::Error> {
+		let mut this = Tera::default();
+		//フィルターの登録
+		this.register_filter("ref", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
+			let i = tera::try_get_value!("ref", "value", ReferenceOr<()>, value);
+			let v = match i {
+				ReferenceOr::Reference { reference } => reference.replace("#/components/schemas/", "").to_string(),
+				ReferenceOr::Item(_) => "".to_string(),
+			};
+			Ok(tera::to_value(v).unwrap())
+		});
+		this.register_filter("content_into_media", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
+			let i = tera::try_get_value!("content_into_media", "value", Content, value);
+			LappedMediaType::try_from(&i)
+				.map(|v| tera::to_value(v).unwrap())
+				.map_err(|_| tera::Error::from("content_into_media: no content"))
+		});
+		this.register_filter("paths_into_operations", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
+			let paths = tera::try_get_value!("paths_into_operations", "value", Paths, value);
+			let operations: Vec<LappedOperation> = paths.iter()
+				.filter(|(_, path)| path.as_item().is_some())
+				.map(|(path_key, path)| {
+					let path = path.as_item().unwrap();
+					[
+						("get", path.get.clone()),
+						("delete", path.delete.clone()),
+						("head", path.head.clone()),
+						("options", path.options.clone()),
+						("patch", path.patch.clone()),
+						("post", path.post.clone()),
+						("put", path.put.clone()),
+						("trace", path.trace.clone()),
+					]
+						.into_iter()
+						.filter(|(_method, operation)| operation.is_some())
+						.map(|(method, operation)| LappedOperation::new(path_key, method, &operation.unwrap()))
+				})
+				.flatten()
+				.collect();
+			tera::to_value(operations).map_err(|e| tera::Error::from(e.to_string()))
+		});
+		this.register_filter("re_replace", |value: &tera::Value, dict: &HashMap<String, tera::Value>| {
+			let null = tera::to_value("").unwrap();
+			let i = tera::try_get_value!("re_replace", "value", String, value);
+			let f = tera::try_get_value!("re_replace", "from", String, dict.get("from").unwrap_or(&null));
+			let t = tera::try_get_value!("re_replace", "to", String, dict.get("to").unwrap_or(&null));
+			let re = Regex::new(f.as_str()).expect(format!("regex error: {}", f.as_str()).as_str());
+			let o = re.replace_all(i.as_str(), t.as_str()).to_string();
+			tera::to_value(o).map_err(|e| tera::Error::from(e.to_string()))
+		});
 		Ok(Self {
 			api: serde_yaml::from_reader(reader)?,
-			tera: Tera::default()
+			tera: this
 		})
 	}
 	pub fn new_from_path<P: AsRef<Path>>(path: P) -> std::io::Result<Result<Self, serde_yaml::Error>> {
@@ -174,7 +223,7 @@ impl Mandolin {
 	pub fn template<R: Read + 'static>(&mut self, mut reader: R) -> std::io::Result<&mut Self> {
 		let mut content = String::new();
 		reader.read_to_string(&mut content).map(|e|{
-			self.tera.add_raw_template(self.tera.get_template_names().count().to_string().as_str(), content.as_str()).expect("tera parsing error");
+			self.tera.add_raw_template("main", content.as_str()).expect("tera parsing error");
 			self
 		})
 	}
