@@ -79,7 +79,7 @@ impl LappedOperation {
 pub fn generate<R: Read, W: Write>(reader: R, mut writer: W) -> usize {
 	//openAPI構造体を読み込む
 	let openapi: OpenAPI = serde_yaml::from_reader(reader).expect("can't read openapi");
-	let main_tera_template = include_str!("../templates/main.tera");
+	let main_tera_template = include_str!("../builtin/main.tera");
 	let result = {
 		let mut this = Tera::default();
 		this.add_raw_template("main", main_tera_template).expect("tera parsing error");
@@ -182,7 +182,7 @@ impl Mandolin {
 		let f=fs::File::open(path)?;
 		self.template(BufReader::new(f))
 	}
-	pub fn write<W: Write + 'static>(&self, mut writer: W) -> tera::Result<tera::Result<std::io::Result<()>>> {
+	pub fn write<W: Write>(&self, mut writer: W) -> tera::Result<tera::Result<std::io::Result<()>>> {
 		Context::from_serialize(&self.api).map(|context|{
 			self.tera.render("main", &context).map(|v|{
 				writer.write_all(v.as_bytes())
