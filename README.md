@@ -1,6 +1,6 @@
 # mandolin
 
-generate openapi-base server code
+Generate openapi-based server code
 
 ## my favorite mandolin music
 
