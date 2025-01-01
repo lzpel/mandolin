@@ -1,19 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-	swcMinify: false,
+    output: "standalone",
 	webpack: (config, options) => {
-		config.output.webassemblyModuleFilename =
-			options.isServer && !options.dev
-				? "../static/wasm/[modulehash].wasm"
-				: "static/wasm/[modulehash].wasm";
-
 		config.experiments = {
-			...config.experiments,
 			asyncWebAssembly: true,
 			syncWebAssembly: true,
 			layers: true,
 		};
+		config.output.webassemblyModuleFilename = (options.isServer ? '../' : '') + 'static/wasm/webassembly.wasm';
 		return config;
 	}
 };

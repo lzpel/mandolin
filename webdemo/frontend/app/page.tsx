@@ -1,8 +1,6 @@
 "use client";
 import React from "react";
-import type WasmModule from "@/public/webdemo_bg";
-
-//const wasm = dynamic(() => import('../../pkg'), {ssr: false});
+import init, {example} from "@/lib";
 
 const openapi = "openapi: 3.0.0\n" +
 	"info:\n" +
@@ -24,13 +22,10 @@ const openapi = "openapi: 3.0.0\n" +
 	"                    type: string\n" +
 	"                    example: Hello, world!\n"
 export default function Home() {
-	React.useEffect(() =>
-	{
-		const loadWasm = async () => {
-			const wasm: WasmModule = await import("../public/");
-			console.log(wasm.export(openapi))
-		loadWasm();
-	}, []);
+	// Without async/await
+	init().then(() => {
+		console.log(example(openapi))
+	});
 	return (
 		<>
 			<textarea id="a"/>
