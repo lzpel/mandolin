@@ -1,12 +1,18 @@
 use std::io::Cursor;
 use mandolin;
 use wasm_bindgen::prelude::*;
-pub fn add(left: u64, right: u64) -> u64 {
-	left + right
+
+#[wasm_bindgen]
+pub fn sums(value: i32) -> i32 {
+    let mut a: i32 = 0;
+    for i in 1..value+1 {
+        a += i;
+    }
+    a
 }
 
 #[wasm_bindgen]
-pub fn example(openapi: &str) -> String {
+pub fn example(openapi: String) -> String {
 	//エラーをまとめる方法を考える
 	let mut buffer = Cursor::new(Vec::new());
 	let reader = Cursor::new(include_bytes!("../../builtin/main.tera"));
@@ -26,8 +32,8 @@ mod tests {
 
 	#[test]
 	fn it_works() {
-		let result = add(2, 2);
-		assert_eq!(result, 4);
+		let result = sums(10);
+		assert_eq!(result, 55);
 	}
 	#[test]
 	fn generate() {
@@ -45,6 +51,7 @@ mod tests {
 	}
 	#[test]
 	fn generate2() {
-		println!("{}", example(include_str!("../../test_openapi/openapi_petstore.yaml")));
+		let v=include_str!("../../test_openapi/openapi_petstore.yaml").to_string();
+		println!("{}", example(v));
 	}
 }

@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import init, {example} from "@/lib";
+import {sums} from "@/lib/webdemo_bg.wasm";
 
 const openapi = "openapi: 3.0.0\n" +
 	"info:\n" +
@@ -23,9 +23,7 @@ const openapi = "openapi: 3.0.0\n" +
 	"                    example: Hello, world!\n"
 export default function Home() {
 	// Without async/await
-	init().then(() => {
-		console.log(example(openapi))
-	});
+	console.log(sums(100))
 	return (
 		<>
 			<textarea id="a"/>

@@ -1,7 +1,7 @@
 generate:
 	cargo install wasm-pack
 	bash -c "cd frontend && npm install"
-	wasm-pack build  --target web --out-dir frontend/lib
+	wasm-pack build -d frontend/lib
 tree:
 	cargo tree
 clean:
