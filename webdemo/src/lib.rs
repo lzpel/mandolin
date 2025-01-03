@@ -12,6 +12,11 @@ pub fn sums(value: i32) -> i32 {
 }
 
 #[wasm_bindgen]
+pub fn upper(value: String) -> String {
+    value.to_uppercase()
+}
+
+#[wasm_bindgen]
 pub fn example(openapi: String) -> String {
 	//エラーをまとめる方法を考える
 	let mut buffer = Cursor::new(Vec::new());
