@@ -162,7 +162,7 @@ pub struct Mandolin {
 	tera: Tera
 }
 impl Mandolin {
-	pub fn new<R: Read>(reader: R) -> Result<Self, serde_yaml::Error> {
+	pub fn new(api: OpenAPI) -> Result<Self, serde_yaml::Error> {
 		let mut this = Tera::default();
 		//フィルターの登録
 		this.register_filter("ref", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
@@ -213,12 +213,9 @@ impl Mandolin {
 			tera::to_value(o).map_err(|e| tera::Error::from(e.to_string()))
 		});
 		Ok(Self {
-			api: serde_yaml::from_reader(reader)?,
+			api: api,
 			tera: this
 		})
-	}
-	pub fn new_from_path<P: AsRef<Path>>(path: P) -> std::io::Result<Result<Self, serde_yaml::Error>> {
-		fs::File::open(path).map(|fi| Self::new(BufReader::new(fi)))
 	}
 	pub fn template<R: Read + 'static>(&mut self, mut reader: R) -> std::io::Result<&mut Self> {
 		let mut content = String::new();
@@ -231,12 +228,10 @@ impl Mandolin {
 		let f=fs::File::open(path)?;
 		self.template(BufReader::new(f))
 	}
-	pub fn write<W: Write>(&self, mut writer: W) -> tera::Result<tera::Result<std::io::Result<()>>> {
-		Context::from_serialize(&self.api).map(|context|{
-			self.tera.render("main", &context).map(|v|{
-				writer.write_all(v.as_bytes())
-			})
-		})
+
+	pub fn render(&self) -> Result<String, tera::Error> {
+		let context=Context::from_serialize(&self.api)?;
+		self.tera.render("main", &context)
 	}
 }
 

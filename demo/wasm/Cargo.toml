@@ -7,5 +7,6 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "*"
 mandolin = { path = "../.." }
+wasm-bindgen = "*"
+serde_yaml = "*"

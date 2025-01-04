@@ -821,6 +821,7 @@ name = "webdemo"
 version = "0.1.0"
 dependencies = [
  "mandolin",
+ "serde_yaml",
  "wasm-bindgen",
 ]
 
