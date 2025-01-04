@@ -20,7 +20,7 @@ pub fn upper(value: String) -> String {
 pub fn example(openapi: String) -> String {
 	//エラーをまとめる方法を考える
 	let mut buffer = Cursor::new(Vec::new());
-	let reader = Cursor::new(include_bytes!("../../builtin/main.tera"));
+	let reader = Cursor::new(include_bytes!("../../../builtin/main.tera"));
 	mandolin::Mandolin::new(Cursor::new(openapi.as_bytes()))
 		.unwrap()
 		.template(reader)

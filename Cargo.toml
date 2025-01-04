@@ -17,4 +17,4 @@ tera = { version = "*", default-features = false, features = ["urlencode", "slug
 regex = "^1.11"
 
 [workspace]
-members = ["webdemo"]
+members = ["demo/wasm"]
