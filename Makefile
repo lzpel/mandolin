@@ -4,6 +4,8 @@ generate:
 run:
 	bash -c "cd demo && npm run dev"
 deploy:
+	node -v
+	npm -v
 	bash -c "cd demo && npm run build"
 tree:
 	cargo tree

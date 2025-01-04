@@ -48,8 +48,6 @@ jobs:
         run: make generate
       - name: Build with Next.js
         run: make deploy
-      - name: Build with Next.js
-        run: ls -la
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
