@@ -9,4 +9,5 @@ crate-type = ["cdylib"]
 [dependencies]
 mandolin = { path = "../.." }
 wasm-bindgen = "*"
+console_error_panic_hook = "*"
 serde_yaml = "*"

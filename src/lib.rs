@@ -1,6 +1,8 @@
+pub mod builtin;
+
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufReader, BufWriter, Error, Read, Write};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::Path;
 use openapiv3::{Content, MediaType, OpenAPI, Operation, Paths, ReferenceOr, RequestBody};
 use serde::{Deserialize, Serialize};
@@ -217,16 +219,13 @@ impl Mandolin {
 			tera: this
 		})
 	}
-	pub fn template<R: Read + 'static>(&mut self, mut reader: R) -> std::io::Result<&mut Self> {
-		let mut content = String::new();
-		reader.read_to_string(&mut content).map(|e|{
-			self.tera.add_raw_template("main", content.as_str()).expect("tera parsing error");
-			self
-		})
+	pub fn template(&mut self, template: &str) -> &mut Self {
+		self.tera.add_raw_template("main", template).expect("tera parsing error");
+		self
 	}
 	pub fn template_from_path<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<&mut Self> {
-		let f=fs::File::open(path)?;
-		self.template(BufReader::new(f))
+		let f=fs::read_to_string(path)?;
+		Ok(self.template(f.as_str()))
 	}
 
 	pub fn render(&self) -> Result<String, tera::Error> {
@@ -234,12 +233,12 @@ impl Mandolin {
 		self.tera.render("main", &context)
 	}
 }
-
 pub fn sandbox1(x: &str)-> String{
 	let x: OpenAPI = serde_yaml::from_str(x).unwrap();
 	serde_json::to_string(&x).unwrap()
 }
 
+#[macro_export] macro_rules! path_defined { () => { file!() }; }
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -255,5 +254,6 @@ mod tests {
 	#[test]
 	fn test_sandbox1(){
 		println!("{}", sandbox1(include_str!("../test_openapi/openapi_petstore.yaml")));
+		println!("{}", path_defined!())
 	}
 }

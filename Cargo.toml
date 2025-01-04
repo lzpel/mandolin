@@ -7,6 +7,7 @@ description = "generate openapi-based server"
 readme = "README.md"
 repository = "https://github.com/lzpel/mandolin"
 license = "MIT OR Apache-2.0"
+build = "build.rs"
 
 [dependencies]
 openapiv3 = "^2.0.0"
