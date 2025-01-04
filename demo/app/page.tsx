@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import {sums, upper} from "@/lib";
+import {sums, upper, sandbox1} from "@/lib";
 
 const openapi = "openapi: 3.0.0\n" +
 	"info:\n" +
@@ -23,14 +23,13 @@ const openapi = "openapi: 3.0.0\n" +
 	"                    example: Hello, world!\n"
 export default function Home() {
 	// Without async/await
-	console.log(sums(100))
-	console.log(upper("abc"))
-	console.log(upper(openapi))
 	return (
 		<>
 			<textarea id="a"/>
 			<button id="addButton">generate</button>
 			<span id="result">output</span>
+			<span>{sums(100)}{upper("abc")}</span>
+			<span>{sandbox1(openapi)}</span>
 		</>
 	)
 }

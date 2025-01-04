@@ -13,7 +13,11 @@ pub fn sums(value: i32) -> i32 {
 
 #[wasm_bindgen]
 pub fn upper(value: String) -> String {
-    value.to_uppercase()
+	value.to_uppercase()
+}
+#[wasm_bindgen]
+pub fn sandbox1(value: &str) -> String {
+	mandolin::sandbox1(value)
 }
 
 #[wasm_bindgen]

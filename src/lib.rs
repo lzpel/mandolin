@@ -240,14 +240,25 @@ impl Mandolin {
 	}
 }
 
+pub fn sandbox1(x: &str)-> String{
+	let x: OpenAPI = serde_yaml::from_str(x).unwrap();
+	serde_json::to_string(&x).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
+	use super::*;
+
 	#[test]
-	fn build() {
-		crate::build("./test_openapi/openapi_petstore.yaml", "./output/openapi_petstore.rs").expect("TODO: panic message");
+	fn test_build() {
+		build("./test_openapi/openapi_petstore.yaml", "./output/openapi_petstore.rs").expect("TODO: panic message");
 	}
 	#[test]
-	fn camel_case() {
-		println!("{}", crate::camel_case("abc_def"))
+	fn test_camel_case() {
+		println!("{}", camel_case("abc_def"))
+	}
+	#[test]
+	fn test_sandbox1(){
+		println!("{}", sandbox1(include_str!("../test_openapi/openapi_petstore.yaml")));
 	}
 }
