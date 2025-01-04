@@ -101,9 +101,12 @@ impl Default for {{operation.response_identifier}}{
 }
 {%- endfor %}
 
+{%- if components.schemas %}
 {%- for schema_key, schema in components.schemas %}
 {{ self::IDENTIFIED_SCHEMA(name=schema_key, schema=schema) }}
 {%- endfor %}
+{%- endif %}
+
 use axum;
 pub fn axum_router_operations<S:Server>()->axum::Router{
 	axum::Router::new()
@@ -186,9 +189,11 @@ body.into()
 }
 pub fn axum_router<S:Server>()->axum::Router{
 	axum::Router::new().
+{%- if servers %}
 {%- for server in servers %}
 		nest_service("{{server.url}}", axum_router_operations::<S>())
 {%- endfor %}
+{%- endif %}
 }
 use std::env;
 pub struct TestServer{}

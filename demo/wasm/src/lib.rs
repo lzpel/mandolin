@@ -27,8 +27,8 @@ pub fn sandbox1(value: &str) -> String {
 pub fn example(openapi_yaml: &str) -> String {
 	console_error_panic_hook::set_once();
 	//エラーをまとめる方法を考える
-	//	let v=serde_yaml::from_str(openapi_yaml).unwrap();
-	let v=serde_yaml::from_str(include_str!("../../../test_openapi/openapi_petstore.yaml")).unwrap();
+	let v=serde_yaml::from_str(openapi_yaml).unwrap();
+	//let v=serde_yaml::from_str(include_str!("../../../test_openapi/openapi_petstore.yaml")).unwrap();
 	mandolin::Mandolin::new(v)
 		.unwrap()
 		.template(mandolin::builtin::MAIN)
@@ -59,8 +59,11 @@ mod tests {
 		println!("{}", result);
 	}
 	#[test]
-	fn test_example() {
-		let v=include_str!("../../../test_openapi/openapi_petstore.yaml");
-		println!("{}", example(v));
+	fn test_example_petstore() {
+		println!("{}", example(include_str!("../../../test_openapi/openapi_petstore.yaml")));
+	}
+	#[test]
+	fn test_example_min() {
+		println!("{}", example(include_str!("../../../test_openapi/openapi_min.yaml")));
 	}
 }

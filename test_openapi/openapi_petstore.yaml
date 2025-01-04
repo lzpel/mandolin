@@ -229,7 +229,7 @@ paths:
     post:
       tags:
         - pet
-      summary: Updates a pet in the store with form data
+      summary: Updates a pet in the store with form openapi
       description: ''
       operationId: updatePetWithForm
       parameters:

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate": "wasm-pack build wasm -d ../lib"
+    "generate": "wasm-pack build wasm -d ../lib && cp -r ../test_openapi ./openapi && echo * > ./openapi/.gitignore"
   },
   "dependencies": {
     "react": "^19.0.0",
