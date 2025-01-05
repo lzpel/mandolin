@@ -1,7 +1,4 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-    output: "standalone",
+const nextConfig = {
 	webpack: (config, options) => {
 		config.experiments = {
 			...config.experiments,
