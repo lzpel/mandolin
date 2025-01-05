@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
     output: "standalone",
 	webpack: (config, options) => {
 		config.experiments = {
+			...config.experiments,
 			asyncWebAssembly: true,
 			syncWebAssembly: true,
 			layers: true,

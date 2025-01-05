@@ -10,6 +10,8 @@ deploy:
 	node -v
 	npm -v
 	bash -c "cd demo && npm run build"
+standalone:
+	node demo/.next/standalone/server.js
 tree:
 	cargo tree
 crate-next-app:
