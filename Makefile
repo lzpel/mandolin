@@ -8,9 +8,11 @@ generate:
 run:
 	bash -c "cd demo && npm run dev"
 deploy:
-	node -v
-	npm -v
 	bash -c "cd demo && npm run build"
+	cat demo/next.config.ts
+	ls -a
+	ls -a demo
+	ls -a demo/.next
 standalone:
 	node demo/.next/standalone/server.js
 tree:
