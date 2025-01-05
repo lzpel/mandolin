@@ -1,4 +1,5 @@
 generate:
+	rustup default 1.81
 	bash -c "cd demo && npm install"
 	cargo install wasm-pack
 	wasm-pack build demo/wasm -d ../lib
