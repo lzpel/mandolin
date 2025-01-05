@@ -8,6 +8,8 @@ export default async function Home() {
 	return (
 		<>
 			<h2>mandolin demo</h2>
+			<a href="https://github.com/lzpel/mandolin">https://github.com/lzpel/mandolin</a>
+			<p>mandolin converts OpenAPI.yaml file into Rust server code. This demo runs with WebAssembly.</p>
 			<Compare openapi={openapi}/>
 		</>
 	)

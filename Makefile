@@ -1,4 +1,5 @@
 generate:
+	# To avoid rustwasm/wasm-bindgen#4211
 	rustup default 1.81
 	bash -c "cd demo && npm install"
 	cargo install wasm-pack
@@ -9,10 +10,6 @@ run:
 	bash -c "cd demo && npm run dev"
 deploy:
 	bash -c "cd demo && npm run build"
-	cat demo/next.config.mjs
-	ls -a
-	ls -a demo
-	ls -a demo/.next
 standalone:
 	node demo/.next/standalone/server.js
 tree:
