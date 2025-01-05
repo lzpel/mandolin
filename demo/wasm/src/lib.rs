@@ -28,7 +28,7 @@ pub fn example(openapi_yaml: &str) -> String {
 	console_error_panic_hook::set_once();
 	//エラーをまとめる方法を考える
 	let v=serde_yaml::from_str(openapi_yaml).unwrap();
-	//let v=serde_yaml::from_str(include_str!("../../../test_openapi/openapi_petstore.yaml")).unwrap();
+	//let v=serde_yaml::from_str(include_str!("../../../openapi/openapi_petstore.yaml")).unwrap();
 	mandolin::Mandolin::new(v)
 		.unwrap()
 		.template(mandolin::builtin::MAIN)
@@ -49,7 +49,7 @@ mod tests {
 	}
 	#[test]
 	fn generate() {
-		let v=serde_yaml::from_str(include_str!("../../../test_openapi/openapi_petstore.yaml")).unwrap();
+		let v=serde_yaml::from_str(include_str!("../../../openapi/openapi_petstore.yaml")).unwrap();
 		let result=mandolin::Mandolin::new(v)
 			.unwrap()
 			.template_from_path("../../builtin/main.tera")
@@ -60,10 +60,10 @@ mod tests {
 	}
 	#[test]
 	fn test_example_petstore() {
-		println!("{}", example(include_str!("../../../test_openapi/openapi_petstore.yaml")));
+		println!("{}", example(include_str!("../../../openapi/openapi_petstore.yaml")));
 	}
 	#[test]
 	fn test_example_min() {
-		println!("{}", example(include_str!("../../../test_openapi/openapi_min.yaml")));
+		println!("{}", example(include_str!("../../../openapi/openapi_min.yaml")));
 	}
 }

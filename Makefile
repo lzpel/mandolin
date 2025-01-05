@@ -1,6 +1,9 @@
 generate:
+	bash -c "cd demo && npm install"
 	cargo install wasm-pack
-	bash -c "cd demo && npm install && npm run generate"
+	wasm-pack build demo/wasm -d ../lib
+	cp -r openapi demo/openapi
+	echo * > demo/openapi/.gitignore
 run:
 	bash -c "cd demo && npm run dev"
 deploy:

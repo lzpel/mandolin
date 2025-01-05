@@ -1,13 +1,12 @@
 {
-  "name": "frontend",
+  "name": "demo",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "generate": "wasm-pack build wasm -d ../lib && cp -r ../test_openapi ./openapi && echo * > ./openapi/.gitignore"
+    "lint": "next lint"
   },
   "dependencies": {
     "react": "^19.0.0",

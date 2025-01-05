@@ -245,7 +245,7 @@ mod tests {
 
 	#[test]
 	fn test_build() {
-		build("./test_openapi/openapi_petstore.yaml", "./output/openapi_petstore.rs").expect("TODO: panic message");
+		build("./openapi/openapi_petstore.yaml", "./output/openapi_petstore.rs").expect("TODO: panic message");
 	}
 	#[test]
 	fn test_camel_case() {
@@ -253,7 +253,7 @@ mod tests {
 	}
 	#[test]
 	fn test_sandbox1(){
-		println!("{}", sandbox1(include_str!("../test_openapi/openapi_petstore.yaml")));
+		println!("{}", sandbox1(include_str!("../openapi/openapi_petstore.yaml")));
 		println!("{}", path_defined!())
 	}
 }
