@@ -7,7 +7,6 @@ use std::path::Path;
 use openapiv3::{Content, MediaType, OpenAPI, Operation, Paths, ReferenceOr, RequestBody};
 use serde::{Deserialize, Serialize};
 use tera::{Context, Tera};
-use regex::Regex;
 
 #[derive(Serialize, Deserialize)]
 pub struct LappedMediaType {
@@ -63,7 +62,7 @@ impl LappedOperation {
 			Some(LappedRequestBody {
 				request_body: request_body.clone(),
 				default_content: LappedMediaType::try_from(&request_body.content).unwrap(),
-				identifier: camel_case(format!("request_body_{}", function.as_str()).as_str()),
+				identifier: utils::camel_case(format!("request_body_{}", function.as_str()).as_str()),
 			})
 		});
 		Self {
@@ -71,8 +70,8 @@ impl LappedOperation {
 			method: method.to_string(),
 			operation: operation.clone(),
 			function: function.clone(),
-			request_identifier: camel_case(format!("request_{}", function.as_str()).as_str()),
-			response_identifier: camel_case(format!("response_{}", function.as_str()).as_str()),
+			request_identifier: utils::camel_case(format!("request_{}", function.as_str()).as_str()),
+			response_identifier: utils::camel_case(format!("response_{}", function.as_str()).as_str()),
 			request_body: body,
 		}
 	}
@@ -123,15 +122,6 @@ impl Mandolin {
 				.flatten()
 				.collect();
 			tera::to_value(operations).map_err(|e| tera::Error::from(e.to_string()))
-		});
-		this.register_filter("re_replace", |value: &tera::Value, dict: &HashMap<String, tera::Value>| {
-			let null = tera::to_value("").unwrap();
-			let i = tera::try_get_value!("re_replace", "value", String, value);
-			let f = tera::try_get_value!("re_replace", "from", String, dict.get("from").unwrap_or(&null));
-			let t = tera::try_get_value!("re_replace", "to", String, dict.get("to").unwrap_or(&null));
-			let re = Regex::new(f.as_str()).expect(format!("regex error: {}", f.as_str()).as_str());
-			let o = re.replace_all(i.as_str(), t.as_str()).to_string();
-			tera::to_value(o).map_err(|e| tera::Error::from(e.to_string()))
 		});
 		Ok(Self {
 			api: api,
