@@ -17,11 +17,6 @@ pub fn upper(value: String) -> String {
 	console_error_panic_hook::set_once();
 	value.to_uppercase()
 }
-#[wasm_bindgen]
-pub fn sandbox1(value: &str) -> String {
-	console_error_panic_hook::set_once();
-	mandolin::sandbox1(value)
-}
 
 #[wasm_bindgen]
 pub fn example(openapi_yaml: &str) -> String {
