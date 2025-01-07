@@ -7,13 +7,13 @@ use std::fs::File;
 use std::io::Read;
 
 fn main() {
-	let dest_path = Path::new(&env::var("OUT_DIR").unwrap()).join("builtin.rs");
+	let dest_path = Path::new(&env::var("OUT_DIR").unwrap()).join("templates.rs");
 	let mut file = fs::File::create(&dest_path).unwrap();
 
-	let path_dir=Path::new(".").join("builtin");
+	let path_dir=Path::new(".").join("templates");
 	let paths = fs::read_dir(&path_dir).unwrap();
 
-	writeln!(file, "// builtin templates").unwrap();
+	writeln!(file, "// templates templates").unwrap();
 	for entry in paths {
 		let filename = entry.unwrap().file_name();
 		writeln!(file, "#[allow(unused_variables, dead_code)]").unwrap();

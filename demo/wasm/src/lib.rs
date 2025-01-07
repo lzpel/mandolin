@@ -25,14 +25,14 @@ pub fn example(openapi_yaml: &str) -> String {
 	let v=serde_yaml::from_str(openapi_yaml).unwrap();
 	//let v=serde_yaml::from_str(include_str!("../../../openapi/openapi_petstore.yaml")).unwrap();
 	mandolin::Mandolin::new(v)
-		.unwrap()
-		.template(mandolin::builtin::MAIN)
+		.template(mandolin::templates::MAIN)
 		.render()
 		.unwrap()
 }
 
 #[cfg(test)]
 mod tests {
+	use std::fs;
 	use super::*;
 
 	#[test]
@@ -40,15 +40,13 @@ mod tests {
 		let result = sums(10);
 		assert_eq!(result, 55);
 		println!("{}", "it_works");
-		println!("{}", mandolin::builtin::MAIN);
+		println!("{}", mandolin::templates::MAIN);
 	}
 	#[test]
 	fn generate() {
 		let v=serde_yaml::from_str(include_str!("../../../openapi/openapi_petstore.yaml")).unwrap();
 		let result=mandolin::Mandolin::new(v)
-			.unwrap()
-			.template_from_path("../../builtin/main.tera")
-			.unwrap()
+			.template(fs::read_to_string("../../templates/main.tera").unwrap())
 			.render()
 			.unwrap();
 		println!("{}", result);
@@ -59,6 +57,6 @@ mod tests {
 	}
 	#[test]
 	fn test_example_min() {
-		println!("{}", example(include_str!("../../../openapi/openapi_min.yaml")));
+		println!("{}", example(include_str!("../../../openapi/openapi.yaml")));
 	}
 }

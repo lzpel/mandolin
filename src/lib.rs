@@ -1,9 +1,7 @@
-pub mod builtin;
+pub mod templates;
 mod utils;
 
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
 use openapiv3::{Content, MediaType, OpenAPI, Operation, Paths, ReferenceOr, RequestBody};
 use serde::{Deserialize, Serialize};
 use tera::{Context, Tera};
@@ -79,13 +77,23 @@ impl LappedOperation {
 
 pub struct Mandolin {
 	api: OpenAPI,
-	tera: Tera
+	templates: Vec<String>,
 }
 impl Mandolin {
-	pub fn new(api: OpenAPI) -> Result<Self, serde_yaml::Error> {
-		let mut this = Tera::default();
+	pub fn new(api: OpenAPI) -> Self {
+		Self {
+			api,
+			templates: vec![],
+		}
+	}
+	pub fn template<T: AsRef<str>>(&mut self, template: T) -> &Self {
+		self.templates.push(template.as_ref().to_string());
+		self
+	}
+	pub fn render(&self) -> Result<String, tera::Error> {
+		let mut tera = Tera::default();
 		//フィルターの登録
-		this.register_filter("ref", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
+		tera.register_filter("ref", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
 			let i = tera::try_get_value!("ref", "value", ReferenceOr<()>, value);
 			let v = match i {
 				ReferenceOr::Reference { reference } => reference.replace("#/components/schemas/", "").to_string(),
@@ -93,13 +101,13 @@ impl Mandolin {
 			};
 			Ok(tera::to_value(v).unwrap())
 		});
-		this.register_filter("content_into_media", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
+		tera.register_filter("content_into_media", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
 			let i = tera::try_get_value!("content_into_media", "value", Content, value);
 			LappedMediaType::try_from(&i)
 				.map(|v| tera::to_value(v).unwrap())
 				.map_err(|_| tera::Error::from("content_into_media: no content"))
 		});
-		this.register_filter("paths_into_operations", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
+		tera.register_filter("paths_into_operations", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
 			let paths = tera::try_get_value!("paths_into_operations", "value", Paths, value);
 			let operations: Vec<LappedOperation> = paths.iter()
 				.filter(|(_, path)| path.as_item().is_some())
@@ -123,23 +131,8 @@ impl Mandolin {
 				.collect();
 			tera::to_value(operations).map_err(|e| tera::Error::from(e.to_string()))
 		});
-		Ok(Self {
-			api: api,
-			tera: this
-		})
-	}
-	pub fn template(&mut self, template: &str) -> &mut Self {
-		self.tera.add_raw_template("main", template).expect("tera parsing error");
-		self
-	}
-	pub fn template_from_path<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<&mut Self> {
-		let f=fs::read_to_string(path)?;
-		Ok(self.template(f.as_str()))
-	}
-
-	pub fn render(&self) -> Result<String, tera::Error> {
 		let context=Context::from_serialize(&self.api)?;
-		self.tera.render("main", &context)
+		tera.render_str(self.templates.join("\n").as_str(), &context)
 	}
 }
 #[cfg(test)]
@@ -148,8 +141,7 @@ mod tests {
 	#[test]
 	fn test_render(){
 		let v=Mandolin::new(serde_yaml::from_str(include_str!("../openapi/openapi_petstore.yaml")).unwrap())
-			.unwrap()
-			.template(builtin::MAIN)
+			.template(templates::MAIN)
 			.render()
 			.unwrap();
 		println!("{}", v)

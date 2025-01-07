@@ -4,6 +4,7 @@ generate:
 	bash -c "cd demo && npm install"
 	cargo install wasm-pack
 	wasm-pack build demo/wasm -d ../lib
+	rm -rf demo/openapi
 	cp -r openapi demo/
 	echo '*' > demo/openapi/.gitignore
 run:

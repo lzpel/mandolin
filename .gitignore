@@ -1,4 +1,3 @@
-output/
-*.out.*
+server.rs
 target/
 node_modules/
