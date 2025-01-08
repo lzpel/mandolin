@@ -99,11 +99,9 @@ impl Default for {{operation.response_identifier}}{
 }
 {%- endfor %}
 
-{%- if components.schemas %}
-{%- for schema_key, schema in components.schemas %}
+{%- for schema_key, schema in components.schemas|default(value=m()) %}
 {{ self::IDENTIFIED_SCHEMA(name=schema_key, schema=schema) }}
 {%- endfor %}
-{%- endif %}
 
 use axum;
 pub fn axum_router_operations<S:Server>()->axum::Router{

@@ -92,7 +92,9 @@ impl Mandolin {
 	}
 	pub fn render(&self) -> Result<String, tera::Error> {
 		let mut tera = Tera::default();
-		//フィルターの登録
+		tera.register_function("m", |_: &HashMap<String, tera::Value>|{
+			Ok(tera::Value::Object(Default::default()))
+		});
 		tera.register_filter("ref", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
 			let i = tera::try_get_value!("ref", "value", ReferenceOr<()>, value);
 			let v = match i {
