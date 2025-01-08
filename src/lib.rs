@@ -137,14 +137,21 @@ impl Mandolin {
 }
 #[cfg(test)]
 mod tests {
+	use std::fs;
+	use std::fs::File;
+	use std::io::BufReader;
+	use std::path::Path;
 	use super::*;
 	#[test]
 	fn test_render(){
-		let v=Mandolin::new(serde_yaml::from_str(include_str!("../openapi/openapi_petstore.yaml")).unwrap())
-			.template(templates::MAIN)
-			.render()
-			.unwrap();
-		println!("{}", v)
+		for entry in fs::read_dir(&Path::new(".").join("openapi")).unwrap() {
+			let entry = entry.unwrap();
+			let v=Mandolin::new(serde_yaml::from_reader(BufReader::new(File::open(entry.path()).unwrap())).unwrap())
+				.template(templates::MAIN)
+				.render()
+				.unwrap();
+			println!("{}", v)
+		}
 	}
 	#[test]
 	fn test_camel_case() {

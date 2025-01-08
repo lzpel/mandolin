@@ -63,11 +63,9 @@ impl server::Server for TestServer{
 /// Request of {{operation.function}} {{operation.method}} {{operation.path}}
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct {{operation.request_identifier}}{
-{%- if operation.parameters -%}
-{%- for parameter in operation.parameters %}
+{%- for parameter in operation.parameters|default(value=[]) %}
 	pub {{parameter.name}}:{%- set inner=self::SCHEMA(schema=parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
 {%- endfor %}
-{%- endif %}
 {%- if operation.request_body %}
     pub body:{{operation.request_body.identifier}}
 {%- endif %}
@@ -120,8 +118,7 @@ pub fn axum_router_operations<S:Server>()->axum::Router{
 {%- endif%}
 		| async move{
 			let ret=S::{{operation.function}}({{operation.request_identifier}}{
-{%- if operation.parameters -%}
-{%- for parameter in operation.parameters %}
+{%- for parameter in operation.parameters|default(value=[]) %}
 				r#{{parameter.name}}:match {{parameter.in}}.get("{{parameter.name}}").and_then(|v| v.parse().ok())
 {%- if parameter.required -%}
 {Some(v)=>v, None=>return (axum::http::StatusCode::from_u16(400).unwrap(),[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}).as_bytes().to_vec())}
@@ -129,7 +126,6 @@ pub fn axum_router_operations<S:Server>()->axum::Router{
 {Some(v)=>Some(v), None=>None}
 {%- endif -%},
 {%- endfor %}
-{%- endif %}
 {%- if operation.request_body %}
 				body:
 {%- if "json" in operation.request_body.default_content.media_type -%}
@@ -189,11 +185,9 @@ body.into()
 }
 pub fn axum_router<S:Server>()->axum::Router{
 	axum::Router::new().
-{%- if servers %}
-{%- for server in servers %}
+{%- for server in servers|default(value=[]) %}
 		nest_service("{{server.url}}", axum_router_operations::<S>())
 {%- endfor %}
-{%- endif %}
 }
 use std::env;
 pub struct TestServer{}
