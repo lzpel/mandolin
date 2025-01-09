@@ -92,7 +92,7 @@ impl Mandolin {
 	}
 	pub fn render(&self) -> Result<String, tera::Error> {
 		let mut tera = Tera::default();
-		tera.register_function("m", |_: &HashMap<String, tera::Value>|{
+		tera.register_function("m", |_: &HashMap<String, tera::Value>| {
 			Ok(tera::Value::Object(Default::default()))
 		});
 		tera.register_filter("ref", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
@@ -133,7 +133,7 @@ impl Mandolin {
 				.collect();
 			tera::to_value(operations).map_err(|e| tera::Error::from(e.to_string()))
 		});
-		let context=Context::from_serialize(&self.api)?;
+		let context = Context::from_serialize(&self.api)?;
 		tera.render_str(self.templates.join("\n").as_str(), &context)
 	}
 }
@@ -145,14 +145,15 @@ mod tests {
 	use std::path::Path;
 	use super::*;
 	#[test]
-	fn test_render(){
-		for entry in fs::read_dir(&Path::new(".").join("openapi")).unwrap() {
-			let entry = entry.unwrap();
-			let v=Mandolin::new(serde_yaml::from_reader(BufReader::new(File::open(entry.path()).unwrap())).unwrap())
-				.template(templates::MAIN)
-				.render()
-				.unwrap();
-			println!("{}", v)
+	fn test_render() {
+		for entry in fs::read_dir(&Path::new(".").join("openapi")).unwrap().filter_map(Result::ok) {
+			if entry.path().extension().unwrap_or_default().to_str().unwrap_or_default().contains("yaml") {
+				let v = Mandolin::new(serde_yaml::from_reader(BufReader::new(File::open(entry.path()).unwrap())).unwrap())
+					.template(templates::MAIN)
+					.render()
+					.unwrap();
+				println!("{}", v)
+			}
 		}
 	}
 	#[test]
