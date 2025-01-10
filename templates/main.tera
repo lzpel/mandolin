@@ -153,7 +153,7 @@ body.into()
 		}))
 {%- endfor %}
 		.route("/openapi.json", axum::routing::get(|| async move{
-			r###"{{__tera_context|json_encode()}}"###
+			r###"{{"#"|p|json_encode()}}"###
 		}))
 		.route("/ui", axum::routing::get(|| async move{
 			axum::response::Html(r###"

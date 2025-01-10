@@ -2,6 +2,11 @@ openapi: 3.0.0
 info:
   title: Simple API
   version: 1.0.0
+servers:
+  - url: https://api.example.com/v2
+    description: v2
+  - url: http://localhost:8080/v1
+    description: v1
 paths:
   /hello:
     get:

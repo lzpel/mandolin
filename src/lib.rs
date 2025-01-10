@@ -92,8 +92,37 @@ impl Mandolin {
 	}
 	pub fn render(&self) -> Result<String, tera::Error> {
 		let mut tera = Tera::default();
+		let json = serde_json::to_value(&self.api)?;
+		// 空の辞書を返す関数
 		tera.register_function("m", |_: &HashMap<String, tera::Value>| {
 			Ok(tera::Value::Object(Default::default()))
+		});
+		// JsonPointer文字列を実態に変換するフィルター
+		let json_for_p=json.clone();
+		tera.register_filter("p", move |value: &tera::Value, _: &HashMap<String, tera::Value>| {
+			let default = Ok(tera::Value::Object(Default::default()));
+			let path = value.as_str().unwrap_or_default();
+			let mut parent = &json_for_p;
+			for p in path.split("/").skip(1) {
+				let p=p.replace("~0","~").replace("~1","/");// RFC6901
+				parent = if let serde_json::Value::Object(map) = parent {
+					match map.get(p.as_str()) {
+						None => return default,
+						Some(latest) => latest,
+					}
+				} else if let serde_json::Value::Array(array) = parent {
+					match p.parse::<usize>() {
+						Ok(v) => match array.get(v) {
+							None => return default,
+							Some(latest) => latest,
+						},
+						Err(_) => return default,
+					}
+				} else {
+					return default;
+				}
+			}
+			return Ok(parent.clone());
 		});
 		tera.register_filter("ref", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
 			let i = tera::try_get_value!("ref", "value", ReferenceOr<()>, value);
@@ -144,6 +173,28 @@ mod tests {
 	use std::io::BufReader;
 	use std::path::Path;
 	use super::*;
+	fn apis()->HashMap<String, OpenAPI>{
+		fs::read_dir(&Path::new(".").join("openapi")).unwrap()
+			.filter_map(Result::ok)
+			.filter_map(|entry|
+				entry.path().to_str().unwrap_or_default().contains("yaml").then(||
+					(
+						entry.file_name().to_str().unwrap_or_default().to_string(),
+						serde_yaml::from_reader(BufReader::new(File::open(entry.path()).unwrap())).unwrap()
+					)
+				)
+			)
+			.collect()
+	}
+	#[test]
+	fn test_filter() {
+		let v=apis().get("openapi.yaml").unwrap().clone();
+		let r = Mandolin::new(v)
+			.template("{{'#'|p|json_encode()}}\n{{'#/paths'|p|json_encode()}}\n{{'#/servers/0'|p|json_encode()}}")
+			.render()
+			.unwrap();
+		println!("{}", r)
+	}
 	#[test]
 	fn test_render() {
 		for entry in fs::read_dir(&Path::new(".").join("openapi")).unwrap().filter_map(Result::ok) {
