@@ -120,19 +120,37 @@ impl Mandolin {
 		Ok(parent)
 	}
 	fn r<'a>(api: &'a Value, value: &'a tera::Value, no_err: bool) -> Result<&'a Value, Error> {
-		match tera::try_get_value!("r", "value", ReferenceOr<()>, value) {
+		match tera::try_get_value!("r", "value", ReferenceOr<tera::Value>, value) {
 			ReferenceOr::Reference { reference } => Self::p(api, reference.as_str(), no_err),
 			ReferenceOr::Item(_) => Ok(value),
 		}
 	}
+	fn pr<'a>(api: &'a Value, path:  &str, no_err: bool) -> Result<&'a Value, Error> {
+		let v=Self::p(&api, path, no_err)?;
+		Self::r(&api, v, false)
+	}
 	fn ls(api: &Value, path: &str, no_err: bool) -> Result<Value, Error> {
 		let default=if no_err { Ok(&*EMPTY_ARRAY) } else { Err(tera::Error::from(format!("ls: {path} not found"))) };
-		let v=match Self::p(api, path, no_err)? {
+		let v=match Self::pr(api, path, no_err)? {
 			serde_json::Value::Object(map) => map.keys().map(|v| format!("{path}/{v}")).map(|v| serde_json::Value::String(v)).collect(),
 			serde_json::Value::Array(vec) => vec.iter().enumerate().map(|(i,_)| format!("{path}/{i}")).map(|v| serde_json::Value::String(v)).collect(),
 			_ => return default.cloned()
 		};
 		Ok(serde_json::Value::Array(v))
+	}
+	fn lsop(api: &Value, path: &str, no_err: bool) -> Result<Value, Error> {
+		let v=Self::ls(api, path, no_err);
+		match v{
+			Ok(serde_json::Value::Array(vec)) => {
+				let w=vec
+					.into_iter()
+					.map(|v| Self::ls(api, v.as_str().unwrap_or_default(), no_err))
+					.flatten()
+					.collect();
+				Ok(w)
+			},
+			_ => v
+		}
 	}
 	pub fn render(&self) -> Result<String, tera::Error> {
 		let api = serde_json::to_value(&self.api)?;
@@ -151,11 +169,15 @@ impl Mandolin {
 		}
 		{
 			let api = api.clone();
-			tera.register_filter("pr", move |value: &tera::Value, _: &HashMap<String, tera::Value>| { Self::r(&api, &Self::p(&api, value.as_str().unwrap_or_default(), true).unwrap(), false).cloned() });
+			tera.register_filter("pr", move |value: &tera::Value, _: &HashMap<String, tera::Value>| {Self::pr(&api, value.as_str().unwrap_or_default(), true).cloned() });
 		}
 		{
 			let api = api.clone();
 			tera.register_filter("ls", move |value: &tera::Value, _: &HashMap<String, tera::Value>| { Self::ls(&api, value.as_str().unwrap_or_default(), true) });
+		}
+		{
+			let api = api.clone();
+			tera.register_filter("lsop", move |value: &tera::Value, _: &HashMap<String, tera::Value>| { Self::lsop(&api, value.as_str().unwrap_or_default(), true) });
 		}
 		tera.register_filter("ref", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
 			let i = tera::try_get_value!("ref", "value", ReferenceOr<()>, value);
