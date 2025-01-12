@@ -44,7 +44,7 @@ mod tests {
 	}
 	#[test]
 	fn generate() {
-		let v=serde_yaml::from_str(include_str!("../../../openapi/openapi_petstore.yaml")).unwrap();
+		let v=serde_yaml::from_str(include_str!("../../../openapi/openapi.yaml")).unwrap();
 		let result=mandolin::Mandolin::new(v)
 			.template(fs::read_to_string("../../templates/main.tera").unwrap())
 			.render()
@@ -53,7 +53,7 @@ mod tests {
 	}
 	#[test]
 	fn test_example_petstore() {
-		println!("{}", example(include_str!("../../../openapi/openapi_petstore.yaml")));
+		println!("{}", example(include_str!("../../../openapi/openapi.yaml")));
 	}
 	#[test]
 	fn test_example_min() {
