@@ -6,13 +6,10 @@ generate:
 	cd demo && npm install
 	cargo install wasm-pack
 	wasm-pack build demo/wasm -d ../lib
-	rm -rf demo/openapi
-	cp -r openapi demo/
-	echo '*' > demo/openapi/.gitignore
 run:
-	bash -c "cd demo && npm run dev"
+	cd demo && npm run dev
 deploy:
-	bash -c "cd demo && npm run build"
+	cd demo && npm run build
 standalone:
 	node demo/.next/standalone/server.js
 tree:
