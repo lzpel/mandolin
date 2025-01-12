@@ -77,8 +77,8 @@ impl LappedOperation {
 		}
 	}
 }
-static EMPTY_OBJECT: LazyLock<Value> = LazyLock::new(|| { Value::Object(Default::default())});
-static EMPTY_ARRAY: LazyLock<Value> = LazyLock::new(|| { Value::Array(Default::default())});
+static EMPTY_OBJECT: LazyLock<Value> = LazyLock::new(|| { Value::Object(Default::default()) });
+static EMPTY_ARRAY: LazyLock<Value> = LazyLock::new(|| { Value::Array(Default::default()) });
 
 pub struct Mandolin {
 	api: OpenAPI,
@@ -96,8 +96,8 @@ impl Mandolin {
 		self
 	}
 	fn p<'a>(api: &'a Value, path: &str, no_err: bool) -> Result<&'a Value, Error> {
-		let default=if no_err { Ok(&*EMPTY_OBJECT) } else { Err(tera::Error::from(format!("p: {path} not found"))) };
-		let mut parent=api;
+		let default = if no_err { Ok(&*EMPTY_OBJECT) } else { Err(tera::Error::from(format!("p: {path} not found"))) };
+		let mut parent = api;
 		for p in path.split("/").skip(1) {
 			let p = p.replace("~0", "~").replace("~1", "/"); // RFC6901
 			parent = if let serde_json::Value::Object(map) = parent {
@@ -125,30 +125,40 @@ impl Mandolin {
 			ReferenceOr::Item(_) => Ok(value),
 		}
 	}
-	fn pr<'a>(api: &'a Value, path:  &str, no_err: bool) -> Result<&'a Value, Error> {
-		let v=Self::p(&api, path, no_err)?;
+	fn pr<'a>(api: &'a Value, path: &str, no_err: bool) -> Result<&'a Value, Error> {
+		let v = Self::p(&api, path, no_err)?;
 		Self::r(&api, v, false)
 	}
 	fn ls(api: &Value, path: &str, no_err: bool) -> Result<Value, Error> {
-		let default=if no_err { Ok(&*EMPTY_ARRAY) } else { Err(tera::Error::from(format!("ls: {path} not found"))) };
-		let v=match Self::pr(api, path, no_err)? {
-			serde_json::Value::Object(map) => map.keys().map(|v| format!("{path}/{v}")).map(|v| serde_json::Value::String(v)).collect(),
-			serde_json::Value::Array(vec) => vec.iter().enumerate().map(|(i,_)| format!("{path}/{i}")).map(|v| serde_json::Value::String(v)).collect(),
+		let default = if no_err { Ok(&*EMPTY_ARRAY) } else { Err(tera::Error::from(format!("ls: {path} not found"))) };
+		let v = match Self::pr(api, path, no_err)? {
+			serde_json::Value::Object(map) => map.iter().map(|(k, v)|
+				(format!("{path}/{k}")).map(|v| serde_json::Value::String(v), v)).collect(),
+			serde_json::Value::Array(vec) => vec.iter().enumerate().map(|(i, v)|
+				(format!("{path}/{k}")).map(|v| serde_json::Value::String(v), v)).collect(),
 			_ => return default.cloned()
 		};
-		Ok(serde_json::Value::Array(v))
+		Ok(serde_json::Value::Object(v))
 	}
 	fn lsop(api: &Value, path: &str, no_err: bool) -> Result<Value, Error> {
-		let v=Self::ls(api, path, no_err);
-		match v{
+		let v = Self::ls(api, path, no_err);
+		match v {
 			Ok(serde_json::Value::Array(vec)) => {
-				let w=vec
-					.into_iter()
-					.map(|v| Self::ls(api, v.as_str().unwrap_or_default(), no_err))
+				let w = vec
+					.iter()
+					.map(|v| Self::ls(api, v.as_str().unwrap_or_default(), true))
+					.map(|v|
+						Self::ls(api, v.as_str().unwrap_or_default(), true)
+							.unwrap() //no_err=true
+							.as_array()
+							.unwrap() //no_err=true
+							.iter()
+							.map(|v| v.as_str().unwrap_or_default())
+					)
 					.flatten()
 					.collect();
 				Ok(w)
-			},
+			}
 			_ => v
 		}
 	}
@@ -169,7 +179,7 @@ impl Mandolin {
 		}
 		{
 			let api = api.clone();
-			tera.register_filter("pr", move |value: &tera::Value, _: &HashMap<String, tera::Value>| {Self::pr(&api, value.as_str().unwrap_or_default(), true).cloned() });
+			tera.register_filter("pr", move |value: &tera::Value, _: &HashMap<String, tera::Value>| { Self::pr(&api, value.as_str().unwrap_or_default(), true).cloned() });
 		}
 		{
 			let api = api.clone();
@@ -217,7 +227,7 @@ impl Mandolin {
 				.collect();
 			tera::to_value(operations).map_err(|e| tera::Error::from(e.to_string()))
 		});
-		let context = Context::from_serialize(&self.api)?;//いずれ消したい
+		let context = Context::from_serialize(&self.api)?; //いずれ消したい
 		tera.render_str(self.templates.join("\n").as_str(), &context)
 	}
 }
@@ -245,7 +255,7 @@ mod tests {
 	fn test_filter() {
 		let v = apis().get("openapi.yaml").unwrap().clone();
 		let r = Mandolin::new(v)
-			.template("{{'#'|p|json_encode()}}\n{{'#/paths'|p|json_encode()}}\n{{'#/servers/0'|p|json_encode()}}\n{{'#'|ls|json_encode()}}{{'#/servers'|ls|json_encode()}}")
+			.template("{{'#'|p|json_encode()}}\n{{'#/paths'|p|json_encode()}}\n{{'#/servers/0'|p|json_encode()}}\n{{'#'|ls|json_encode()}}{{'#/servers'|ls|json_encode()}}\n{{'#/paths'|lsop|json_encode()}}")
 			.render()
 			.unwrap();
 		println!("{}", r)
