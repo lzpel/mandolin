@@ -101,7 +101,7 @@ impl Mandolin {
             templates: vec![],
         }
     }
-    pub fn template<T: AsRef<str>>(&mut self, template: T) -> &Self {
+    pub fn template<T: AsRef<str>>(&mut self, template: T) -> &mut Self {
         self.templates.push(template.as_ref().to_string());
         self
     }
@@ -233,6 +233,15 @@ impl Mandolin {
         }
         {
             let api = api.clone();
+            tera.register_function(
+                "ls",
+                move |value: &HashMap<String, tera::Value>| {
+                    Self::ls(&api, value.values().next().unwrap().as_str().unwrap_or_default(), true).map(|v| Self::value_cloned(v))
+                },
+            );
+        }
+        {
+            let api = api.clone();
             tera.register_filter(
                 "lsop",
                 move |value: &tera::Value, _: &HashMap<String, tera::Value>| {
@@ -330,6 +339,16 @@ mod tests {
         let v = apis().get("openapi.yaml").unwrap().clone();
         let r = Mandolin::new(v)
             .template("{{'#'|p|json_encode()}}\n{{'#/paths'|p|json_encode()}}\n{{'#/servers/0'|p|json_encode()}}\n{{'#'|ls|json_encode()}}{{'#/servers'|ls|json_encode()}}\n{{'#/paths'|lsop|json_encode()}}")
+            .render()
+            .unwrap();
+        println!("{}", r)
+    }
+    #[test]
+    fn test_ls() {
+        let v = apis().get("openapi.yaml").unwrap().clone();
+        let r = Mandolin::new(v)
+            .template("{%set w='#'|ls%}")
+            .template("{% for k, v in ls(v=\"#\") %}{{k}}\n{%endfor%}")
             .render()
             .unwrap();
         println!("{}", r)
