@@ -63,7 +63,7 @@ impl server::Server for TestServer{
 /// Request of {{operation.function}} {{operation.method}} {{operation.path}}
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct {{operation.request_identifier}}{
-{%- for parameter in operation.parameters|default(value=[]) %}
+{%- for parameter in operation.parameters %}
 	pub {{parameter.name}}:{%- set inner=SCHEMA(schema=parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
 {%- endfor %}
 {%- if operation.request_body %}
@@ -78,7 +78,7 @@ pub struct {{operation.request_identifier}}{
 /// Response of {{operation.function}} {{operation.method}} {{operation.path}}
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub enum {{operation.response_identifier}}{
-{%- for response_key, response in operation.responses %}
+{%- for response_key, response in operation.responses|items %}
 	Status{{response_key}}(
 {%- if response.content -%}
 {%- set media=response.content|content_into_media -%}

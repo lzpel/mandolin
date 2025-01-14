@@ -313,8 +313,7 @@ mod tests {
     }
     #[test]
     fn test_lsop() {
-        let v = apis().get("openapi.yaml").unwrap().clone();
-        let r = Mandolin::new(v)
+        let r = Mandolin::new(apis().remove("openapi.yaml").unwrap())
             .template("{% for k, v in '#/paths'|lsop %}{{k}}={{v}}\n{%endfor%}")
             .render()
             .unwrap();
@@ -334,6 +333,7 @@ mod tests {
                 .unwrap_or_default()
                 .contains("yaml")
             {
+                println!("{}", entry.path().to_str().unwrap_or_default());
                 let v = Mandolin::new(
                     serde_yaml::from_reader(BufReader::new(File::open(entry.path()).unwrap()))
                         .unwrap(),
@@ -344,6 +344,14 @@ mod tests {
                 println!("{}", v)
             }
         }
+    }
+    #[test]
+    fn test_macro(){
+        let r = Mandolin::new(apis().remove("openapi.yaml").unwrap())
+            .template("{%- macro SCHEMA(schema) -%}{{schema}}{%- endmacro -%}{{ SCHEMA(openapi) }}")
+            .render()
+            .unwrap();
+        println!("{}", r)
     }
     #[test]
     fn test_camel_case() {
