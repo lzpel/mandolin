@@ -3,7 +3,7 @@ mod utils;
 
 use openapiv3::{Content, MediaType, OpenAPI, Operation, ReferenceOr, RequestBody};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::sync::LazyLock;
 use minijinja::value::{ObjectExt};
 
@@ -108,6 +108,9 @@ impl Mandolin {
     fn decode<S: AsRef<str>>(content: S) -> String {
         content.as_ref().replace("~0", "~").replace("~1", "/") // RFC6901
     }
+    fn decode_last<S: AsRef<str>>(content: S) -> String {
+        Self::decode(content.as_ref().split("/").last().unwrap_or_default())
+    }
     fn encode<S: AsRef<str>>(content: S) -> String {
         content.as_ref().replace("~", "~0").replace("/", "~1") // RFC6901
     }
@@ -153,11 +156,12 @@ impl Mandolin {
     }
     fn r(api: &minijinja::Value, value: minijinja::Value, no_err: bool) -> Result<minijinja::Value, minijinja::Error> {
         let v=Self::r_base(api, value, no_err)?;
-        if let Ok(v)=v.try_iter(){
-            v.map(|w| Self::r_base(api, w, no_err)).collect()
-        }else{
-            Ok(v)
+        if let Ok(v)=BTreeMap::<minijinja::Value, minijinja::Value>::deserialize(&v) {
+            return v.into_iter().map(|(k, v)| Self::r_base(api, v, no_err).map(|v| (k, v))).collect();
+        } else if let Ok(v) = Vec::<minijinja::Value>::deserialize(&v) {
+            return v.into_iter().map(|v| Self::r_base(api, v, no_err)).collect();
         }
+        Ok(v)
     }
     fn pr<'a>(
         api: minijinja::Value,
@@ -207,7 +211,7 @@ impl Mandolin {
             .filter_map(|(k, _, v)| {
                 let method=methods.into_iter().find(|w| k.ends_with(w))?;
                 let operation=Operation::deserialize(v).ok()?;
-                let lapped=LappedOperation::new(Self::decode(&k).as_str(), method, &operation);
+                let lapped=LappedOperation::new(Self::decode_last(&k).as_str(), method, &operation);
                 Some((k, minijinja::Value::from_serialize(lapped)))
             })
             .collect();
@@ -280,6 +284,7 @@ impl Mandolin {
 }
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use super::*;
     use std::fs;
     use std::fs::File;
@@ -320,7 +325,7 @@ mod tests {
     fn test_ls() {
         let v = apis().get("openapi.yaml").unwrap().clone();
         let r = Mandolin::new(v)
-            .template("{% for k, v in '#'|ls %}{{k}}={{v}}\n{%endfor%}")
+            .template("{{'#'|p}}\n{{'#'|pr}}\n{% for k, v in '#'|ls %}{{k}}={{v}}\n{%endfor%}")
             .render()
             .unwrap();
         println!("{}", r)
@@ -366,6 +371,27 @@ mod tests {
             .render()
             .unwrap();
         println!("{}", r)
+    }
+    #[test]
+    fn test_try_iter_pairs(){
+        #[derive(Serialize, Deserialize)]
+        struct Point{ x: i32, y: i32, }
+        let v0=minijinja::Value::from_serialize("abc".chars().map(|v| v.to_string()).collect::<Vec<String>>());
+        let v1=minijinja::Value::from_serialize("abc".chars().map(|v| (format!("key_{v}"), format!("value_{v}"))).collect::<HashMap<String, String>>());
+        let v2 = minijinja::Value::from_serialize(Point{x:0, y:1});
+        let v3=minijinja::Value::from_serialize("abc");
+        let detector=|v: minijinja::Value|{
+            if let Ok(v)=BTreeMap::<minijinja::Value, minijinja::Value>::deserialize(&v) {
+                return v.into_iter().map(|(k, v)| format!("{k}={v}")).collect::<String>();
+            } else if let Ok(v) = Vec::<minijinja::Value>::deserialize(&v) {
+                return v.into_iter().map(|v| format!("{v}!")).collect::<String>();
+            }
+            return ["this is just value".to_string()].into_iter().collect::<String>();
+        };
+        println!("{}", detector(v0));
+        println!("{}", detector(v1));
+        println!("{}", detector(v2));
+        println!("{}", detector(v3));
     }
     #[test]
     fn test_camel_case() {
