@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::error::Error;
 use serde::{Deserialize, Serialize};
@@ -84,9 +85,12 @@ fn render_print(template :&str){
 	};
 	let minijinja_result={
 		let mut env = minijinja::Environment::new();
-		env.add_template("hello.txt", "Hello {%for i in list0%}{{i}}{%endfor%}!").unwrap();
+		env.add_template("hello.txt", template).unwrap();
+		env.add_filter("enumerate", |v: Cow<'_, str>|{
+			Ok(v.chars().map(|v| v.to_string()).collect::<Vec<String>>())
+		});
 		let template = env.get_template("hello.txt").unwrap();
-		template.render(&r).unwrap()
+		template.render(&r).unwrap_or_else(|e| format!("{:?}", e))
 	};
 	println!("### tera\n{}\n### minijinja\n{}\n", tera_result, minijinja_result);
 }
