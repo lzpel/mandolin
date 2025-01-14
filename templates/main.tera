@@ -72,7 +72,7 @@ pub struct {{operation.request_identifier}}{
 }
 {%- if operation.request_body %}
 /// {{operation.request_body.default_content.media_type}}
-{{ IDENTIFIED_SCHEMA(name=operation.request_body.identifier, schema=operation.request_body.default_content.schema) }}
+{{ IDENTIFIED_SCHEMA(operation.request_body.identifier, operation.request_body.default_content.schema) }}
 {%- endif %}
 
 /// Response of {{operation.function}} {{operation.method}} {{operation.path}}
@@ -89,8 +89,8 @@ impl Default for {{operation.response_identifier}}{
 }
 {%- endfor %}
 
-{%- for schema_key, schema in "#/components/schemas"|ls %}
-{{ IDENTIFIED_SCHEMA(name=schema_key, schema=schema) }}
+{%- for schema_key, schema in "#/components/schemas"|p|items %}
+{{ IDENTIFIED_SCHEMA(schema_key, schema) }}
 {%- endfor %}
 
 use axum;
