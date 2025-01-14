@@ -166,7 +166,7 @@ impl Mandolin {
         let v = Self::pr(api, path, no_err)?;
         if let Some(v) = v.as_object() {
             if let Some(v) = v.try_iter_pairs() {
-                return Ok(v.map(|(k, v)| (format!("{path}/{}", k.to_string()), v,)).collect())
+                return Ok(v.map(|(k, v)| (format!("{path}/{}", k.to_string().replace("~", "~0").replace("/", "~1")), v,)).collect())
             } else if let Some(v) = v.try_iter() {
                 return Ok(v.enumerate().map(|(k, v)| (format!("{path}/{}", k), v)).collect())
             }
@@ -192,6 +192,7 @@ impl Mandolin {
         let w = v
             .iter()
             .map(|(k, v_path)| {
+                println!("{}", k);
                 Self::ls(api.clone(), k.as_str(), no_err)
                     .unwrap_or_default()
                     .into_iter()

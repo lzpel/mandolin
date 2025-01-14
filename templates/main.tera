@@ -2,16 +2,16 @@
 {%- if schema.type -%}
 {%- if schema.type == "object" -%}
 {%- if schema.additionalProperties -%}
-HashMap<String,{{self::SCHEMA(schema=schema.additionalProperties)}}>
+HashMap<String,{{SCHEMA(schema=schema.additionalProperties)}}>
 {%- else -%}
 {%- for property_key, property in schema.properties %}
 	pub r#{{property_key}}:
-{%- set inner=self::SCHEMA(schema=property) -%}
+{%- set inner=SCHEMA(schema=property) -%}
 {%- if schema.required and property_key in schema.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
 {%- endfor %}
 {%- endif -%}
 {%- elif schema.type == "array" -%}
-Vec<{{self::SCHEMA(schema=schema.items)}}>
+Vec<{{SCHEMA(schema=schema.items)}}>
 {%- elif schema.type == "integer" -%}
 {%- if "u" in schema.format -%}u{%- else -%}i{%- endif -%}{%- if "int128" in schema.format -%}128{%- elif "int64" in schema.format -%}64{%- elif "int32" in schema.format -%}32{%- else -%}8{%- endif -%}
 {%- elif schema.type == "string" -%}
@@ -27,17 +27,17 @@ bool
 {%- else -%}
 u8
 {%- endif %}
-{%- endmacro SCHEMA -%}
+{%- endmacro -%}
 {%- macro IDENTIFIED_SCHEMA(name, schema) -%}
 {%- if schema.type and schema.type == "object" -%}
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct {{name}}{
-{{self::SCHEMA(schema=schema)}}
+{{SCHEMA(schema=schema)}}
 }
 {%- else  -%}
-pub type {{name}} = {{self::SCHEMA(schema=schema)}};
+pub type {{name}} = {{SCHEMA(schema=schema)}};
 {%- endif -%}
-{%- endmacro IDENTIFIED_SCHEMA -%}
+{%- endmacro -%}
 #![allow(non_camel_case_types)]
 #![allow(unused_variables)]
 // DON'T EDIT MANUALLY THIS GENERATED CODE
@@ -64,7 +64,7 @@ impl server::Server for TestServer{
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct {{operation.request_identifier}}{
 {%- for parameter in operation.parameters|default(value=[]) %}
-	pub {{parameter.name}}:{%- set inner=self::SCHEMA(schema=parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
+	pub {{parameter.name}}:{%- set inner=SCHEMA(schema=parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
 {%- endfor %}
 {%- if operation.request_body %}
     pub body:{{operation.request_body.identifier}}
@@ -72,7 +72,7 @@ pub struct {{operation.request_identifier}}{
 }
 {%- if operation.request_body %}
 /// {{operation.request_body.default_content.media_type}}
-{{ self::IDENTIFIED_SCHEMA(name=operation.request_body.identifier, schema=operation.request_body.default_content.schema) }}
+{{ IDENTIFIED_SCHEMA(name=operation.request_body.identifier, schema=operation.request_body.default_content.schema) }}
 {%- endif %}
 
 /// Response of {{operation.function}} {{operation.method}} {{operation.path}}
@@ -82,7 +82,7 @@ pub enum {{operation.response_identifier}}{
 	Status{{response_key}}(
 {%- if response.content -%}
 {%- set media=response.content|content_into_media -%}
-{{self::SCHEMA(schema=media.schema)}}
+{{SCHEMA(schema=media.schema)}}
 {%- else -%}
 String
 {%- endif -%}
@@ -91,16 +91,13 @@ String
 }
 impl Default for {{operation.response_identifier}}{
 	fn default() -> Self{
-{%- for response_key, response in operation.responses %}
-		Self::Status{{response_key}}(Default::default())
-{%- break %}
-{%- endfor %}
+		Self::Status{{operation.responses|first}}(Default::default())
 	}
 }
 {%- endfor %}
 
 {%- for schema_key, schema in components.schemas|default(value=m()) %}
-{{ self::IDENTIFIED_SCHEMA(name=schema_key, schema=schema) }}
+{{ IDENTIFIED_SCHEMA(name=schema_key, schema=schema) }}
 {%- endfor %}
 
 use axum;
