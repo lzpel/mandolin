@@ -108,8 +108,9 @@ impl Mandolin {
     fn decode<S: AsRef<str>>(content: S) -> String {
         content.as_ref().replace("~0", "~").replace("~1", "/") // RFC6901
     }
-    fn decode_last<S: AsRef<str>>(content: S) -> String {
-        Self::decode(content.as_ref().split("/").last().unwrap_or_default())
+    fn decode_nth<S: AsRef<str>>(content: S, n: isize) -> String {
+        let mut v =content.as_ref().split("/");
+        v.nth(if n>=0 {n}else{v.clone().count() as isize+n} as usize).map(|v| Self::decode(v)).unwrap_or_default()
     }
     fn encode<S: AsRef<str>>(content: S) -> String {
         content.as_ref().replace("~", "~0").replace("/", "~1") // RFC6901
@@ -211,7 +212,7 @@ impl Mandolin {
             .filter_map(|(k, _, v)| {
                 let method=methods.into_iter().find(|w| k.ends_with(w))?;
                 let operation=Operation::deserialize(v).ok()?;
-                let lapped=LappedOperation::new(Self::decode_last(&k).as_str(), method, &operation);
+                let lapped=LappedOperation::new(Self::decode_nth(&k, -2).as_str(), method, &operation);
                 Some((k, minijinja::Value::from_serialize(lapped)))
             })
             .collect();
