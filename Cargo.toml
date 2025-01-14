@@ -20,6 +20,7 @@ serde_json = "^1.0.133"
 
 [dev-dependencies]
 serde_yaml = "^0.9.34+deprecated"
+minijinja = "^2.6.0"
 
 [workspace]
 members = ["demo/wasm"]
