@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tera::{Context, Tera};
 
 #[derive(Serialize, Deserialize)]
@@ -27,13 +28,17 @@ const TEMPLATE0: &'static str = r###"
 "###;
 
 const TEMPLATE1: &'static str = r###"
+{%for i in "hello"|enumerate%}{{i}}{%endfor%}
+"###;
+
+const TEMPLATE2: &'static str = r###"
 {%for i in list0%}{{i}}{%endfor%}
 {%for i in list1%}{{i}}{%endfor%}
 {%for i in list2%}{{i}}{%endfor%}
 {%for i in list3|default(value=[]) %}{{i}}{%endfor%}
 "###;
 
-const TEMPLATE2: &'static str = r###"
+const TEMPLATE3: &'static str = r###"
 {%for k,v in dict0%}{{k}}={{v}};{%endfor%}
 {%for k,v in dict1|default(value=dict0)%}{{k}}={{v}};{%endfor%}
 {%for k,v in dict2|empty%}{{k}}={{v}};{%endfor%}
@@ -61,7 +66,17 @@ fn main (){
 			Ok(value.clone())
 		}
 	});
-	println!("---\n{}", tera.render_str(TEMPLATE0, &context).unwrap_or_else(|e| format!("{}", e.source().unwrap().to_string())));
-	println!("---\n{}", tera.render_str(TEMPLATE1, &context).unwrap_or_else(|e| format!("{}", e.source().unwrap().to_string())));
-	println!("---\n{}", tera.render_str(TEMPLATE2, &context).unwrap_or_else(|e| format!("{}", e.source().unwrap().to_string())));
+	tera.register_filter("enumerate", |value: &tera::Value, _: &HashMap<String, tera::Value>| {
+		Ok(match value {
+			tera::Value::String(v)=>tera::Value::Array(v.chars().map(|v| tera::Value::String(v.to_string())).collect()),
+			_ => tera::Value::Null,
+		})
+	});
+	render_print(&mut tera, TEMPLATE0, &context);
+	render_print(&mut tera, TEMPLATE1, &context);
+	render_print(&mut tera, TEMPLATE2, &context);
+	render_print(&mut tera, TEMPLATE3, &context);
+}
+fn render_print(tera: &mut Tera, template :&str, context :&Context){
+	println!("---\n{}", tera.render_str(template, &context).unwrap_or_else(|e| format!("{}", e.source().unwrap().to_string())));
 }
