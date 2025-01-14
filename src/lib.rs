@@ -273,7 +273,10 @@ impl Mandolin {
             env.add_filter(
                 "ref",
                 |value: &minijinja::Value| {
-                    Ok(value.as_str().unwrap_or_default().split("/").last().unwrap_or_default().to_string())
+                    match ReferenceOr::<()>::deserialize(value) {
+                        Ok(ReferenceOr::Reference { reference }) => minijinja::Value::from(Self::decode_nth(reference, -1)),
+                        _ => minijinja::Value::UNDEFINED
+                    }
                 },
             );
         }

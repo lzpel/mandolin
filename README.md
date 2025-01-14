@@ -41,8 +41,8 @@ fn main() {
 
 ## version
 
-- 0.1.4
-  - replace minijinja from tera
+- 0.1.5 fix ref filter
+- 0.1.4 replace minijinja from tera
 - 0.1.3
   - simplify mandolin::Mandolin::new `pub fn new(api: OpenAPI) -> Result<Self, serde_yaml::Error>` into `pub fn new(api: OpenAPI) -> Self`
   - remove mandolin::Mandolin::template_from_path
