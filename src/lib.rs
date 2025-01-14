@@ -5,6 +5,7 @@ use openapiv3::{Content, MediaType, OpenAPI, Operation, ReferenceOr, RequestBody
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap};
 use std::sync::LazyLock;
+use minijinja::value::{ObjectExt};
 
 #[derive(Serialize, Deserialize)]
 pub struct LappedMediaType {
@@ -144,14 +145,18 @@ impl Mandolin {
         }
         Ok(parent)
     }
-    fn r<'a>(
-        api: minijinja::Value,
-        value: minijinja::Value,
-        no_err: bool,
-    ) -> Result<minijinja::Value, minijinja::Error> {
+    fn r_base(api: &minijinja::Value, value: minijinja::Value, no_err: bool) -> Result<minijinja::Value, minijinja::Error> {
         match ReferenceOr::<()>::deserialize(&value) {
-            Ok(ReferenceOr::Reference { reference }) => Self::p(api, reference.as_str(), no_err),
+            Ok(ReferenceOr::Reference { reference }) => Self::p(api.clone(), reference.as_str(), no_err),
             _ => Ok(value)
+        }
+    }
+    fn r(api: &minijinja::Value, value: minijinja::Value, no_err: bool) -> Result<minijinja::Value, minijinja::Error> {
+        let v=Self::r_base(api, value, no_err)?;
+        if let Ok(v)=v.try_iter(){
+            v.map(|w| Self::r_base(api, w, no_err)).collect()
+        }else{
+            Ok(v)
         }
     }
     fn pr<'a>(
@@ -160,7 +165,7 @@ impl Mandolin {
         no_err: bool,
     ) -> Result<minijinja::Value, minijinja::Error> {
         let v = Self::p(api.clone(), path, no_err)?;
-        Self::r(api, v, false)
+        Self::r(&api, v, false)
     }
     fn ls(
         api: minijinja::Value,
@@ -227,7 +232,7 @@ impl Mandolin {
             env.add_filter(
                 "r",
                 move |value: minijinja::Value| {
-                    Self::r(api.clone(), value, false)
+                    Self::r(&api, value, false)
                 },
             );
         }
@@ -255,6 +260,15 @@ impl Mandolin {
                 "lsop",
                 move |value: &minijinja::Value| {
                     Self::lsop(api.clone(), value.as_str().unwrap_or_default(), true).map(|v| minijinja::Value::from_serialize(v))
+                },
+            );
+        }
+        {
+            let api = api.clone();
+            env.add_filter(
+                "ref",
+                |value: &minijinja::Value| {
+                    Ok(value.as_str().unwrap_or_default().split("/").last().unwrap_or_default().to_string())
                 },
             );
         }

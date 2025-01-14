@@ -14,11 +14,12 @@ exclude = [".github/*", "demo/*"]
 [dependencies]
 openapiv3 = "^2.0.0"
 serde = { version = "^1.0.204", features = ["derive"]}
+minijinja = { version = "^2.6.0", features = ["json", "deserialization"] }
 regex = "^1.11"
 
 [dev-dependencies]
 serde_yaml = "^0.9.34+deprecated"
-minijinja = { version = "^2.6.0", features = ["json", "deserialization"] }
+tera = { version = "^1.20", default-features = false, features = ["urlencode", "slug", "humansize", "chrono", "chrono-tz"]}# for wasm, remove rand which is not wasm-adaptive
 
 [workspace]
 members = ["demo/wasm"]

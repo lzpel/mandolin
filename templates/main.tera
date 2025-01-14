@@ -1,17 +1,17 @@
-{%- macro SCHEMA(schema) -%}
+{%- macro SCHEMA(schema,t) -%}
 {%- if schema.type -%}
 {%- if schema.type == "object" -%}
 {%- if schema.additionalProperties -%}
-HashMap<String,{{SCHEMA(schema=schema.additionalProperties)}}>
+HashMap<String,{{SCHEMA(schema.additionalProperties,0)}}>
 {%- else -%}
-{%- for property_key, property in schema.properties %}
+{%- for property_key, property in schema.properties|items %}
 	pub r#{{property_key}}:
-{%- set inner=SCHEMA(schema=property) -%}
+{%- set inner=SCHEMA(property,1) -%}
 {%- if schema.required and property_key in schema.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
 {%- endfor %}
 {%- endif -%}
 {%- elif schema.type == "array" -%}
-Vec<{{SCHEMA(schema=schema.items)}}>
+Vec<{{SCHEMA(schema.items,2)}}>
 {%- elif schema.type == "integer" -%}
 {%- if "u" in schema.format -%}u{%- else -%}i{%- endif -%}{%- if "int128" in schema.format -%}128{%- elif "int64" in schema.format -%}64{%- elif "int32" in schema.format -%}32{%- else -%}8{%- endif -%}
 {%- elif schema.type == "string" -%}
@@ -32,10 +32,10 @@ u8
 {%- if schema.type and schema.type == "object" -%}
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct {{name}}{
-{{SCHEMA(schema=schema)}}
+{{SCHEMA(schema,3)}}
 }
 {%- else  -%}
-pub type {{name}} = {{SCHEMA(schema=schema)}};
+pub type {{name}} = {{SCHEMA(schema,4)}};
 {%- endif -%}
 {%- endmacro -%}
 #![allow(non_camel_case_types)]
@@ -63,8 +63,8 @@ impl server::Server for TestServer{
 /// Request of {{operation.function}} {{operation.method}} {{operation.path}}
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct {{operation.request_identifier}}{
-{%- for parameter in operation.parameters %}
-	pub {{parameter.name}}:{%- set inner=SCHEMA(schema=parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
+{%- for parameter in operation.parameters|r %}
+	pub {{parameter.name}}:{%-set inner=SCHEMA(parameter.schema,5) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
 {%- endfor %}
 {%- if operation.request_body %}
     pub body:{{operation.request_body.identifier}}
@@ -79,14 +79,7 @@ pub struct {{operation.request_identifier}}{
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub enum {{operation.response_identifier}}{
 {%- for response_key, response in operation.responses|items %}
-	Status{{response_key}}(
-{%- if response.content -%}
-{%- set media=response.content|content_into_media -%}
-{{SCHEMA(schema=media.schema)}}
-{%- else -%}
-String
-{%- endif -%}
-),
+	Status{{response_key}}{%-if response.content-%}({%- for contentType, media in response.content|items %}{{SCHEMA(media.schema,6)}}{%-endfor%}){%-endif%},
 {%- endfor %}
 }
 impl Default for {{operation.response_identifier}}{
@@ -96,14 +89,14 @@ impl Default for {{operation.response_identifier}}{
 }
 {%- endfor %}
 
-{%- for schema_key, schema in components.schemas|default(value=m()) %}
+{%- for schema_key, schema in "#/components/schemas"|ls %}
 {{ IDENTIFIED_SCHEMA(name=schema_key, schema=schema) }}
 {%- endfor %}
 
 use axum;
 pub fn axum_router_operations<S:Server>()->axum::Router{
 	axum::Router::new()
-{%- for operation in paths|paths_into_operations %}
+{%- for point, operation in "#/paths"|lsop %}
 		.route("{{operation.path}}", axum::routing::{{operation.method}}(|
 			path: axum::extract::Path<HashMap<String,String>>,
 			query: axum::extract::Query<HashMap<String,String>>,
@@ -132,17 +125,18 @@ body.into()
 {%- endif %}
 			}).await;
 			match ret{
-{%- for response_key, response in operation.responses %}
+{%- for response_key, response in operation.responses|items %}
 				{{operation.response_identifier}}::Status{{response_key}}(v) => (axum::http::StatusCode::from_u16({{response_key}}).unwrap(),
 {%- if response.content -%}
-{%- set media=response.content|content_into_media -%}
-[(axum::http::header::CONTENT_TYPE, "{{media.media_type}}")],
-{%- if "json" in media.media_type-%}serde_json::to_vec_pretty(&v).expect("error serialize response json")
+{%- for contentType, media in response.content|items %}
+[(axum::http::header::CONTENT_TYPE, "{{contentType}}")],
+{%- if "json" in contentType-%}serde_json::to_vec_pretty(&v).expect("error serialize response json")
 {%- elif media.schema.format and media.schema.format == "binary" -%}v
 {%- else -%}v.as_bytes().to_vec()
 {%- endif -%}
 {%- else -%}
 [(axum::http::header::CONTENT_TYPE, "text/plain")], format!("{{response|get(key="description",default="")}}\n{:?}", v).as_bytes().to_vec()
+{%- endfor %}
 {%- endif -%}
 ),
 {%- endfor %}
