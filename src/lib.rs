@@ -3,7 +3,7 @@ mod utils;
 
 use openapiv3::{Content, MediaType, OpenAPI, Operation, ReferenceOr, RequestBody};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{HashMap};
 use std::sync::LazyLock;
 
 #[derive(Serialize, Deserialize)]
@@ -88,8 +88,6 @@ impl LappedOperation {
 pub struct Empty {}
 static EMPTY_OBJECT: LazyLock<minijinja::Value> =
     LazyLock::new(|| minijinja::Value::from_serialize(Empty {}));
-static EMPTY_ARRAY: LazyLock<minijinja::Value> =
-    LazyLock::new(|| minijinja::Value::from_serialize::<[(); 0]>([(); 0]));
 
 pub struct Mandolin {
     api: OpenAPI,
@@ -106,6 +104,12 @@ impl Mandolin {
         self.templates.push(template.as_ref().to_string());
         self
     }
+    fn decode<S: AsRef<str>>(content: S) -> String {
+        content.as_ref().replace("~0", "~").replace("~1", "/") // RFC6901
+    }
+    fn encode<S: AsRef<str>>(content: S) -> String {
+        content.as_ref().replace("~", "~0").replace("/", "~1") // RFC6901
+    }
     fn p(
         api: minijinja::Value,
         path: &str,
@@ -120,8 +124,8 @@ impl Mandolin {
             ))
         };
         let mut parent = api;
-        for p in path.split("/").skip(1) {
-            let p = p.replace("~0", "~").replace("~1", "/"); // RFC6901
+        for p0 in path.split("/").skip(1) {
+            let p = Self::decode(&p0);
             parent = if let Some(map) = parent.as_object() {
                 match map.get_value(&minijinja::Value::from(&p)) {
                     None => match p
@@ -145,9 +149,9 @@ impl Mandolin {
         value: minijinja::Value,
         no_err: bool,
     ) -> Result<minijinja::Value, minijinja::Error> {
-        match value.downcast_object_ref::<ReferenceOr<minijinja::Value>>() {
-            Some(ReferenceOr::Reference { reference }) => Self::p(api, reference.as_str(), no_err),
-            _ => Ok(value),
+        match ReferenceOr::<()>::deserialize(&value) {
+            Ok(ReferenceOr::Reference { reference }) => Self::p(api, reference.as_str(), no_err),
+            _ => Ok(value)
         }
     }
     fn pr<'a>(
@@ -166,7 +170,7 @@ impl Mandolin {
         let v = Self::pr(api, path, no_err)?;
         if let Some(v) = v.as_object() {
             if let Some(v) = v.try_iter_pairs() {
-                return Ok(v.map(|(k, v)| (format!("{path}/{}", k.to_string().replace("~", "~0").replace("/", "~1")), v,)).collect())
+                return Ok(v.map(|(k, v)| (format!("{path}/{}", Self::encode(k.to_string())), v,)).collect())
             } else if let Some(v) = v.try_iter() {
                 return Ok(v.enumerate().map(|(k, v)| (format!("{path}/{}", k), v)).collect())
             }
@@ -174,10 +178,7 @@ impl Mandolin {
         if no_err {
             Ok(Default::default())
         } else {
-            Err(minijinja::Error::new(
-                minijinja::ErrorKind::NonKey,
-                format!("ls {}", path),
-            ))
+            Err(minijinja::Error::new(minijinja::ErrorKind::NonKey, format!("ls {}", path), ))
         }
     }
     fn lsop(
@@ -192,15 +193,18 @@ impl Mandolin {
         let w = v
             .iter()
             .map(|(k, v_path)| {
-                println!("{}", k);
-                Self::ls(api.clone(), k.as_str(), no_err)
+                Self::ls(api.clone(), k, no_err)
                     .unwrap_or_default()
                     .into_iter()
                     .map(move |(k, v)| (k, v_path, v))
             })
             .flatten()
-            .filter(|(k, _, _)| methods.iter().any(|v| k.ends_with(v)))
-            .map(|(k, _, w)| (k, w)) // 本来はここで親元のparametersを合成することができるはず
+            .filter_map(|(k, _, v)| {
+                let method=methods.into_iter().find(|w| k.ends_with(w))?;
+                let operation=Operation::deserialize(v).ok()?;
+                let lapped=LappedOperation::new(Self::decode(&k).as_str(), method, &operation);
+                Some((k, minijinja::Value::from_serialize(lapped)))
+            })
             .collect();
         Ok(w)
     }
@@ -303,6 +307,15 @@ mod tests {
         let v = apis().get("openapi.yaml").unwrap().clone();
         let r = Mandolin::new(v)
             .template("{% for k, v in '#'|ls %}{{k}}={{v}}\n{%endfor%}")
+            .render()
+            .unwrap();
+        println!("{}", r)
+    }
+    #[test]
+    fn test_lsop() {
+        let v = apis().get("openapi.yaml").unwrap().clone();
+        let r = Mandolin::new(v)
+            .template("{% for k, v in '#/paths'|lsop %}{{k}}={{v}}\n{%endfor%}")
             .render()
             .unwrap();
         println!("{}", r)
