@@ -14,9 +14,7 @@ exclude = [".github/*", "demo/*"]
 [dependencies]
 openapiv3 = "^2.0.0"
 serde = { version = "^1.0.204", features = ["derive"]}
-tera = { version = "^1.20", default-features = false, features = ["urlencode", "slug", "humansize", "chrono", "chrono-tz"]}# for wasm, remove rand which is not wasm-adaptive
 regex = "^1.11"
-serde_json = "^1.0.133"
 
 [dev-dependencies]
 serde_yaml = "^0.9.34+deprecated"

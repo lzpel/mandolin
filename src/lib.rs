@@ -162,41 +162,29 @@ impl Mandolin {
         api: minijinja::Value,
         path: &str,
         no_err: bool,
-    ) -> Result<BTreeMap<String, minijinja::Value>, minijinja::Error> {
+    ) -> Result<Vec<(String, minijinja::Value)>, minijinja::Error> {
         let v = Self::pr(api, path, no_err)?;
-        let default = if no_err {
+        if let Some(v) = v.as_object() {
+            if let Some(v) = v.try_iter_pairs() {
+                return Ok(v.map(|(k, v)| (format!("{path}/{}", k.to_string()), v,)).collect())
+            } else if let Some(v) = v.try_iter() {
+                return Ok(v.enumerate().map(|(k, v)| (format!("{path}/{}", k), v)).collect())
+            }
+        }
+        if no_err {
             Ok(Default::default())
         } else {
             Err(minijinja::Error::new(
                 minijinja::ErrorKind::NonKey,
                 format!("ls {}", path),
             ))
-        };
-        Ok(if let Some(v) = v.as_object() {
-            if let Some(v) = v.try_iter_pairs() {
-                v.map(|(k, v)| {
-                    (
-                        format!("{path}/{}", k.to_string()),
-                        v,
-                    )
-                })
-                .collect()
-            } else if let Some(v) = v.try_iter() {
-                v.enumerate()
-                    .map(|(k, v)| (format!("{path}/{}", k), v))
-                    .collect()
-            } else {
-                return default;
-            }
-        } else {
-            return default;
-        })
+        }
     }
     fn lsop(
         api: minijinja::Value,
         path: &str,
         no_err: bool,
-    ) -> Result<BTreeMap<String, minijinja::Value>, minijinja::Error> {
+    ) -> Result<Vec<(String, minijinja::Value)>, minijinja::Error> {
         let v = Self::ls(api.clone(), path, no_err)?;
         let methods = [
             "get", "put", "post", "delete", "options", "head", "patch", "trace",
@@ -217,7 +205,6 @@ impl Mandolin {
     }
     pub fn render(&self) -> Result<String, minijinja::Error> {
         let mut env = minijinja::Environment::new();
-        println!("{:?}", env);
         let api = minijinja::Value::from_serialize(&self.api);
         env.add_filter("json_encode", minijinja::filters::tojson);
         env.add_function("m", || { Ok(minijinja::Value::from_serialize(Empty{})) });
@@ -253,26 +240,16 @@ impl Mandolin {
             env.add_filter(
                 "ls",
                 move |value: &minijinja::Value| {
-                    Self::ls(api.clone(), value.as_str().unwrap_or_default(), true)
+                    Self::ls(api.clone(), value.as_str().unwrap_or_default(), true).map(|v| minijinja::Value::from_serialize(v))
                 },
             );
-        }
-        {
-            let api = api.clone();
-            env.add_function("ls", move |value: &HashMap<String, minijinja::Value>| {
-                Self::ls(
-                    api.clone(),
-                    value.values().next().unwrap().as_str().unwrap_or_default(),
-                    true,
-                )
-            });
         }
         {
             let api = api.clone();
             env.add_filter(
                 "lsop",
                 move |value: &minijinja::Value| {
-                    Self::lsop(api.clone(), value.as_str().unwrap_or_default(), true)
+                    Self::lsop(api.clone(), value.as_str().unwrap_or_default(), true).map(|v| minijinja::Value::from_serialize(v))
                 },
             );
         }
@@ -324,8 +301,7 @@ mod tests {
     fn test_ls() {
         let v = apis().get("openapi.yaml").unwrap().clone();
         let r = Mandolin::new(v)
-            .template("{%set w='#'|ls%}")
-            .template("{% for k, v in ls(v=\"#\") %}{{k}}\n{%endfor%}")
+            .template("{% for k, v in '#'|ls %}{{k}}={{v}}\n{%endfor%}")
             .render()
             .unwrap();
         println!("{}", r)
