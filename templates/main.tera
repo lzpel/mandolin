@@ -28,14 +28,12 @@ bool
 u8
 {%- endif %}
 {%- endmacro -%}
-{%- macro IDENTIFIED_SCHEMA(name, schema) -%}
+{%- macro IDENTIFIED_SCHEMA(point, schema) -%}
 {%- if schema.type and schema.type == "object" -%}
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct {{name}}{
+pub struct {{point|ident}}{
 {{SCHEMA(schema,3)}}
 }
-{%- else  -%}
-pub type {{name}} = {{SCHEMA(schema,4)}};
 {%- endif -%}
 {%- endmacro -%}
 #![allow(non_camel_case_types)]
@@ -71,10 +69,6 @@ pub struct {{operation.request_identifier}}{
     pub body:{{operation.request_body.identifier}}
 {%- endif %}
 }
-{%- if operation.request_body %}
-/// {{operation.request_body.default_content.media_type}}
-{{ IDENTIFIED_SCHEMA(operation.request_body.identifier, operation.request_body.default_content.schema) }}
-{%- endif %}
 
 /// Response of {{operation.function}} {{operation.method}} {{operation.path}}
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
@@ -91,8 +85,8 @@ impl Default for {{operation.response_identifier}}{
 }
 {%- endfor %}
 
-{%- for schema_key, schema in "#/components/schemas"|p|items %}
-{{ IDENTIFIED_SCHEMA(schema_key, schema) }}
+{%- for pointer, schema in ls_schema() %}
+{{ IDENTIFIED_SCHEMA(pointer, schema) }}
 {%- endfor %}
 
 use axum;
