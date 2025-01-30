@@ -45,7 +45,7 @@ use std::collections::HashMap;
 use serde;
 use std::future::Future;
 pub trait Server{
-{%- for k, operation in "#/paths"|lsop %}
+{%- for k, operation in ls_operation() %}
 	/// {{operation.method}} {{operation.path}}
 	fn {{operation.function}}(request: {{operation.request_identifier}}) -> impl Future<Output = {{operation.response_identifier}}> + Send{async{Default::default()}}
 {%- endfor %}
@@ -53,13 +53,13 @@ pub trait Server{
 /*
 pub struct TestServer{}
 impl server::Server for TestServer{
-{%- for k, operation in "#/paths"|lsop %}
+{%- for k, operation in ls_operation() %}
 	/// {{operation.method}} {{operation.path}}
 	async fn {{operation.function}}(request: {{operation.request_identifier}}) -> {{operation.response_identifier}}{Default::default()}
 {%- endfor %}
 }
 */
-{%- for k, operation in "#/paths"|lsop %}
+{%- for k, operation in ls_operation() %}
 /// Request of {{operation.function}} {{operation.method}} {{operation.path}}
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct {{operation.request_identifier}}{
@@ -97,7 +97,7 @@ impl Default for {{operation.response_identifier}}{
 use axum;
 pub fn axum_router_operations<S:Server>()->axum::Router{
 	axum::Router::new()
-{%- for point, operation in "#/paths"|lsop %}
+{%- for point, operation in ls_operation() %}
 		.route("{{operation.path}}", axum::routing::{{operation.method}}(|
 			path: axum::extract::Path<HashMap<String,String>>,
 			query: axum::extract::Query<HashMap<String,String>>,

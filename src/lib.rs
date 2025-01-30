@@ -5,7 +5,6 @@ use openapiv3::{Content, MediaType, OpenAPI, Operation, ReferenceOr, RequestBody
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::LazyLock;
-use minijinja::value::{ObjectExt};
 
 #[derive(Serialize, Deserialize)]
 pub struct LappedMediaType {
@@ -218,9 +217,28 @@ impl Mandolin {
             .collect();
         Ok(w)
     }
+    fn recursive_pointed_objects(path: String, value: &minijinja::Value, output: &mut Vec<(String, minijinja::Value)>){
+        output.push((path.clone(), value.clone()));//注目箇所を追加
+        if let Some(v) = value.as_object() {//子を検索
+            if let Some(v) = v.try_iter_pairs() {
+                v.for_each(|(k,v)| Self::recursive_pointed_objects(format!("{path}/{}", Self::encode(k.to_string())), &v, output));
+            } else if let Some(v) = v.try_iter() {
+                v.enumerate().for_each(|(k,v)| Self::recursive_pointed_objects(format!("{path}/{k}"), &v, output));
+            }
+        }
+    }
     pub fn render(&self) -> Result<String, minijinja::Error> {
         let mut env = minijinja::Environment::new();
         let api = minijinja::Value::from_serialize(&self.api);
+        let map_pointed_objects: Vec<(String, minijinja::Value)> = {
+            let mut output=Default::default();
+            Self::recursive_pointed_objects("#".to_string(), &api, &mut output);
+            output
+        };
+        for i in &map_pointed_objects{
+            println!("{}", i.0);
+        }
+
         env.add_filter("json_encode", minijinja::filters::tojson);
         env.add_function("m", || { Ok(minijinja::Value::from_serialize(Empty{})) });
         {
@@ -280,6 +298,23 @@ impl Mandolin {
                 },
             );
         }
+        {
+            let map_pointed_objects=map_pointed_objects.clone();
+            env.add_function("ls_operation",move || {
+                let o: Vec<(String, minijinja::Value)>=map_pointed_objects.iter()
+                    .filter(|(k, _)|{
+                        let mut v=k.split("/");
+                        v.next().is_some_and(|v| v.eq("#"))
+                            && v.next().is_some_and(|v| v.eq("paths"))
+                            && v.next().is_some_and(|v| true)
+                            && v.next().is_some_and(|v| ["get"].iter().any(|i| i.eq(&v)))
+                            && v.next().is_none()
+                    })
+                    .cloned()
+                    .collect();
+                Ok(minijinja::Value::from_serialize(o))
+            })
+        }
         let v=self.templates.join("\n");
         env.add_template("main", v.as_str())?;
         let template = env.get_template("main")?;
@@ -337,7 +372,7 @@ mod tests {
     #[test]
     fn test_lsop() {
         let r = Mandolin::new(apis().remove("openapi.yaml").unwrap())
-            .template("{% for k, v in '#/paths'|lsop %}{{k}}={{v}}\n{%endfor%}")
+            .template("lsop\n{% for k, v in '#/paths'|lsop %}{{k}}={{v}}\n{%endfor%}\nls_operation()\n{% for k, v in ls_operation() %}{{k}}={{v}}\n{%endfor%}")
             .render()
             .unwrap();
         println!("{}", r)
