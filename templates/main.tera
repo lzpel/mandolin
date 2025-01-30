@@ -41,6 +41,7 @@ pub type {{name}} = {{SCHEMA(schema,4)}};
 #![allow(non_camel_case_types)]
 #![allow(unused_variables)]
 // DON'T EDIT MANUALLY THIS GENERATED CODE
+// {{"abc"|ident}}
 use std::collections::HashMap;
 use serde;
 use std::future::Future;
@@ -145,7 +146,7 @@ body.into()
 		}))
 {%- endfor %}
 		.route("/openapi.json", axum::routing::get(|| async move{
-			r###"{{"#"|p|json_encode()}}"###
+			r###"{{"#"|p|tojson}}"###
 		}))
 		.route("/ui", axum::routing::get(|| async move{
 			axum::response::Html(r###"

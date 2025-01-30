@@ -1,10 +1,11 @@
 pub mod templates;
 mod utils;
 
-use openapiv3::{Content, MediaType, OpenAPI, Operation, ReferenceOr, RequestBody};
+use openapiv3::{Content, MediaType, OpenAPI, Operation, ReferenceOr, RequestBody, Schema, SchemaKind};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::LazyLock;
+use crate::utils::capitalize;
 
 #[derive(Serialize, Deserialize)]
 pub struct LappedMediaType {
@@ -239,8 +240,17 @@ impl Mandolin {
             println!("{}", i.0);
         }
 
-        env.add_filter("json_encode", minijinja::filters::tojson);
-        env.add_function("m", || { Ok(minijinja::Value::from_serialize(Empty{})) });
+        env.add_filter("ident", |value: &str| {
+            let mut v: String=Default::default();
+            for i in value.split("/").skip(1){
+                for j in Self::decode(i).split("/"){
+                    if !j.is_empty(){
+                        v.push_str(capitalize(j).as_str())
+                    }
+                }
+            }
+            Ok(v)
+        });
         {
             let api = api.clone();
             env.add_filter(
@@ -287,7 +297,6 @@ impl Mandolin {
             );
         }
         {
-            let api = api.clone();
             env.add_filter(
                 "ref",
                 |value: &minijinja::Value| {
@@ -306,11 +315,25 @@ impl Mandolin {
                         let mut v=k.split("/");
                         v.next().is_some_and(|v| v.eq("#"))
                             && v.next().is_some_and(|v| v.eq("paths"))
-                            && v.next().is_some_and(|v| true)
-                            && v.next().is_some_and(|v| ["get"].iter().any(|i| i.eq(&v)))
+                            && v.next().is_some()
+                            && v.next().is_some_and(|v| ["get", "put", "post", "delete", "options", "head", "patch", "trace"].iter().any(|i| i.eq(&v)))
                             && v.next().is_none()
                     })
                     .cloned()
+                    .collect();
+                Ok(minijinja::Value::from_serialize(o))
+            })
+        }
+        {
+            let map_pointed_objects=map_pointed_objects.clone();
+            env.add_function("ls_schema",move || {
+                let o: Vec<(String, Schema)>=map_pointed_objects.iter()
+                    .filter_map(|(k, v)| Schema::deserialize(v).ok().map(|v| (k, v)))
+                    .filter(|(_, v)| match &v.schema_kind{
+                        SchemaKind::Type(_)=>true,
+                        _ => false
+                    })
+                    .map(|(k, v)| (k.clone(), v))
                     .collect();
                 Ok(minijinja::Value::from_serialize(o))
             })
@@ -355,7 +378,7 @@ mod tests {
     fn test_filter() {
         let v = apis().get("openapi.yaml").unwrap().clone();
         let r = Mandolin::new(v)
-            .template("{{'#'|p|json_encode}}\n{{'#/paths'|p|json_encode}}\n{{'#/servers/0'|p|json_encode}}\n{{'#'|ls|json_encode}}{{'#/servers'|ls|json_encode}}\n{{'#/paths'|lsop|json_encode}}")
+            .template("{{'#'|p|tojson}}\n{{'#/paths'|p|tojson}}\n{{'#/servers/0'|p|tojson}}\n{{'#'|ls|tojson}}{{'#/servers'|ls|tojson}}\n{{'#/paths'|lsop|tojson}}")
             .render()
             .unwrap();
         println!("{}", r)
@@ -370,9 +393,17 @@ mod tests {
         println!("{}", r)
     }
     #[test]
-    fn test_lsop() {
+    fn test_ls_operation() {
         let r = Mandolin::new(apis().remove("openapi.yaml").unwrap())
             .template("lsop\n{% for k, v in '#/paths'|lsop %}{{k}}={{v}}\n{%endfor%}\nls_operation()\n{% for k, v in ls_operation() %}{{k}}={{v}}\n{%endfor%}")
+            .render()
+            .unwrap();
+        println!("{}", r)
+    }
+    #[test]
+    fn test_ls_schema() {
+        let r = Mandolin::new(apis().remove("openapi.yaml").unwrap())
+            .template("ls_schema\n{% for k, v in ls_schema() %}{{k}}={{k|ident}}={{v}}\n{%endfor%}")
             .render()
             .unwrap();
         println!("{}", r)
