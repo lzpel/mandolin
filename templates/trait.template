@@ -1,0 +1,67 @@
+{%- macro OPERATION_FUNCTION(pointer,operation) -%}
+{%- if operation.operationId -%}
+{{operation.operationId|snake_case}}
+{%- else -%}
+{{pointer|decode|snake_case}}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro OPERATION_REQUEST(pointer,operation) -%}
+{{(OPERATION_FUNCTION(pointer,operation)+"_request")|pascal_case}}
+{%- endmacro -%}
+
+{%- macro OPERATION_RESPONSE(pointer,operation) -%}
+{{(OPERATION_FUNCTION(pointer,operation)+"_response")|pascal_case}}
+{%- endmacro -%}
+
+use std::collections::HashMap;
+use serde;
+use std::future::Future;
+pub trait Server{
+{%- for pointer, operation in ls_operation() %}
+	// {{(pointer|decode_list)[3]}} {{(pointer|decode_list)[2]}}
+	fn {{OPERATION_FUNCTION(pointer,operation)}}(request: {{OPERATION_REQUEST(pointer,operation)}}) -> impl Future<Output = {{OPERATION_RESPONSE(pointer,operation)}}> + Send{async{Default::default()}}
+{%- endfor %}
+}
+/*
+pub struct TestServer{}
+impl server::Server for TestServer{
+{%- for pointer, operation in ls_operation() %}
+	// {{(pointer|decode_list)[3]}} {{(pointer|decode_list)[2]}}
+	async fn {{OPERATION_FUNCTION(pointer,operation)}}(request: {{operation.request_identifier}}) -> {{operation.response_identifier}}{Default::default()}
+{%- endfor %}
+}
+*/
+{%- for pointer, operation in ls_operation() %}
+/// Request of {{OPERATION_FUNCTION(pointer,operation)}}
+#[derive(serde::Serialize,serde::Deserialize,Debug)]
+pub struct {{OPERATION_REQUEST(pointer,operation)}}{
+{%- for parameter in operation.parameters|r %}
+	pub {{parameter.name}}:{%-set inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema,5) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
+{%- endfor %}
+{%- if operation.requestBody %}
+{%- for content_key, content in operation.requestBody.content|items %}
+    pub body:{{SCHEMA(pointer+"/requestBody/content/"+content_key+"/schema",content.schema,true)}}
+{%- endfor -%}
+{%- endif %}
+}
+
+/// Response of {{operation.function}} {{operation.method}} {{operation.path}}
+#[derive(serde::Serialize,serde::Deserialize,Debug)]
+pub enum {{OPERATION_RESPONSE(pointer,operation)}}{
+{%- set ns = namespace(response_default_key=0) %}
+{%- for response_key, response in operation.responses|items %}
+	{{("status_"+response_key)|pascal_case}}{%-if response.content-%}({%- for content_type, media in response.content|items %}{{SCHEMA(pointer+"/content/"+content_type+"/schema",media.schema,1)}}{%-endfor%}){%-endif%},
+{%- if ns.response_default_key == 0 or response_key == "default"%}
+{%- set ns.response_default_key=response_key %}
+{%- set ns.response_default=response %}
+{%- endif %}
+{%- endfor %}
+}
+//{{ns.response_default_key}}
+impl Default for {{OPERATION_RESPONSE(pointer,operation)}}{
+	fn default() -> Self{
+		Self::Status{{ns.response_default_key}}{%-if ns.response_default.content-%}(Default::default()){%-endif%}
+	}
+}
+{%- endfor %}

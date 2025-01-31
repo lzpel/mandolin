@@ -7,7 +7,7 @@ Online demo with wasm: https://lzpel.github.io/mandolin/
 
 ## Using mandolin
 
-Render server code using builtin template
+Render axum server code using builtin template
 
 ```rust
 use mandolin;
@@ -16,31 +16,38 @@ use std::fs;
 fn main() {
   let input=serde_yaml::from_str(fs::read_to_string("./openapi/openapi.yaml").unwrap().as_str()).unwrap();
   let output=mandolin::Mandolin::new(input)
-          .template(mandolin::templates::MAIN)
+          .template(mandolin::templates::HEADER)
+          .template(mandolin::templates::SCHEMA)
+          .template(mandolin::templates::TRAIT)
+          .template(mandolin::templates::SERVER_AXUM)
           .render()
           .unwrap();
-  fs::write("./src/server.rs", output).unwrap();
+  fs::write("./examples/server_builtin.out.rs", output).unwrap();
 }
 ```
 
-Render server code using custom template
+Render axum server code using custom template
 
 ```rust
 use mandolin;
 use serde_yaml;
 use std::fs;
 fn main() {
-    let input=serde_yaml::from_str(fs::read_to_string("./openapi/openapi.yaml").unwrap().as_str()).unwrap();
-    let output=mandolin::Mandolin::new(input)
-        .template(fs::read_to_string("./custom/template.tera").unwrap())
-        .render()
-        .unwrap();
-    fs::write("./src/server.rs", output).unwrap();
+  let input=serde_yaml::from_str(fs::read_to_string("./openapi/openapi.yaml").unwrap().as_str()).unwrap();
+  let output=mandolin::Mandolin::new(input)
+          .template(fs::read_to_string("./templates/header.template").unwrap())
+          .template(fs::read_to_string("./templates/schema.template").unwrap())
+          .template(fs::read_to_string("./templates/trait.template").unwrap())
+          .template(fs::read_to_string("./templates/server_axum.template").unwrap())
+          .render()
+          .unwrap();
+  fs::write("./examples/server_custom.out.rs", output).unwrap();
 }
 ```
 
 ## version
 
+- 0.1.6 independent from regex, tera
 - 0.1.5 fix ref filter
 - 0.1.4 replace minijinja from tera
 - 0.1.3
