@@ -19,6 +19,10 @@ impl Mandolin {
         self.templates.push(template.as_ref().to_string());
         self
     }
+    pub fn template_default(&mut self) -> &mut Self {
+        [templates::HEADER, templates::SCHEMA, templates::TRAIT, templates::SERVER_AXUM].into_iter().for_each(|v| self.templates.push(v.to_string()));
+        self
+    }
     pub fn decode<S: AsRef<str>>(content: S) -> String {
         content.as_ref().replace("~0", "~").replace("~1", "/") // RFC6901
     }
@@ -328,25 +332,12 @@ mod tests {
     }
     #[test]
     fn test_render() {
-        for entry in fs::read_dir(&Path::new(".").join("openapi"))
-            .unwrap()
-            .filter_map(Result::ok)
-        {
-            if entry
-                .path()
-                .extension()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default()
-                .contains("yaml")
-            {
-                println!("{}", entry.path().to_str().unwrap_or_default());
-                let v = Mandolin::new(serde_yaml::from_reader(std::io::BufReader::new(File::open(entry.path()).unwrap())).unwrap(), )
-                .template(templates::MAIN)
+        for (key, value) in apis(){
+            let v = Mandolin::new(value)
+                .template_default()
                 .render()
                 .unwrap();
-                println!("{}", v)
-            }
+            write(format!("examples/test_render_{key}.out.rs"), v).unwrap();
         }
     }
     #[test]
