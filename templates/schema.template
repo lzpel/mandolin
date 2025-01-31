@@ -31,8 +31,7 @@ u8
 {%- macro IDENTIFIED_SCHEMA(point, schema) -%}
 {%- if schema.type and schema.type == "object" -%}
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct {{point|decode|pascal_case}}{
-{{SCHEMA(schema,0)}}
+pub struct {{point|decode|pascal_case}}{{'{'}}{{SCHEMA(schema,0)}}
 }
 {%- endif -%}
 {%- endmacro -%}

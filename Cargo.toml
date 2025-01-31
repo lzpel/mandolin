@@ -19,7 +19,6 @@ regex = "^1.11"
 
 [dev-dependencies]
 serde_yaml = "^0.9.34+deprecated"
-tera = { version = "^1.20", default-features = false, features = ["urlencode", "slug", "humansize", "chrono", "chrono-tz"]}# for wasm, remove rand which is not wasm-adaptive
 
 [workspace]
 members = ["demo/wasm"]
