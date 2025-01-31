@@ -1,6 +1,7 @@
 extern crate console_error_panic_hook;
 use mandolin;
 use wasm_bindgen::prelude::*;
+use mandolin::{templates, Mandolin};
 
 #[wasm_bindgen]
 pub fn sums(value: i32) -> i32 {
@@ -24,8 +25,10 @@ pub fn example(openapi_yaml: &str) -> String {
 	//エラーをまとめる方法を考える
 	let v=serde_yaml::from_str(openapi_yaml).unwrap();
 	//let v=serde_yaml::from_str(include_str!("../../../openapi/openapi_petstore.yaml")).unwrap();
-	mandolin::Mandolin::new(v)
-		.template(mandolin::templates::MAIN)
+	Mandolin::new(v)
+		.template(templates::HEADER)
+		.template(templates::SCHEMA)
+		.template(templates::TRAIT)
 		.render()
 		.unwrap()
 }
@@ -40,7 +43,6 @@ mod tests {
 		let result = sums(10);
 		assert_eq!(result, 55);
 		println!("{}", "it_works");
-		println!("{}", mandolin::templates::MAIN);
 	}
 	#[test]
 	fn generate() {
