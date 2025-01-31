@@ -127,25 +127,6 @@ impl Mandolin {
         let v = Self::p(api.clone(), path, no_err)?;
         Self::r(&api, v, false)
     }
-    fn ls(
-        api: minijinja::Value,
-        path: &str,
-        no_err: bool,
-    ) -> Result<Vec<(String, minijinja::Value)>, minijinja::Error> {
-        let v = Self::pr(api, path, no_err)?;
-        if let Some(v) = v.as_object() {
-            if let Some(v) = v.try_iter_pairs() {
-                return Ok(v.map(|(k, v)| (format!("{path}/{}", Self::encode(k.to_string())), v,)).collect())
-            } else if let Some(v) = v.try_iter() {
-                return Ok(v.enumerate().map(|(k, v)| (format!("{path}/{}", k), v)).collect())
-            }
-        }
-        if no_err {
-            Ok(Default::default())
-        } else {
-            Err(minijinja::Error::new(minijinja::ErrorKind::NonKey, format!("ls {}", path), ))
-        }
-    }
     fn recursive_pointed_objects(path: String, value: &minijinja::Value, output: &mut Vec<(String, minijinja::Value)>){
         output.push((path.clone(), value.clone()));//注目箇所を追加
         if let Some(v) = value.as_object() {//子を検索
@@ -193,26 +174,6 @@ impl Mandolin {
                 "pr",
                 move |value: &minijinja::Value| {
                     Self::pr(api.clone(), value.as_str().unwrap_or_default(), true)
-                },
-            );
-        }
-        {
-            let api = api.clone();
-            env.add_filter(
-                "ls",
-                move |value: &minijinja::Value| {
-                    Self::ls(api.clone(), value.as_str().unwrap_or_default(), true).map(|v| minijinja::Value::from_serialize(v))
-                },
-            );
-        }
-        {
-            env.add_filter(
-                "ref",
-                |value: &minijinja::Value| {
-                    match ReferenceOr::<()>::deserialize(value) {
-                        Ok(ReferenceOr::Reference { reference }) => minijinja::Value::from(Self::decode_list(&reference).into_iter().nth_back(1).unwrap_or_default()),
-                        _ => minijinja::Value::UNDEFINED
-                    }
                 },
             );
         }
@@ -296,16 +257,7 @@ mod tests {
     fn test_filter() {
         let v = apis().get("openapi.yaml").unwrap().clone();
         let r = Mandolin::new(v)
-            .template("{{'#'|p|tojson}}\n{{'#/paths'|p|tojson}}\n{{'#/servers/0'|p|tojson}}\n{{'#'|ls|tojson}}{{'#/servers'|ls|tojson}}")
-            .render()
-            .unwrap();
-        println!("{}", r)
-    }
-    #[test]
-    fn test_ls() {
-        let v = apis().get("openapi.yaml").unwrap().clone();
-        let r = Mandolin::new(v)
-            .template("{{'#'|p}}\n{{'#'|pr}}\n{% for k, v in '#'|ls %}{{k}}={{v}}\n{%endfor%}")
+            .template("{{'#'|p|tojson}}\n{{'#/paths'|p|tojson}}\n{{'#/servers/0'|p|tojson}}")
             .render()
             .unwrap();
         println!("{}", r)
