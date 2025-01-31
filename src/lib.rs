@@ -1,94 +1,8 @@
 pub mod templates;
-mod utils;
 
-use openapiv3::{Content, MediaType, OpenAPI, Operation, ReferenceOr, RequestBody, Schema, SchemaKind};
+use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
-use std::sync::LazyLock;
-use crate::utils::capitalize;
-
-#[derive(Serialize, Deserialize)]
-pub struct LappedMediaType {
-    pub media_type: String,
-    #[serde(flatten)]
-    pub media: MediaType,
-}
-impl TryFrom<&Content> for LappedMediaType {
-    type Error = ();
-    fn try_from(content: &Content) -> Result<Self, Self::Error> {
-        if content.is_empty() {
-            Err(())
-        } else {
-            let v = content
-                .iter()
-                .filter(|(k, _)| k.contains("json"))
-                .next()
-                .unwrap_or(content.iter().next().expect("No content"));
-            Ok(Self {
-                media_type: v.0.to_string(),
-                media: v.1.clone(),
-            })
-        }
-    }
-}
-#[derive(Serialize, Deserialize)]
-pub struct LappedRequestBody {
-    pub default_content: LappedMediaType,
-    pub identifier: String,
-    #[serde(flatten)]
-    pub request_body: RequestBody,
-    //required
-    //content
-}
-#[derive(Serialize, Deserialize)]
-pub struct LappedOperation {
-    pub path: String,
-    pub method: String,
-    pub function: String,
-    pub request_identifier: String,
-    pub response_identifier: String,
-    //Option<ReferenceOr<RequestBody>>だがReference<>を許容しないのでOption<RequestBody>
-    //Option<RequestBody>だがcontext_oneを追加してOption<LappedRequestBody>
-    pub request_body: Option<LappedRequestBody>,
-    #[serde(flatten)]
-    pub operation: Operation,
-}
-impl LappedOperation {
-    pub fn new(path: &str, method: &str, operation: &Operation) -> Self {
-        let function = match &operation.operation_id {
-            None => format!("{}{}", method, path).replace("/", "_"),
-            Some(v) => v.clone(),
-        };
-        let body = operation.request_body.as_ref().and_then(|v| {
-            let request_body = v.as_item().expect("Referenced request body is not allowd");
-            //jsonを含めば、json、それ以外ならbytes
-            Some(LappedRequestBody {
-                request_body: request_body.clone(),
-                default_content: LappedMediaType::try_from(&request_body.content).unwrap(),
-                identifier: utils::camel_case(
-                    format!("request_body_{}", function.as_str()).as_str(),
-                ),
-            })
-        });
-        Self {
-            path: path.to_string(),
-            method: method.to_string(),
-            operation: operation.clone(),
-            function: function.clone(),
-            request_identifier: utils::camel_case(
-                format!("request_{}", function.as_str()).as_str(),
-            ),
-            response_identifier: utils::camel_case(
-                format!("response_{}", function.as_str()).as_str(),
-            ),
-            request_body: body,
-        }
-    }
-}
-#[derive(Serialize, Deserialize)]
-pub struct Empty {}
-static EMPTY_OBJECT: LazyLock<minijinja::Value> =
-    LazyLock::new(|| minijinja::Value::from_serialize(Empty {}));
 
 pub struct Mandolin {
     api: OpenAPI,
@@ -105,26 +19,52 @@ impl Mandolin {
         self.templates.push(template.as_ref().to_string());
         self
     }
-    fn decode<S: AsRef<str>>(content: S) -> String {
+    pub fn decode<S: AsRef<str>>(content: S) -> String {
         content.as_ref().replace("~0", "~").replace("~1", "/") // RFC6901
     }
-    fn decode_list<S: AsRef<str>>(content: S) -> Vec<String> {
+    pub fn decode_list<S: AsRef<str>>(content: S) -> Vec<String> {
         content.as_ref().split("/").map(|v | Self::decode(v)).collect()
     }
-    fn encode<S: AsRef<str>>(content: S) -> String {
+    pub fn encode<S: AsRef<str>>(content: S) -> String {
         content.as_ref().replace("~", "~0").replace("/", "~1") // RFC6901
     }
-    fn snake_case<S: AsRef<str>>(s: S)->String{
-        let mut snake_case = String::new();
-        for (i, c) in s.as_ref().chars().enumerate() {
-            if c.is_uppercase() {
-                (i!=0).then(|| snake_case.push('_'));
-                snake_case.push(c.to_ascii_lowercase());
-            } else {
-                snake_case.push(c);
+    pub fn snake_case<S: AsRef<str>>(s: S)->String{
+        let mut result = String::new();
+        let mut flag=false;
+        for c in s.as_ref().chars() {
+            if c.is_ascii_alphanumeric()==false {
+                flag=true;//前置判定
+            }else{
+                flag|=c.is_uppercase();
+                flag&=!result.is_empty();
+                //↑当該判定
+                if flag{
+                    result.push('_')
+                }
+                result.push(c.to_ascii_lowercase());
+                flag=false;
             }
         }
-        snake_case
+        result
+    }
+    pub fn pascal_case<S: AsRef<str>>(s: S)->String{
+        let mut result = String::new();
+        let mut flag=false;
+        for c in s.as_ref().chars() {
+            if c.is_ascii_alphanumeric()==false {
+                flag=true;//前置判定
+            }else{
+                flag|=result.is_empty();
+                //↑当該判定
+                if flag{
+                    result.push(c.to_ascii_uppercase())
+                }else{
+                    result.push(c)
+                }
+                flag=false;
+            }
+        }
+        result
     }
     fn p(
         api: minijinja::Value,
@@ -132,7 +72,7 @@ impl Mandolin {
         no_err: bool,
     ) -> Result<minijinja::Value, minijinja::Error> {
         let default = if no_err {
-            Ok(EMPTY_OBJECT.clone())
+            Ok(minijinja::Value::UNDEFINED)
         } else {
             Err(minijinja::Error::new(
                 minijinja::ErrorKind::NonKey,
@@ -202,34 +142,6 @@ impl Mandolin {
             Err(minijinja::Error::new(minijinja::ErrorKind::NonKey, format!("ls {}", path), ))
         }
     }
-    fn lsop(
-        api: minijinja::Value,
-        path: &str,
-        no_err: bool,
-    ) -> Result<Vec<(String, minijinja::Value)>, minijinja::Error> {
-        let v = Self::ls(api.clone(), path, no_err)?;
-        let methods = [
-            "get", "put", "post", "delete", "options", "head", "patch", "trace",
-        ];
-        let w = v
-            .iter()
-            .map(|(k, v_path)| {
-                Self::ls(api.clone(), k, no_err)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(move |(k, v)| (k, v_path, v))
-            })
-            .flatten()
-            .filter_map(|(k, _, v)| {
-                let method=methods.into_iter().find(|w| k.ends_with(w))?;
-                let operation=Operation::deserialize(v).ok()?;
-                let decoded=Self::decode_list(&k).into_iter().nth_back(1).unwrap_or_default();
-                let lapped=LappedOperation::new(decoded.as_str(), method, &operation);
-                Some((k, minijinja::Value::from_serialize(lapped)))
-            })
-            .collect();
-        Ok(w)
-    }
     fn recursive_pointed_objects(path: String, value: &minijinja::Value, output: &mut Vec<(String, minijinja::Value)>){
         output.push((path.clone(), value.clone()));//注目箇所を追加
         if let Some(v) = value.as_object() {//子を検索
@@ -248,27 +160,11 @@ impl Mandolin {
             Self::recursive_pointed_objects("#".to_string(), &api, &mut output);
             output
         };
-        env.add_filter("snake_case", |value: &str|{
-            Self::snake_case(value)
-        });
-        env.add_filter("ident", |value: &str| {
-            let mut v: String=Default::default();
-            for i in value.split("/").skip(1){
-                for j in Self::decode(i).split("/"){
-                    if !j.is_empty(){
-                        v.push_str(capitalize(j).as_str())
-                    }
-                }
-            }
-            Ok(v)
-        });
-        env.add_filter("pointer_decode", |value: &str| {
-           if value.starts_with("#/"){
-               Ok(minijinja::Value::from_serialize(Self::decode_list(value)))
-           }else{
-               Ok(minijinja::Value::from_serialize(Self::decode(value)))
-           }
-        });
+        env.add_filter("snake_case", |value: &str|{ Self::snake_case(value) });
+        env.add_filter("pascal_case", |value: &str| { Self::pascal_case(value) });
+        env.add_filter("decode", |value: &str| { Self::decode(value) });
+        env.add_filter("encode", |value: &str| { Self::encode(value) });
+        env.add_filter("decode_list", |value: &str| {Self::decode_list(value)});
         {
             let api = api.clone();
             env.add_filter(
@@ -302,15 +198,6 @@ impl Mandolin {
                 "ls",
                 move |value: &minijinja::Value| {
                     Self::ls(api.clone(), value.as_str().unwrap_or_default(), true).map(|v| minijinja::Value::from_serialize(v))
-                },
-            );
-        }
-        {
-            let api = api.clone();
-            env.add_filter(
-                "lsop",
-                move |value: &minijinja::Value| {
-                    Self::lsop(api.clone(), value.as_str().unwrap_or_default(), true).map(|v| minijinja::Value::from_serialize(v))
                 },
             );
         }
@@ -405,7 +292,7 @@ mod tests {
     fn test_filter() {
         let v = apis().get("openapi.yaml").unwrap().clone();
         let r = Mandolin::new(v)
-            .template("{{'#'|p|tojson}}\n{{'#/paths'|p|tojson}}\n{{'#/servers/0'|p|tojson}}\n{{'#'|ls|tojson}}{{'#/servers'|ls|tojson}}\n{{'#/paths'|lsop|tojson}}")
+            .template("{{'#'|p|tojson}}\n{{'#/paths'|p|tojson}}\n{{'#/servers/0'|p|tojson}}\n{{'#'|ls|tojson}}{{'#/servers'|ls|tojson}}")
             .render()
             .unwrap();
         println!("{}", r)
@@ -415,14 +302,6 @@ mod tests {
         let v = apis().get("openapi.yaml").unwrap().clone();
         let r = Mandolin::new(v)
             .template("{{'#'|p}}\n{{'#'|pr}}\n{% for k, v in '#'|ls %}{{k}}={{v}}\n{%endfor%}")
-            .render()
-            .unwrap();
-        println!("{}", r)
-    }
-    #[test]
-    fn test_ls_operation() {
-        let r = Mandolin::new(apis().remove("openapi.yaml").unwrap())
-            .template("lsop\n{% for k, v in '#/paths'|lsop %}{{k}}={{v}}\n{%endfor%}\nls_operation()\n{% for k, v in ls_operation() %}{{k}}={{v}}\n{%endfor%}")
             .render()
             .unwrap();
         println!("{}", r)
@@ -498,5 +377,11 @@ mod tests {
         println!("{}", detector(v1));
         println!("{}", detector(v2));
         println!("{}", detector(v3));
+    }
+    #[test]
+    fn test_cases(){
+        let r= "#/paths/~1/get/responses/default/content/application~1json/schema/$ref";
+        println!("{}", Mandolin::pascal_case(r));
+        println!("{}", Mandolin::snake_case(r));
     }
 }

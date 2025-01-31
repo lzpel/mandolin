@@ -23,7 +23,7 @@ bool
 {%- else -%}
 {%- endif %}
 {%- elif schema["$ref"] -%}
-{{schema["$ref"]|ident}}
+{{schema["$ref"]|pascal_case}}
 {%- else -%}
 u8
 {%- endif %}
@@ -31,7 +31,7 @@ u8
 {%- macro IDENTIFIED_SCHEMA(point, schema) -%}
 {%- if schema.type and schema.type == "object" -%}
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct {{point|ident}}{
+pub struct {{point|decode|pascal_case}}{
 {{SCHEMA(schema,0)}}
 }
 {%- endif -%}
