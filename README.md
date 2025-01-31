@@ -47,6 +47,7 @@ fn main() {
 
 ## version
 
+- 0.1.7 hotfix
 - 0.1.6 independent from regex, tera
 - 0.1.5 fix ref filter
 - 0.1.4 replace minijinja from tera

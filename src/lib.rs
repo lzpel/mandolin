@@ -218,8 +218,9 @@ impl Mandolin {
 }
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, HashMap};
     use super::*;
+    use serde::{Serialize, Deserialize};
+    use std::collections::{BTreeMap, HashMap};
     use std::fs;
     use std::fs::File;
     use std::path::Path;
@@ -282,7 +283,10 @@ mod tests {
     fn test_render() {
         for (key, value) in apis(){
             let v = Mandolin::new(value)
-                .template_default()//.template(templates::DUMP)
+                .template(templates::HEADER)
+                .template(templates::SCHEMA)
+                .template(templates::TRAIT)
+                .template(templates::SERVER_AXUM)
                 .render()
                 .unwrap();
             write(format!("examples/test_render_{key}.out.rs"), v).unwrap();

@@ -33,7 +33,7 @@ impl server::Server for TestServer{
 }
 */
 {%- for pointer, operation in ls_operation() %}
-/// Request of {{OPERATION_FUNCTION(pointer,operation)}}
+// Request of {{OPERATION_FUNCTION(pointer,operation)}}
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct {{OPERATION_REQUEST(pointer,operation)}}{
 {%- for parameter in operation.parameters|r %}
@@ -46,19 +46,18 @@ pub struct {{OPERATION_REQUEST(pointer,operation)}}{
 {%- endif %}
 }
 
-/// Response of {{operation.function}} {{operation.method}} {{operation.path}}
+// Response of {{OPERATION_FUNCTION(pointer,operation)}}
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub enum {{OPERATION_RESPONSE(pointer,operation)}}{
 {%- set ns = namespace(response_default_key=0) %}
 {%- for response_key, response in operation.responses|items %}
-	{{("status_"+response_key)|pascal_case}}{%-if response.content-%}({%- for content_type, media in response.content|items %}{{SCHEMA(pointer+"/content/"+content_type+"/schema",media.schema,1)}}{%-endfor%}){%-endif%},
+	{{("status_"+response_key)|pascal_case}}{%-if response.content-%}({%- for content_type, media in response.content|items %}{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_type+"/schema",media.schema,1)}}{%-endfor%}){%-endif%},
 {%- if ns.response_default_key == 0 or response_key == "default"%}
 {%- set ns.response_default_key=response_key %}
 {%- set ns.response_default=response %}
 {%- endif %}
 {%- endfor %}
 }
-//{{ns.response_default_key}}
 impl Default for {{OPERATION_RESPONSE(pointer,operation)}}{
 	fn default() -> Self{
 		Self::Status{{ns.response_default_key}}{%-if ns.response_default.content-%}(Default::default()){%-endif%}

@@ -29,6 +29,7 @@ pub fn example(openapi_yaml: &str) -> String {
 		.template(templates::HEADER)
 		.template(templates::SCHEMA)
 		.template(templates::TRAIT)
+		.template(templates::SERVER_AXUM)
 		.render()
 		.unwrap()
 }
