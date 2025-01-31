@@ -1,0 +1,42 @@
+{%- macro SCHEMA(schema,depth) -%}
+{%- if schema.type -%}
+{%- if schema.type == "object" -%}
+{%- if schema.additionalProperties -%}
+HashMap<String,{{SCHEMA(schema.additionalProperties,depth+1)}}>
+{%- else -%}
+{%- for property_key, property in schema.properties|items %}
+	pub r#{{property_key}}:
+{%- set inner=SCHEMA(property,depth+1) -%}
+{%- if schema.required and property_key in schema.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
+{%- endfor %}
+{%- endif -%}
+{%- elif schema.type == "array" -%}
+Vec<{{SCHEMA(schema.items,depth+1)}}>
+{%- elif schema.type == "integer" -%}
+{%- if "u" in schema.format -%}u{%- else -%}i{%- endif -%}{%- if "int128" in schema.format -%}128{%- elif "int64" in schema.format -%}64{%- elif "int32" in schema.format -%}32{%- else -%}8{%- endif -%}
+{%- elif schema.type == "string" -%}
+{%- if schema.format and schema.format == "binary" -%}Vec<u8>{%- else -%}String{%- endif -%}
+{%- elif schema.type == "number" -%}
+f64
+{%- elif schema.type == "boolean" -%}
+bool
+{%- else -%}
+{%- endif %}
+{%- elif schema["$ref"] -%}
+{{schema["$ref"]|ident}}
+{%- else -%}
+u8
+{%- endif %}
+{%- endmacro -%}
+{%- macro IDENTIFIED_SCHEMA(point, schema) -%}
+{%- if schema.type and schema.type == "object" -%}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct {{point|ident}}{
+{{SCHEMA(schema,0)}}
+}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- for pointer, schema in ls_schema() %}
+{{ IDENTIFIED_SCHEMA(pointer, schema) }}
+{%- endfor %}

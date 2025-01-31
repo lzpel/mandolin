@@ -1,0 +1,51 @@
+{%- macro OPERATION_FUNCTION(pointer,operation) -%}
+{%- if operation.operationId -%}
+{{operation.operationId|snake_case}}
+{%- else -%}
+{{pointer|pointer_decode|snake_case}}
+{%- endif -%}
+{%- endmacro -%}
+use std::collections::HashMap;
+use serde;
+use std::future::Future;
+pub trait Server{
+{%- for pointer, operation in ls_operation() %}
+	// {{(pointer|pointer_decode)[3]}} {{(pointer|pointer_decode)[2]}}
+	fn {{OPERATION_FUNCTION(pointer,operation)}}(request: {{operation.request_identifier}}) -> impl Future<Output = {{operation.response_identifier}}> + Send{async{Default::default()}}
+{%- endfor %}
+}
+/*
+pub struct TestServer{}
+impl server::Server for TestServer{
+{%- for pointer, operation in ls_operation() %}
+	// {{(pointer|pointer_decode)[3]}} {{(pointer|pointer_decode)[2]}}
+	async fn {{OPERATION_FUNCTION(pointer,operation)}}(request: {{operation.request_identifier}}) -> {{operation.response_identifier}}{Default::default()}
+{%- endfor %}
+}
+*/
+{%- for k, operation in ls_operation() %}
+/// Request of {{operation.function}} {{operation.method}} {{operation.path}}
+#[derive(serde::Serialize,serde::Deserialize,Debug)]
+pub struct {{operation.request_identifier}}{
+{%- for parameter in operation.parameters|r %}
+	pub {{parameter.name}}:{%-set inner=SCHEMA(parameter.schema,5) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
+{%- endfor %}
+{%- if operation.request_body %}
+    pub body:{{operation.request_body.identifier}}
+{%- endif %}
+}
+
+/// Response of {{operation.function}} {{operation.method}} {{operation.path}}
+#[derive(serde::Serialize,serde::Deserialize,Debug)]
+pub enum {{operation.response_identifier}}{
+{%- for response_key, response in operation.responses|items %}
+	Status{{response_key}}{%-if response.content-%}({%- for contentType, media in response.content|items %}{{SCHEMA(media.schema,6)}}{%-endfor%}){%-endif%},
+{%- endfor %}
+}
+impl Default for {{operation.response_identifier}}{
+	fn default() -> Self{
+	    {%set (response_key, response)=operation.responses|items|first%}
+		Self::Status{{response_key}}{%-if response.content-%}(Default::default()){%-endif%}
+	}
+}
+{%- endfor %}

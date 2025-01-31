@@ -39,7 +39,6 @@ pub struct {{point|ident}}{
 #![allow(non_camel_case_types)]
 #![allow(unused_variables)]
 // DON'T EDIT MANUALLY THIS GENERATED CODE
-// {{"abc"|ident}}
 use std::collections::HashMap;
 use serde;
 use std::future::Future;
@@ -83,10 +82,6 @@ impl Default for {{operation.response_identifier}}{
 		Self::Status{{response_key}}{%-if response.content-%}(Default::default()){%-endif%}
 	}
 }
-{%- endfor %}
-
-{%- for pointer, schema in ls_schema() %}
-{{ IDENTIFIED_SCHEMA(pointer, schema) }}
 {%- endfor %}
 
 use axum;

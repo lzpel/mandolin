@@ -108,12 +108,23 @@ impl Mandolin {
     fn decode<S: AsRef<str>>(content: S) -> String {
         content.as_ref().replace("~0", "~").replace("~1", "/") // RFC6901
     }
-    fn decode_nth<S: AsRef<str>>(content: S, n: isize) -> String {
-        let mut v =content.as_ref().split("/");
-        v.nth(if n>=0 {n}else{v.clone().count() as isize+n} as usize).map(|v| Self::decode(v)).unwrap_or_default()
+    fn decode_list<S: AsRef<str>>(content: S) -> Vec<String> {
+        content.as_ref().split("/").map(|v | Self::decode(v)).collect()
     }
     fn encode<S: AsRef<str>>(content: S) -> String {
         content.as_ref().replace("~", "~0").replace("/", "~1") // RFC6901
+    }
+    fn snake_case<S: AsRef<str>>(s: S)->String{
+        let mut snake_case = String::new();
+        for (i, c) in s.as_ref().chars().enumerate() {
+            if c.is_uppercase() {
+                (i!=0).then(|| snake_case.push('_'));
+                snake_case.push(c.to_ascii_lowercase());
+            } else {
+                snake_case.push(c);
+            }
+        }
+        snake_case
     }
     fn p(
         api: minijinja::Value,
@@ -212,7 +223,8 @@ impl Mandolin {
             .filter_map(|(k, _, v)| {
                 let method=methods.into_iter().find(|w| k.ends_with(w))?;
                 let operation=Operation::deserialize(v).ok()?;
-                let lapped=LappedOperation::new(Self::decode_nth(&k, -2).as_str(), method, &operation);
+                let decoded=Self::decode_list(&k).into_iter().nth_back(1).unwrap_or_default();
+                let lapped=LappedOperation::new(decoded.as_str(), method, &operation);
                 Some((k, minijinja::Value::from_serialize(lapped)))
             })
             .collect();
@@ -236,10 +248,9 @@ impl Mandolin {
             Self::recursive_pointed_objects("#".to_string(), &api, &mut output);
             output
         };
-        for i in &map_pointed_objects{
-            println!("{}", i.0);
-        }
-
+        env.add_filter("snake_case", |value: &str|{
+            Self::snake_case(value)
+        });
         env.add_filter("ident", |value: &str| {
             let mut v: String=Default::default();
             for i in value.split("/").skip(1){
@@ -250,6 +261,13 @@ impl Mandolin {
                 }
             }
             Ok(v)
+        });
+        env.add_filter("pointer_decode", |value: &str| {
+           if value.starts_with("#/"){
+               Ok(minijinja::Value::from_serialize(Self::decode_list(value)))
+           }else{
+               Ok(minijinja::Value::from_serialize(Self::decode(value)))
+           }
         });
         {
             let api = api.clone();
@@ -301,7 +319,7 @@ impl Mandolin {
                 "ref",
                 |value: &minijinja::Value| {
                     match ReferenceOr::<()>::deserialize(value) {
-                        Ok(ReferenceOr::Reference { reference }) => minijinja::Value::from(Self::decode_nth(reference, -1)),
+                        Ok(ReferenceOr::Reference { reference }) => minijinja::Value::from(Self::decode_list(&reference).into_iter().nth_back(1).unwrap_or_default()),
                         _ => minijinja::Value::UNDEFINED
                     }
                 },
@@ -338,6 +356,12 @@ impl Mandolin {
                 Ok(minijinja::Value::from_serialize(o))
             })
         }
+        {
+            let map_pointed_objects=map_pointed_objects.clone();
+            env.add_function("ls_all",move || {
+                Ok(minijinja::Value::from_serialize(map_pointed_objects.clone()))
+            })
+        }
         let v=self.templates.join("\n");
         env.add_template("main", v.as_str())?;
         let template = env.get_template("main")?;
@@ -350,8 +374,8 @@ mod tests {
     use super::*;
     use std::fs;
     use std::fs::File;
-    use std::io::BufReader;
     use std::path::Path;
+    use std::io::Write;
     fn apis() -> HashMap<String, OpenAPI> {
         fs::read_dir(&Path::new(".").join("openapi"))
             .unwrap()
@@ -365,14 +389,17 @@ mod tests {
                     .then(|| {
                         (
                             entry.file_name().to_str().unwrap_or_default().to_string(),
-                            serde_yaml::from_reader(BufReader::new(
-                                File::open(entry.path()).unwrap(),
-                            ))
+                            serde_yaml::from_reader(std::io::BufReader::new(File::open(entry.path()).unwrap(), ))
                             .unwrap(),
                         )
                     })
             })
             .collect()
+    }
+    fn write<P: AsRef<Path>, S: AsRef<str>>(path: P, content: S) -> std::io::Result<()> {
+        let mut writer = std::io::BufWriter::new(File::create(path)?);
+        println!("{}", content.as_ref());
+        writeln!(writer, "{}", content.as_ref())
     }
     #[test]
     fn test_filter() {
@@ -401,12 +428,24 @@ mod tests {
         println!("{}", r)
     }
     #[test]
-    fn test_ls_schema() {
-        let r = Mandolin::new(apis().remove("openapi.yaml").unwrap())
-            .template("ls_schema\n{% for k, v in ls_schema() %}{{k}}={{k|ident}}={{v}}\n{%endfor%}")
+    fn test_render_schema() {
+        let r = Mandolin::new(apis().remove("openapi_nesting.yaml").unwrap())
+            .template(templates::SCHEMA)
+            .template(templates::DUMP)
             .render()
             .unwrap();
-        println!("{}", r)
+        write("examples/test_render_schema.out.rs", r).unwrap()
+    }
+    #[test]
+    fn test_render_trait() {
+        let r = Mandolin::new(apis().remove("openapi_nesting.yaml").unwrap())
+            .template(templates::HEADER)
+            .template(templates::SCHEMA)
+            .template(templates::TRAIT)
+            .template(templates::DUMP)
+            .render()
+            .unwrap();
+        write("examples/test_render_trait.out.rs", r).unwrap()
     }
     #[test]
     fn test_render() {
@@ -423,10 +462,7 @@ mod tests {
                 .contains("yaml")
             {
                 println!("{}", entry.path().to_str().unwrap_or_default());
-                let v = Mandolin::new(
-                    serde_yaml::from_reader(BufReader::new(File::open(entry.path()).unwrap()))
-                        .unwrap(),
-                )
+                let v = Mandolin::new(serde_yaml::from_reader(std::io::BufReader::new(File::open(entry.path()).unwrap())).unwrap(), )
                 .template(templates::MAIN)
                 .render()
                 .unwrap();
@@ -462,9 +498,5 @@ mod tests {
         println!("{}", detector(v1));
         println!("{}", detector(v2));
         println!("{}", detector(v3));
-    }
-    #[test]
-    fn test_camel_case() {
-        println!("{}", utils::camel_case("abc_def"))
     }
 }
