@@ -1,8 +1,8 @@
 pub mod templates;
 
 use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind};
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use serde::{Deserialize};
+use std::collections::{BTreeMap};
 
 pub struct Mandolin {
     api: OpenAPI,
@@ -17,10 +17,6 @@ impl Mandolin {
     }
     pub fn template<T: AsRef<str>>(&mut self, template: T) -> &mut Self {
         self.templates.push(template.as_ref().to_string());
-        self
-    }
-    pub fn template_default(&mut self) -> &mut Self {
-        [templates::HEADER, templates::SCHEMA, templates::TRAIT, templates::SERVER_AXUM].into_iter().for_each(|v| self.templates.push(v.to_string()));
         self
     }
     pub fn decode<S: AsRef<str>>(content: S) -> String {
@@ -222,7 +218,7 @@ impl Mandolin {
 }
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, HashMap};
     use super::*;
     use std::fs;
     use std::fs::File;
@@ -286,7 +282,7 @@ mod tests {
     fn test_render() {
         for (key, value) in apis(){
             let v = Mandolin::new(value)
-                .template_default()
+                .template_default()//.template(templates::DUMP)
                 .render()
                 .unwrap();
             write(format!("examples/test_render_{key}.out.rs"), v).unwrap();

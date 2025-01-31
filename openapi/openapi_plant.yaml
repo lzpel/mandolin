@@ -1,0 +1,808 @@
+openapi: 3.0.0
+info:
+  title: plant mimamori
+  version: 0.0.0
+tags: []
+paths:
+  /clean:
+    delete:
+      operationId: operation_clean
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /credential/iam:
+    get:
+      operationId: credential_get
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /credential/sign_in:
+    post:
+      operationId: credential_sign_in
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                has_auth:
+                  type: string
+              required:
+                - has_auth
+  /credential/sign_up:
+    post:
+      operationId: credential_sign_up
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+  /credential/validate:
+    get:
+      operationId: credential_validate
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Apikey'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: string
+  /device:
+    get:
+      operationId: device_list_get
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: max_key
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: min_key
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      operationId: device_list_add
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Device'
+  /device/{key}:
+    get:
+      operationId: device_get
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+    delete:
+      operationId: device_delete
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      operationId: device_update
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Device'
+  /key/{key}:
+    get:
+      operationId: operation_key
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: seconds
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /ml/image:
+    post:
+      operationId: ml_image
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema:
+              type: string
+              format: binary
+  /ml/json:
+    post:
+      operationId: ml_json
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            text/plain:
+              schema:
+                type: string
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema:
+              type: string
+              format: binary
+  /record:
+    get:
+      operationId: record_list_get
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: key_device
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: max_key
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: min_key
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Record'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      operationId: record_list_add
+      parameters:
+        - name: key_device
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: latitude
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: longitude
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: seconds
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: uint64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Record'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema:
+              type: string
+              format: binary
+  /record/{key}:
+    get:
+      operationId: record_get
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Record'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+    delete:
+      operationId: record_delete
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      operationId: record_update
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Record'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Record'
+  /test:
+    delete:
+      operationId: test_a
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            text/plain:
+              schema:
+                type: string
+    get:
+      operationId: test_b
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: order
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      operationId: test_c
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: order
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            text/plain:
+              schema:
+                type: string
+    put:
+      operationId: test_d
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /user:
+    get:
+      operationId: user_list_get
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /user/{key}:
+    get:
+      operationId: user_get
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+    delete:
+      operationId: user_delete
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      operationId: user_update
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+components:
+  schemas:
+    Apikey:
+      type: object
+      required:
+        - user
+        - expiration
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        expiration:
+          type: integer
+          format: uint64
+    Device:
+      type: object
+      required:
+        - key
+        - key_user
+        - name
+        - latitude
+        - longitude
+      properties:
+        key:
+          type: string
+        key_user:
+          type: string
+        name:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+    Position:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+    Record:
+      type: object
+      required:
+        - key
+        - key_device
+        - label
+        - bbox
+        - latitude
+        - longitude
+      properties:
+        key:
+          type: string
+        key_device:
+          type: string
+        label:
+          type: array
+          items:
+            type: string
+        bbox:
+          type: array
+          items:
+            type: integer
+            format: uint64
+        latitude:
+          type: number
+        longitude:
+          type: number
+    User:
+      type: object
+      required:
+        - key
+        - name
+        - email
+        - auth
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        auth:
+          type: array
+          items:
+            type: string
+servers:
+  - url: /api
+    description: 開発用
+    variables: {}

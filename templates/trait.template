@@ -37,10 +37,12 @@ impl server::Server for TestServer{
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct {{OPERATION_REQUEST(pointer,operation)}}{
 {%- for parameter in operation.parameters|r %}
-	pub {{parameter.name}}:{%-set inner=SCHEMA(parameter.schema,5) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
+	pub {{parameter.name}}:{%-set inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema,5) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
 {%- endfor %}
-{%- if operation.request_body %}
-    pub body:{{operation.request_body.identifier}}
+{%- if operation.requestBody %}
+{%- for content_key, content in operation.requestBody.content|items %}
+    pub body:{{SCHEMA(pointer+"/requestBody/content/"+content_key+"/schema",content.schema,true)}}
+{%- endfor -%}
 {%- endif %}
 }
 
@@ -49,7 +51,7 @@ pub struct {{OPERATION_REQUEST(pointer,operation)}}{
 pub enum {{OPERATION_RESPONSE(pointer,operation)}}{
 {%- set ns = namespace(response_default_key=0) %}
 {%- for response_key, response in operation.responses|items %}
-	{{("status_"+response_key)|pascal_case}}{%-if response.content-%}({%- for contentType, media in response.content|items %}{{SCHEMA(media.schema,6)}}{%-endfor%}){%-endif%},
+	{{("status_"+response_key)|pascal_case}}{%-if response.content-%}({%- for content_type, media in response.content|items %}{{SCHEMA(pointer+"/content/"+content_type+"/schema",media.schema,1)}}{%-endfor%}){%-endif%},
 {%- if ns.response_default_key == 0 or response_key == "default"%}
 {%- set ns.response_default_key=response_key %}
 {%- set ns.response_default=response %}
