@@ -1,9 +1,9 @@
 # mandolin
 <a href="https://crates.io/crates/mandolin"><img alt="crates.io" src="https://img.shields.io/crates/v/mandolin.svg?style=for-the-badge&logo=rust" height="20"/></a>
 
-Generate openapi-based server code
+Generate server code in Rust from openapi specification
 
-Online demo with wasm: https://lzpel.github.io/mandolin/
+Online demo with wasm: https://satoshi-misumi.github.io/mandolin/
 
 ## Using mandolin
 
