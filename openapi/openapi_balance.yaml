@@ -1,0 +1,256 @@
+openapi: 3.0.0
+info:
+  title: API Specification
+  version: 1.0.0
+  description: |
+    REST API documentation.
+    Provides data handling, real-time notifications, and integration features.
+servers:
+  - url: 'http://localhost:8080/api/v1'
+    description: API Server
+paths:
+  /data-retrieve:
+    get:
+      summary: Retrieve Data
+      description: Search historical data based on time range, geolocation, and key-value conditions.
+      parameters:
+        - name: type
+          required: true
+          in: query
+          description: Filter by entity type
+          schema:
+            type: string
+        - name: query
+          in: query
+          description: Search by key-value conditions
+          schema:
+            type: string
+        - name: geo-field
+          in: query
+          description: Field for geolocation search
+          schema:
+            type: string
+        - name: geo-relation
+          in: query
+          description: Geolocation target range
+          schema:
+            type: string
+        - name: shape
+          in: query
+          description: 'Geolocation shape (e.g., Point, Polygon)'
+          schema:
+            type: string
+        - name: coordinates
+          in: query
+          description: 'Latitude and longitude pair (e.g., 34.05,-118.25)'
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful data retrieval
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecordData'
+        '401':
+          description: Authentication error
+        '422':
+          description: Unsupported query
+  /data-create:
+    post:
+      summary: Create Data Record
+      description: Create a new historical data record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordCreation'
+      responses:
+        '201':
+          description: Data created successfully
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication error
+  '/data-update/{recordId}':
+    patch:
+      summary: Update Data Record
+      description: Update the specified data object.
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordUpdate'
+      responses:
+        '204':
+          description: Update successful
+        '400':
+          description: Invalid request
+        '404':
+          description: Data not found
+    delete:
+      summary: Delete Data Record
+      description: Delete the specified data object.
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deletion successful
+        '401':
+          description: Authorization header missing
+        '404':
+          description: Data not found
+        '500':
+          description: Server error
+  /subscription:
+    get:
+      summary: Retrieve Subscription
+      description: Get details of a specified subscription.
+      parameters:
+        - name: subscriptionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Subscription retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  description: List of subscription IDs
+        '401':
+          description: Authorization header missing
+    post:
+      summary: Create Subscription
+      description: Create a subscription for real-time notifications.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRequest'
+      responses:
+        '200':
+          description: Subscription created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriptionId:
+                    type: string
+                    description: Registered subscription ID
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication error
+        '500':
+          description: Server error
+  /refresh:
+    post:
+      summary: Refresh Service Information
+      description: Refresh the analysis service information.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+            description: Unique API key for authentication
+      requestBody:
+        description: None
+        content: {}
+      responses:
+        '204':
+          description: Refresh successful
+        '401':
+          description: Missing or invalid API key
+        '500':
+          description: Server error
+components:
+  schemas:
+    RecordData:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique data ID
+        type:
+          type: string
+          description: Data type
+        timestamp:
+          type: string
+          format: date-time
+          description: Data timestamp
+        location:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - Point
+            coordinates:
+              type: array
+              items:
+                type: number
+              minItems: 2
+              maxItems: 2
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+    RecordCreation:
+      allOf:
+        - $ref: '#/components/schemas/RecordData'
+        - type: object
+          required:
+            - id
+            - type
+            - timestamp
+    RecordUpdate:
+      type: object
+      properties:
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+    SubscriptionRequest:
+      type: object
+      required:
+        - url
+        - Type
+      properties:
+        url:
+          type: string
+          description: URL for subscription notifications
+          format: uri
+        Type:
+          type: string
+          description: Parameter for entity type filtering
+        Condition:
+          type: object
+          description: Parameter for filtering by attributes
+          properties:
+            attrs:
+              type: array
+              items:
+                type: string
+              description: List of filter attributes
