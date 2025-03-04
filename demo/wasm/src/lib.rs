@@ -1,16 +1,16 @@
 extern crate console_error_panic_hook;
 use mandolin;
-use wasm_bindgen::prelude::*;
 use mandolin::{templates, Mandolin};
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub fn sums(value: i32) -> i32 {
 	console_error_panic_hook::set_once();
-    let mut a: i32 = 0;
-    for i in 1..value+1 {
-        a += i;
-    }
-    a
+	let mut a: i32 = 0;
+	for i in 1..value + 1 {
+		a += i;
+	}
+	a
 }
 
 #[wasm_bindgen]
@@ -23,7 +23,7 @@ pub fn upper(value: String) -> String {
 pub fn example(openapi_yaml: &str) -> String {
 	console_error_panic_hook::set_once();
 	//エラーをまとめる方法を考える
-	let v=serde_yaml::from_str(openapi_yaml).unwrap();
+	let v = serde_yaml::from_str(openapi_yaml).unwrap();
 	//let v=serde_yaml::from_str(include_str!("../../../openapi/openapi_petstore.yaml")).unwrap();
 	Mandolin::new(v)
 		.template(templates::HEADER)
@@ -36,8 +36,8 @@ pub fn example(openapi_yaml: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-	use std::fs;
 	use super::*;
+	use std::fs;
 
 	#[test]
 	fn it_works() {
@@ -47,8 +47,8 @@ mod tests {
 	}
 	#[test]
 	fn generate() {
-		let v=serde_yaml::from_str(include_str!("../../../openapi/openapi.yaml")).unwrap();
-		let result=mandolin::Mandolin::new(v)
+		let v = serde_yaml::from_str(include_str!("../../../openapi/openapi.yaml")).unwrap();
+		let result = mandolin::Mandolin::new(v)
 			.template(fs::read_to_string("../../templates/main.tera").unwrap())
 			.render()
 			.unwrap();

@@ -1,16 +1,16 @@
-use std::fs;
 use std::env;
-use std::path::Path;
-use std::io;
-use std::io::Write;
+use std::fs;
 use std::fs::File;
+use std::io;
 use std::io::Read;
+use std::io::Write;
+use std::path::Path;
 
 fn main() {
 	let dest_path = Path::new(&env::var("OUT_DIR").unwrap()).join("templates.rs");
 	let mut file = fs::File::create(&dest_path).unwrap();
 
-	let path_dir=Path::new(".").join("templates");
+	let path_dir = Path::new(".").join("templates");
 	let paths = fs::read_dir(&path_dir).unwrap();
 
 	writeln!(file, "// templates templates").unwrap();
@@ -20,12 +20,18 @@ fn main() {
 		writeln!(
 			file,
 			r##########"pub const {}: &'static str = r######"{}"######;"##########,
-			Path::new(&filename).file_stem().unwrap_or(&filename).to_str().unwrap().to_uppercase(),
+			Path::new(&filename)
+				.file_stem()
+				.unwrap_or(&filename)
+				.to_str()
+				.unwrap()
+				.to_uppercase(),
 			content(path_dir.join(filename)).unwrap()
-		).unwrap();
+		)
+		.unwrap();
 	}
 }
-fn content<P: AsRef<Path>>(path: P) -> io::Result<String>{
+fn content<P: AsRef<Path>>(path: P) -> io::Result<String> {
 	let mut file = File::open(path)?;
 	let mut contents = String::new();
 	file.read_to_string(&mut contents)?;
