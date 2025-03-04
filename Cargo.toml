@@ -2,11 +2,11 @@
 name = "mandolin"
 version = "0.1.8"
 edition = "2021"
-authors = ["satoshi-misumi", "lzpel"]
+authors = ["lzpel"]
 description = "generate openapi-based server"
 readme = "README.md"
-repository = "https://github.com/satoshi-misumi/mandolin"
-homepage = "https://satoshi-misumi.github.io/mandolin/"
+repository = "https://github.com/lzpel/mandolin"
+homepage = "https://lzpel.github.io/mandolin/"
 license = "MIT OR Apache-2.0"
 build = "build.rs"
 exclude = [".github/*", "demo/*"]
