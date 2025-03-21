@@ -23,15 +23,25 @@ pub fn upper(value: String) -> String {
 pub fn example(openapi_yaml: &str) -> String {
 	console_error_panic_hook::set_once();
 	//エラーをまとめる方法を考える
-	let v = serde_yaml::from_str(openapi_yaml).unwrap();
+	let v = match serde_yaml::from_str(openapi_yaml) {
+		Ok(v) => v,
+		Err(e) => {
+			return format!("# Error\n\nThis text cannot be interpreted as an OpenAPI in YAML format.\n\n## detail\n\n{}", e.to_string());
+		}
+	};
 	//let v=serde_yaml::from_str(include_str!("../../../openapi/openapi_petstore.yaml")).unwrap();
-	Mandolin::new(v)
+	let v = Mandolin::new(v)
 		.template(templates::HEADER)
 		.template(templates::SCHEMA)
 		.template(templates::TRAIT)
 		.template(templates::SERVER_AXUM)
-		.render()
-		.unwrap()
+		.render();
+	match v {
+		Ok(v) => v,
+		Err(e) => {
+			return format!("# Error\n\nCannot render rust code from this OpenApi specification.\n\n## detail\n\n{}", e.to_string());
+		}
+	}
 }
 
 #[cfg(test)]
