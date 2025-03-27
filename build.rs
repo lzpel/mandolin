@@ -1,20 +1,19 @@
 use std::env;
 use std::fs;
-use std::fs::File;
 use std::io;
-use std::io::Read;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::Path;
 
 fn main() {
-	let dest_path = Path::new(&env::var("OUT_DIR").unwrap()).join("templates.rs");
-	let mut file = fs::File::create(&dest_path).unwrap();
-
+	let mut file = {
+		let dest_path = Path::new(&env::var("OUT_DIR").unwrap()).join("templates.rs");
+		fs::File::create(&dest_path).unwrap()
+	};
 	let path_dir = Path::new(".").join("templates");
-	let paths = fs::read_dir(&path_dir).unwrap();
+	let path_read_dir = fs::read_dir(&path_dir).unwrap();
 
 	writeln!(file, "// templates templates").unwrap();
-	for entry in paths {
+	for entry in path_read_dir {
 		let filename = entry.unwrap().file_name();
 		writeln!(file, "#[allow(unused_variables, dead_code)]").unwrap();
 		writeln!(
@@ -32,7 +31,7 @@ fn main() {
 	}
 }
 fn content<P: AsRef<Path>>(path: P) -> io::Result<String> {
-	let mut file = File::open(path)?;
+	let mut file = io::BufReader::new(fs::File::open(path)?);
 	let mut contents = String::new();
 	file.read_to_string(&mut contents)?;
 	Ok(contents)
