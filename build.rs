@@ -11,20 +11,32 @@ fn main() {
 	};
 	let path_dir = Path::new(".").join("templates");
 	let path_read_dir = fs::read_dir(&path_dir).unwrap();
-	let map_name_content: Vec<(String, String)> = path_read_dir.filter_map(Result::ok).map(|entry|{
-		let filename = entry.file_name();
-		let filename_without_extension = Path::new(&filename).file_stem().unwrap_or_default();
-		let name=filename_without_extension.to_str().unwrap().to_uppercase();
-		(name, content(entry.path()).unwrap())
-	}).collect();
+	let map_name_content: Vec<(String, String)> = path_read_dir
+		.filter_map(Result::ok)
+		.map(|entry| {
+			let filename = entry.file_name();
+			let filename_without_extension = Path::new(&filename).file_stem().unwrap_or_default();
+			let name = filename_without_extension.to_str().unwrap().to_uppercase();
+			(name, content(entry.path()).unwrap())
+		})
+		.collect();
 
 	writeln!(file, "// templates templates").unwrap();
 	writeln!(file, "#[allow(unused_variables, dead_code)]").unwrap();
 	for (name, content) in &map_name_content {
 		writeln!(file, "#[allow(unused_variables, dead_code)]").unwrap();
-		writeln!(file, r##########"pub const {name}: &'static str = r######"{content}"######;"##########).unwrap();
+		writeln!(
+			file,
+			r##########"pub const {name}: &'static str = r######"{content}"######;"##########
+		)
+		.unwrap();
 	}
-	writeln!(file, "pub const BUILTIN: [[&'static str; 2]; {}] = [", map_name_content.len()).unwrap();
+	writeln!(
+		file,
+		"pub const BUILTIN: [[&'static str; 2]; {}] = [",
+		map_name_content.len()
+	)
+	.unwrap();
 	for (name, _content) in &map_name_content {
 		writeln!(file, r##########"["{name}", {name}],"##########).unwrap();
 	}
@@ -36,4 +48,4 @@ fn content<P: AsRef<Path>>(path: P) -> io::Result<String> {
 	file.read_to_string(&mut contents)?;
 	Ok(contents)
 }
-pub const BUILTIN: [[&'static str; 2]; 1] = [["",""]];
+pub const BUILTIN: [[&'static str; 2]; 1] = [["", ""]];

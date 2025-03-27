@@ -16,6 +16,8 @@ standalone:
 	node demo/.next/standalone/server.js
 tree:
 	cargo tree
+fmt:
+	cargo fmt
 compile:
 	bash -c "cd demo && find ../openapi/ -name '*.tsp' | xargs -IX npx tsp compile X --emit @typespec/openapi3"
 crate-next-app:
