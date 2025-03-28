@@ -1,18 +1,15 @@
 pub mod templates;
 
-use openapiv3::OpenAPI;
 use serde::Deserialize;
 use serde_json;
 use std::collections::HashMap;
-pub type Templates = [[AsRef<str>; 2]];
 pub fn filter_pointer(value: &minijinja::Value, path: &str) -> Option<minijinja::Value> {
 	let value = serde_json::Value::deserialize(value).unwrap();
-	value
-		.pointer(path)
-		.map(|v| minijinja::Value::deserialize(v).unwrap())
+	let pointed=value.pointer(path);
+	pointed.map(|v| minijinja::Value::deserialize(v).unwrap())
 }
 pub fn environment<S: serde::Serialize>(
-	templates: &Templates,
+	templates: &HashMap<String, String>,
 	value: S,
 ) -> Result<minijinja::Environment, minijinja::Error> {
 	let value = minijinja::value::Value::from_serialize(value);
@@ -36,6 +33,7 @@ mod tests {
 	use std::fs::File;
 	use std::io::Write;
 	use std::path::Path;
+	use openapiv3::OpenAPI;
 
 	fn api_map() -> HashMap<String, OpenAPI> {
 		fs::read_dir(&Path::new(".").join("openapi"))
@@ -67,7 +65,7 @@ mod tests {
 	#[test]
 	fn test_filter() {
 		let v = api_map().get("openapi.yaml").unwrap().clone();
-		let e = environment(templates::BUILTIN.into_iter().collect(), v).unwrap();
+		let e = environment(&templates::templates(), v).unwrap();
 		//    .template("{{'#'|p|tojson}}\n{{'#/paths'|p|tojson}}\n{{'#/servers/0'|p|tojson}}")
 		//    .render()
 		//    .unwrap();
