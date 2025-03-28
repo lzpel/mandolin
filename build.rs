@@ -31,12 +31,20 @@ fn main() {
 		)
 		.unwrap();
 	}
-	writeln!(file, "pub fn templates() -> std::collections::HashMap<String, String> {{").unwrap();
+	writeln!(
+		file,
+		"pub fn templates() -> std::collections::HashMap<String, String> {{"
+	)
+	.unwrap();
 	writeln!(file, "	[").unwrap();
 	for (name, _content) in &map_name_content {
 		writeln!(file, r#"		["{name}", {name}],"#).unwrap();
 	}
-	writeln!(file, "	].iter().map(|[a,b]| (a.to_string(), b.to_string())).collect()").unwrap();
+	writeln!(
+		file,
+		"	].iter().map(|[a,b]| (a.to_string(), b.to_string())).collect()"
+	)
+	.unwrap();
 	writeln!(file, "}}").unwrap();
 }
 fn content<P: AsRef<Path>>(path: P) -> io::Result<String> {
