@@ -1,17 +1,17 @@
 {%- macro OPERATION_FUNCTION(pointer,operation) -%}
 {%- if operation.operationId -%}
-{{operation.operationId|snake_case}}
+{{operation.operationId|to_snake_case}}
 {%- else -%}
-{{pointer|decode|snake_case}}
+{{pointer|decode|to_snake_case}}
 {%- endif -%}
 {%- endmacro -%}
 
 {%- macro OPERATION_REQUEST(pointer,operation) -%}
-{{(OPERATION_FUNCTION(pointer,operation)+"_request")|pascal_case}}
+{{(OPERATION_FUNCTION(pointer,operation)+"_request")|to_pascal_case}}
 {%- endmacro -%}
 
 {%- macro OPERATION_RESPONSE(pointer,operation) -%}
-{{(OPERATION_FUNCTION(pointer,operation)+"_response")|pascal_case}}
+{{(OPERATION_FUNCTION(pointer,operation)+"_response")|to_pascal_case}}
 {%- endmacro -%}
 
 use std::collections::HashMap;
@@ -19,7 +19,7 @@ use serde;
 use std::future::Future;
 pub trait Server{
 {%- for pointer, operation in ls_operation() %}
-	// {{(pointer|decode_list)[3]}} {{(pointer|decode_list)[2]}}
+	// {{pointer}}
 	fn {{OPERATION_FUNCTION(pointer,operation)}}(request: {{OPERATION_REQUEST(pointer,operation)}}) -> impl Future<Output = {{OPERATION_RESPONSE(pointer,operation)}}> + Send{async{Default::default()}}
 {%- endfor %}
 }
@@ -27,7 +27,7 @@ pub trait Server{
 pub struct TestServer{}
 impl server::Server for TestServer{
 {%- for pointer, operation in ls_operation() %}
-	// {{(pointer|decode_list)[3]}} {{(pointer|decode_list)[2]}}
+	// {{pointer}}
 	async fn {{OPERATION_FUNCTION(pointer,operation)}}(request: {{operation.request_identifier}}) -> {{operation.response_identifier}}{Default::default()}
 {%- endfor %}
 }
@@ -36,7 +36,7 @@ impl server::Server for TestServer{
 // Request of {{OPERATION_FUNCTION(pointer,operation)}}
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct {{OPERATION_REQUEST(pointer,operation)}}{
-{%- for parameter in operation.parameters|r %}
+{%- for parameter in operation.parameters %}
 	pub {{parameter.name}}:{%-set inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema,5) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
 {%- endfor %}
 {%- if operation.requestBody %}
@@ -51,7 +51,7 @@ pub struct {{OPERATION_REQUEST(pointer,operation)}}{
 pub enum {{OPERATION_RESPONSE(pointer,operation)}}{
 {%- set ns = namespace(response_default_key=0) %}
 {%- for response_key, response in operation.responses|items %}
-	{{("status_"+response_key)|pascal_case}}{%-if response.content-%}({%- for content_type, media in response.content|items %}{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_type+"/schema",media.schema,1)}}{%-endfor%}){%-endif%},
+	{{("status_"+response_key)|to_pascal_case}}{%-if response.content-%}({%- for content_type, media in response.content|items %}{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_type+"/schema",media.schema,1)}}{%-endfor%}){%-endif%},
 {%- if ns.response_default_key == 0 or response_key == "default"%}
 {%- set ns.response_default_key=response_key %}
 {%- set ns.response_default=response %}

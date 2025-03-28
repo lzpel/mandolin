@@ -1,5 +1,5 @@
 {%- macro SCHEMA_NAME(pointer) -%}
-{{pointer|replace("#/components/schemas/","")|decode|pascal_case}}
+{{pointer|replace("#/components/schemas/","")|decode|to_pascal_case}}
 {%- endmacro -%}
 
 {%- macro SCHEMA(pointer,schema,depth) -%}
