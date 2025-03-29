@@ -19,7 +19,7 @@ use serde;
 use std::future::Future;
 pub trait Server{
 {%- for pointer, operation in ls_operation() %}
-	// {{pointer}}
+	// {{(pointer|split)[-1]}} {{(pointer|split)[-2]}}
 	fn {{OPERATION_FUNCTION(pointer,operation)}}(request: {{OPERATION_REQUEST(pointer,operation)}}) -> impl Future<Output = {{OPERATION_RESPONSE(pointer,operation)}}> + Send{async{Default::default()}}
 {%- endfor %}
 }
@@ -27,7 +27,7 @@ pub trait Server{
 pub struct TestServer{}
 impl server::Server for TestServer{
 {%- for pointer, operation in ls_operation() %}
-	// {{pointer}}
+	// {{(pointer|split)[-1]}} {{(pointer|split)[-2]}}
 	async fn {{OPERATION_FUNCTION(pointer,operation)}}(request: {{operation.request_identifier}}) -> {{operation.response_identifier}}{Default::default()}
 {%- endfor %}
 }

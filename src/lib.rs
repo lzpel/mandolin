@@ -19,9 +19,12 @@ pub fn environment<S: serde::Serialize>(
 	{
 		let ls = value_jp.clone();
 		env.add_filter("r", move |value: minijinja::Value| filter::r(&ls, value));
+		let ls = value_jp.clone();
+		env.add_filter("p", move |value: &str| filter::point(&ls, value));
 	}
-	env.add_filter("decode", filter::jp_decode);
-	env.add_filter("encode", filter::jp_encode);
+	env.add_filter("decode", filter::decode);
+	env.add_filter("encode", filter::encode);
+	env.add_filter("split", filter::split);
 	env.add_filter("to_pascal_case", filter::to_pascal_case);
 	env.add_filter("to_snake_case", filter::to_snake_case);
 	{

@@ -13,7 +13,7 @@ pub fn jp_list(value: &minijinja::Value, prefix: &str) -> JpList {
 					recursive(
 						format!(
 							"{path}/{}",
-							filter::jp_encode(k.as_str().unwrap_or_default())
+							filter::encode(k.as_str().unwrap_or_default())
 						),
 						&v,
 						output,

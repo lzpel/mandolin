@@ -2,7 +2,7 @@ use axum;
 pub fn axum_router_operations<S:Server>()->axum::Router{
 	axum::Router::new()
 {%- for pointer, operation in ls_operation() %}
-		.route("{{(pointer|decode_list)[2]}}", axum::routing::{{(pointer|decode_list)[-1]}}(|
+		.route("{{(pointer|split)[-2]}}", axum::routing::{{(pointer|split)[-1]}}(|
 			path: axum::extract::Path<HashMap<String,String>>,
 			query: axum::extract::Query<HashMap<String,String>>,
 			header: axum::http::HeaderMap,
