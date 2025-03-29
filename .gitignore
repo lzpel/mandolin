@@ -1,4 +1,4 @@
-server.rs
 **out.*
+output/
 target/
 node_modules/

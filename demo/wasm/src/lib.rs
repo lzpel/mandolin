@@ -1,6 +1,5 @@
 extern crate console_error_panic_hook;
 use mandolin;
-use mandolin::{templates, Mandolin};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -26,28 +25,19 @@ pub fn example(openapi_yaml: &str) -> String {
 	let v = match serde_yaml::from_str(openapi_yaml) {
 		Ok(v) => v,
 		Err(e) => {
-			return format!("# Error\n\nThis text cannot be interpreted as an OpenAPI in YAML format.\n\n## detail\n\n{}", e.to_string());
+			return format!("# Error\n\nThis text cannot be interpreted as an OpenAPI in YAML format.\n\n## detail\n\n{}\n\n## content\n\n{}", e.to_string(), openapi_yaml);
 		}
 	};
-	//let v=serde_yaml::from_str(include_str!("../../../openapi/openapi_petstore.yaml")).unwrap();
-	let v = Mandolin::new(v)
-		.template(templates::HEADER)
-		.template(templates::SCHEMA)
-		.template(templates::TRAIT)
-		.template(templates::SERVER_AXUM)
-		.render();
-	match v {
-		Ok(v) => v,
-		Err(e) => {
-			return format!("# Error\n\nCannot render rust code from this OpenApi specification.\n\n## detail\n\n{}", e.to_string());
-		}
-	}
+	let e = mandolin::environment(v).unwrap();
+	let result = e.get_template("RUST_SERVER_AXUM").unwrap().render(false);
+	result.unwrap_or_else(|e| {
+		format!("# Error\n\nCannot render rust code from this OpenApi specification.\n\n## detail\n\n{}", e.to_string())
+	})
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use std::fs;
 
 	#[test]
 	fn it_works() {
@@ -58,9 +48,11 @@ mod tests {
 	#[test]
 	fn generate() {
 		let v = serde_yaml::from_str(include_str!("../../../openapi/openapi.yaml")).unwrap();
-		let result = mandolin::Mandolin::new(v)
-			.template(fs::read_to_string("../../templates/main.tera").unwrap())
-			.render()
+		let env = mandolin::environment(v).unwrap();
+		let result = env
+			.get_template("RUST_SERVER_AXUM")
+			.unwrap()
+			.render(false)
 			.unwrap();
 		println!("{}", result);
 	}

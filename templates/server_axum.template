@@ -2,7 +2,7 @@ use axum;
 pub fn axum_router_operations<S:Server>()->axum::Router{
 	axum::Router::new()
 {%- for pointer, operation in ls_operation() %}
-		.route("{{(pointer|decode_list)[2]}}", axum::routing::{{(pointer|decode_list)[-1]}}(|
+		.route("{{(pointer|split)[-2]}}", axum::routing::{{(pointer|split)[-1]}}(|
 			path: axum::extract::Path<HashMap<String,String>>,
 			query: axum::extract::Query<HashMap<String,String>>,
 			header: axum::http::HeaderMap,
@@ -10,7 +10,7 @@ pub fn axum_router_operations<S:Server>()->axum::Router{
 			body: axum::body::Bytes,
 {%- endif%}
 		| async move{
-			let ret=S::{{OPERATION_FUNCTION(pointer,operation)}}({{OPERATION_REQUEST(pointer,operation)}}{
+			let ret=S::{{OPERATION_NAME(pointer,operation)}}({{OPERATION_REQUEST_NAME(pointer,operation)}}{
 {%- for parameter in operation.parameters %}
 				r#{{parameter.name}}:match {{parameter.in}}.get("{{parameter.name}}").and_then(|v| v.parse().ok())
 {%- if parameter.required -%}
@@ -41,7 +41,7 @@ body.into()
 			}).await;
 			match ret{
 {%- for response_key, response in operation.responses|items %}
-				{{OPERATION_RESPONSE(pointer,operation)}}::Status{{response_key}}{%- if response.content -%}(v){%- endif -%} => (axum::http::StatusCode::from_u16({{response_key}}).unwrap(),
+				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::Status{{response_key}}{%- if response.content -%}(v){%- endif -%} => (axum::http::StatusCode::from_u16({{response_key}}).unwrap(),
 {%- if response.content -%}
 {%- for contentType, media in response.content|items %}
 [(axum::http::header::CONTENT_TYPE, "{{contentType}}")],

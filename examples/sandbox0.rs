@@ -2,8 +2,6 @@ use minijinja;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::error::Error;
-use tera::{Context, Tera};
 
 #[derive(Serialize, Deserialize)]
 pub struct Empty {}
@@ -62,37 +60,6 @@ fn render_print(template: &str) {
 		dict1: Default::default(),
 		dict2: [("a".to_string(), 1)].into_iter().collect(),
 	};
-	let tera_result = {
-		let mut tera = Tera::default();
-		let context = Context::from_serialize(&r).unwrap();
-		//https://github.com/Keats/tera/blob/ae13d7ce39d732aae3f68435ed52c60732fe0ee0/src/renderer/processor.rs#L394
-		tera.register_filter(
-			"empty",
-			|value: &tera::Value, _: &HashMap<String, tera::Value>| {
-				println!("{}", value);
-				if value.is_null() {
-					Ok(tera::to_value(Empty {}).unwrap())
-				} else {
-					Ok(value.clone())
-				}
-			},
-		);
-		tera.register_filter(
-			"enumerate",
-			|value: &tera::Value, _: &HashMap<String, tera::Value>| {
-				Ok(match value {
-					tera::Value::String(v) => tera::Value::Array(
-						v.chars()
-							.map(|v| tera::Value::String(v.to_string()))
-							.collect(),
-					),
-					_ => tera::Value::Null,
-				})
-			},
-		);
-		tera.render_str(template, &context)
-			.unwrap_or_else(|e| format!("{}", e.source().unwrap().to_string()))
-	};
 	let minijinja_result = {
 		let mut env = minijinja::Environment::new();
 		env.add_template("hello.txt", template).unwrap();
@@ -102,8 +69,5 @@ fn render_print(template: &str) {
 		let template = env.get_template("hello.txt").unwrap();
 		template.render(&r).unwrap_or_else(|e| format!("{:?}", e))
 	};
-	println!(
-		"### tera\n{}\n### minijinja\n{}\n",
-		tera_result, minijinja_result
-	);
+	println!("{}", minijinja_result);
 }

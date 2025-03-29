@@ -1,3 +1,0 @@
-{%- for pointer, schema in ls_all() %}
-// {{pointer}}
-{%- endfor %}

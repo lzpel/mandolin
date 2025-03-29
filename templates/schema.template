@@ -1,5 +1,5 @@
 {%- macro SCHEMA_NAME(pointer) -%}
-{{pointer|replace("#/components/schemas/","")|decode|pascal_case}}
+{{pointer|replace("#/components/schemas/","")|decode|to_pascal_case}}
 {%- endmacro -%}
 
 {%- macro SCHEMA(pointer,schema,depth) -%}
@@ -34,6 +34,7 @@ bool
 u8
 {%- endif %}
 {%- endmacro -%}
+
 {%- macro IDENTIFIED_SCHEMA(pointer, schema) -%}
 {%- if schema.type and schema.type == "object" %}
 
