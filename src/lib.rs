@@ -3,12 +3,14 @@ mod function;
 pub mod templates;
 
 use std::collections::HashMap;
+use openapiv3::OpenAPI;
+
 pub type JpUnit = (String, minijinja::Value);
 pub type JpList = Vec<JpUnit>;
 
-pub fn environment<S: serde::Serialize>(
+pub fn environment(
 	templates: &HashMap<String, String>,
-	value: S,
+	value: OpenAPI,
 ) -> Result<minijinja::Environment, minijinja::Error> {
 	let value = minijinja::Value::from_serialize(&value);
 	let value_jp = function::jp_list(&value, "#");
@@ -89,7 +91,8 @@ mod tests {
 				.unwrap()
 				.render(0)
 				.unwrap();
-			println!("{}", result)
+			println!("{}", result);
+			write(format!("output/{k}.rs"), result.as_str()).unwrap();
 		}
 	}
 }
