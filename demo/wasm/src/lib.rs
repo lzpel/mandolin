@@ -1,7 +1,6 @@
 extern crate console_error_panic_hook;
 use mandolin;
 use wasm_bindgen::prelude::*;
-use mandolin::environment;
 
 #[wasm_bindgen]
 pub fn sums(value: i32) -> i32 {
@@ -29,8 +28,7 @@ pub fn example(openapi_yaml: &str) -> String {
 			return format!("# Error\n\nThis text cannot be interpreted as an OpenAPI in YAML format.\n\n## detail\n\n{}\n\n## content\n\n{}", e.to_string(), openapi_yaml);
 		}
 	};
-	let t=mandolin::templates::templates();
-	let e = environment(&t, v).unwrap();
+	let e = mandolin::environment(v).unwrap();
 	let result = e
 		.get_template("RUST_SERVER_AXUM")
 		.unwrap()
@@ -53,12 +51,11 @@ mod tests {
 	#[test]
 	fn generate() {
 		let v = serde_yaml::from_str(include_str!("../../../openapi/openapi.yaml")).unwrap();
-		let template = mandolin::templates::templates();
-		let env=mandolin::environment(&template, v).unwrap();
+		let env=mandolin::environment(v).unwrap();
 		let result = env
 			.get_template("RUST_SERVER_AXUM")
 			.unwrap()
-			.render(0)
+			.render(false)
 			.unwrap();
 		println!("{}", result);
 	}

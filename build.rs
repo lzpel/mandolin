@@ -31,21 +31,11 @@ fn main() {
 		)
 		.unwrap();
 	}
-	writeln!(
-		file,
-		"pub fn templates() -> std::collections::HashMap<String, String> {{"
-	)
-	.unwrap();
-	writeln!(file, "	[").unwrap();
+	writeln!(file,"pub const TEMPLATES: [[&'static str; 2]; {}] = [", map_name_content.len()).unwrap();
 	for (name, _content) in &map_name_content {
-		writeln!(file, r#"		["{name}", {name}],"#).unwrap();
+		writeln!(file, r#"	["{name}", {name}],"#).unwrap();
 	}
-	writeln!(
-		file,
-		"	].iter().map(|[a,b]| (a.to_string(), b.to_string())).collect()"
-	)
-	.unwrap();
-	writeln!(file, "}}").unwrap();
+	writeln!(file, "];").unwrap();
 }
 fn content<P: AsRef<Path>>(path: P) -> io::Result<String> {
 	let mut file = io::BufReader::new(fs::File::open(path)?);

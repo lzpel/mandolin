@@ -1,5 +1,4 @@
 use crate::{filter, JpList};
-use minijinja::value::ObjectExt;
 use serde::Deserialize;
 
 pub fn jp_list(value: &minijinja::Value, prefix: &str) -> JpList {

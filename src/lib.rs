@@ -2,22 +2,18 @@ mod filter;
 mod function;
 pub mod templates;
 
-use std::collections::HashMap;
 use openapiv3::OpenAPI;
 
 pub type JpUnit = (String, minijinja::Value);
 pub type JpList = Vec<JpUnit>;
 
 pub fn environment(
-	templates: &HashMap<String, String>,
 	value: OpenAPI,
-) -> Result<minijinja::Environment, minijinja::Error> {
+) -> Result<minijinja::Environment<'static>, minijinja::Error> {
 	let value = minijinja::Value::from_serialize(&value);
 	let value_jp = function::jp_list(&value, "#");
 	let mut env = minijinja::Environment::new();
-	for (k, v) in templates {
-		env.add_template(k.as_str(), v.as_str())?;
-	}
+	for [k,v] in templates::TEMPLATES{env.add_template(k, v)?}
 	{
 		let ls = value_jp.clone();
 		env.add_filter("r", move |value: minijinja::Value| filter::r(&ls, value));
@@ -82,9 +78,8 @@ mod tests {
 	}
 	#[test]
 	fn test() {
-		let bindings = templates::templates();
 		for (k, v) in api_map() {
-			let e = environment(&bindings, v).unwrap();
+			let e = environment(v).unwrap();
 			println!("{k} {:?}", e.templates().map(|v| v.0).collect::<Vec<_>>());
 			let result = e
 				.get_template("RUST_SERVER_AXUM")
