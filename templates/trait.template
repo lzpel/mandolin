@@ -36,7 +36,7 @@ impl server::Server for TestServer{
 // Request of {{OPERATION_FUNCTION(pointer,operation)}}
 #[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct {{OPERATION_REQUEST(pointer,operation)}}{
-{%- for parameter in operation.parameters %}
+{%- for parameter in operation.parameters|r %}
 	pub {{parameter.name}}:{%-set inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema,5) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
 {%- endfor %}
 {%- if operation.requestBody %}
