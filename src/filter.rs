@@ -78,7 +78,7 @@ pub fn r(jp_list: &JpList, value: minijinja::Value) -> Result<minijinja::Value, 
 	Ok(v)
 }
 
-pub fn point(jp_list: &JpList, value: &str) -> Result<minijinja::Value, minijinja::Error>{
+pub fn point(jp_list: &JpList, value: &str) -> Result<minijinja::Value, minijinja::Error> {
 	jp_list
 		.iter()
 		.filter_map(|(a, b)| a.eq(value).then_some(b.clone()))

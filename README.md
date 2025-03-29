@@ -3,7 +3,7 @@
 
 Generate server code in Rust from openapi specification
 
-Online demo with wasm: https://satoshi-misumi.github.io/mandolin/
+Online demo with wasm: https://lzpel.github.io/mandolin/
 
 ## Using mandolin
 
@@ -14,34 +14,17 @@ use mandolin;
 use serde_yaml;
 use std::fs;
 fn main() {
-  let input=serde_yaml::from_str(fs::read_to_string("./openapi/openapi.yaml").unwrap().as_str()).unwrap();
-  let output=mandolin::Mandolin::new(input)
-          .template(mandolin::templates::HEADER)
-          .template(mandolin::templates::SCHEMA)
-          .template(mandolin::templates::TRAIT)
-          .template(mandolin::templates::SERVER_AXUM)
-          .render()
-          .unwrap();
-  fs::write("./examples/server_builtin.out.rs", output).unwrap();
-}
-```
-
-Render axum server code using custom template
-
-```rust
-use mandolin;
-use serde_yaml;
-use std::fs;
-fn main() {
-  let input=serde_yaml::from_str(fs::read_to_string("./openapi/openapi.yaml").unwrap().as_str()).unwrap();
-  let output=mandolin::Mandolin::new(input)
-          .template(fs::read_to_string("./templates/header.template").unwrap())
-          .template(fs::read_to_string("./templates/schema.template").unwrap())
-          .template(fs::read_to_string("./templates/trait.template").unwrap())
-          .template(fs::read_to_string("./templates/server_axum.template").unwrap())
-          .render()
-          .unwrap();
-  fs::write("./examples/server_custom.out.rs", output).unwrap();
+	let input_api = serde_yaml::from_str(
+		fs::read_to_string("./openapi/openapi.yaml")
+			.unwrap()
+			.as_str(),
+	)
+	.unwrap();
+	let env = mandolin::environment(input_api).unwrap();
+	let template = env.get_template("RUST_SERVER_AXUM").unwrap();
+	let output = template.render(0).unwrap();
+	// write the rendered output
+	fs::write("./output/server_builtin.rs", output).unwrap();
 }
 ```
 

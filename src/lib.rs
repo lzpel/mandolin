@@ -7,13 +7,13 @@ use openapiv3::OpenAPI;
 pub type JpUnit = (String, minijinja::Value);
 pub type JpList = Vec<JpUnit>;
 
-pub fn environment(
-	value: OpenAPI,
-) -> Result<minijinja::Environment<'static>, minijinja::Error> {
+pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, minijinja::Error> {
 	let value = minijinja::Value::from_serialize(&value);
 	let value_jp = function::jp_list(&value, "#");
 	let mut env = minijinja::Environment::new();
-	for [k,v] in templates::TEMPLATES{env.add_template(k, v)?}
+	for [k, v] in templates::TEMPLATES {
+		env.add_template(k, v)?
+	}
 	{
 		let ls = value_jp.clone();
 		env.add_filter("r", move |value: minijinja::Value| filter::r(&ls, value));
@@ -78,16 +78,11 @@ mod tests {
 	}
 	#[test]
 	fn test() {
-		for (k, v) in api_map() {
-			let e = environment(v).unwrap();
-			println!("{k} {:?}", e.templates().map(|v| v.0).collect::<Vec<_>>());
-			let result = e
-				.get_template("RUST_SERVER_AXUM")
-				.unwrap()
-				.render(0)
-				.unwrap();
-			println!("{}", result);
-			write(format!("output/{k}.rs"), result.as_str()).unwrap();
+		for (k, input_api) in api_map() {
+			let env = crate::environment(input_api).unwrap();
+			let template = env.get_template("RUST_SERVER_AXUM").unwrap();
+			let output = template.render(0).unwrap();
+			write(format!("output/{k}.rs"), output.as_str()).unwrap();
 		}
 	}
 }

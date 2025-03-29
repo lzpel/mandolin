@@ -10,10 +10,7 @@ pub fn jp_list(value: &minijinja::Value, prefix: &str) -> JpList {
 			if let Some(v) = v.try_iter_pairs() {
 				v.for_each(|(k, v)| {
 					recursive(
-						format!(
-							"{path}/{}",
-							filter::encode(k.as_str().unwrap_or_default())
-						),
+						format!("{path}/{}", filter::encode(k.as_str().unwrap_or_default())),
 						&v,
 						output,
 					)

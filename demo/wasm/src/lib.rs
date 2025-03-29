@@ -29,10 +29,7 @@ pub fn example(openapi_yaml: &str) -> String {
 		}
 	};
 	let e = mandolin::environment(v).unwrap();
-	let result = e
-		.get_template("RUST_SERVER_AXUM")
-		.unwrap()
-		.render(false);
+	let result = e.get_template("RUST_SERVER_AXUM").unwrap().render(false);
 	result.unwrap_or_else(|e| {
 		format!("# Error\n\nCannot render rust code from this OpenApi specification.\n\n## detail\n\n{}", e.to_string())
 	})
@@ -51,7 +48,7 @@ mod tests {
 	#[test]
 	fn generate() {
 		let v = serde_yaml::from_str(include_str!("../../../openapi/openapi.yaml")).unwrap();
-		let env=mandolin::environment(v).unwrap();
+		let env = mandolin::environment(v).unwrap();
 		let result = env
 			.get_template("RUST_SERVER_AXUM")
 			.unwrap()

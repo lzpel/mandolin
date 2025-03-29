@@ -31,7 +31,12 @@ fn main() {
 		)
 		.unwrap();
 	}
-	writeln!(file,"pub const TEMPLATES: [[&'static str; 2]; {}] = [", map_name_content.len()).unwrap();
+	writeln!(
+		file,
+		"pub const TEMPLATES: [[&'static str; 2]; {}] = [",
+		map_name_content.len()
+	)
+	.unwrap();
 	for (name, _content) in &map_name_content {
 		writeln!(file, r#"	["{name}", {name}],"#).unwrap();
 	}
