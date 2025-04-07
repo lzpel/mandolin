@@ -1,6 +1,6 @@
 "use client"
 import React from "react";
-import {example} from "@/lib";
+import {example} from "@/output";
 
 export default function Compare(props: { files: { [key: string]: string } }) {
     const [text, setText] = React.useState(props.files["openapi_petstore.yaml"])

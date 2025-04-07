@@ -41,7 +41,7 @@ fn main() {
   - update README.md
   - add examples
   - rename mandolin::builtin into mandolin::templates
-  - exclude demo from crate
+  - exclude frontend from crate
 - 0.1.0 publish
 
 ## my favorite mandolin music
