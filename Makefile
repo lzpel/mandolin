@@ -1,7 +1,8 @@
 clean:
 	bash -c "cd frontend && npm cache clean --force"
 generate: generate-wasm generate-frontend
-	@: nothing
+	mkdir -p frontend/output
+	cp -r openapi frontend/output/
 generate-frontend:
 	cd frontend && npm install
 generate-wasm:
