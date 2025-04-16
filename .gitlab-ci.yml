@@ -1,0 +1,13 @@
+image: lzpel/home
+
+pages:
+  script:
+    - cargo --version
+    - node --version
+    - next build && next export
+    - mv out public
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
