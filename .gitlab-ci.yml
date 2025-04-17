@@ -14,10 +14,6 @@ cache:
 pages:
   stage: deploy
   script:
-    - export http_proxy="$HTTP_PROXY"
-    - export https_proxy="$HTTPS_PROXY"
-    - export CARGO_HTTP_PROXY="$HTTP_PROXY"
-    - export CARGO_HTTPS_PROXY="$HTTPS_PROXY"
     - printenv
     - make generate
     - cd $NEXT_DIR_PATH
