@@ -1,4 +1,4 @@
-image: lzpel/home
+image: lzpel/home@sha256:b80b2b
 
 variables:
   NODE_ENV: production
