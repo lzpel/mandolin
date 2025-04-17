@@ -14,6 +14,8 @@ cache:
 pages:
   stage: deploy
   script:
+    - echo "$HTTP_PROXY"
+    - echo "$HTTPS_PROXY"
     - export http_proxy="$HTTP_PROXY"
     - export https_proxy="$HTTPS_PROXY"
     - export CARGO_HTTP_PROXY="$HTTP_PROXY"
