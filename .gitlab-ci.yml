@@ -1,4 +1,4 @@
-image: lzpel/home@sha256:b80b2b923e2d5832a72f86b4b30e7bcc110dae1d70e80404cd709eaa58ced340
+image: lzpel/home@sha256:eabf7f3e76e9062b53d3b3c4ecf5c6f9a0438aea8853399f5dc0a186067e7aa1
 
 variables:
   NODE_ENV: production
@@ -15,6 +15,7 @@ pages:
   stage: deploy
   script:
     - printenv
+    - find . -path '*/node_modules' -prune -o -print
     - make generate
     - cd $NEXT_DIR_PATH
     - |
