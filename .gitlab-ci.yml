@@ -1,13 +1,32 @@
 image: lzpel/home
 
+variables:
+  NODE_ENV: production
+  NEXT_PUBLIC_REPO: $CI_PROJECT_NAME
+  NEXT_DIR_PATH: frontend # subdir or .
+  NEXT_EXPORT_DIR: public # 出力先を GitLab Pages の仕様に合わせる（public/ フォルダに）
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .next/cache/
+
 pages:
+  stage: deploy
   script:
-    - cargo --version
-    - node --version
-    - next build && next export
-    - mv out public
+    - make generate
+    - cd $NEXT_DIR_PATH
+    - |
+      if [ -f yarn.lock ]; then
+        yarn install
+        yarn build
+        yarn export -o $NEXT_EXPORT_DIR
+      else
+        npm ci
+        npx --no-install next build
+        npx --no-install next export -o $NEXT_EXPORT_DIR
+      fi
   artifacts:
     paths:
-      - public
-  only:
-    - main
+      - $NEXT_DIR_PATH/$NEXT_EXPORT_DIR
+    expire_in: 1 hour
