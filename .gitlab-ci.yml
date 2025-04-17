@@ -23,11 +23,10 @@ pages:
         yarn build
         yarn export -o $NEXT_EXPORT_DIR
       else
-        npm ci
-        npx --no-install next build
-        npx --no-install next export -o $NEXT_EXPORT_DIR
+        npm install
+        npm run build
       fi
   artifacts:
     paths:
-      - $NEXT_DIR_PATH/$NEXT_EXPORT_DIR
+      - $NEXT_DIR_PATH/out
     expire_in: 1 hour
