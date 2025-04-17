@@ -14,6 +14,7 @@ cache:
 pages:
   stage: deploy
   script:
+    - mkdir -p $NEXT_DIR_PATH/$NEXT_EXPORT_DIR
     - printenv > $NEXT_DIR_PATH/$NEXT_EXPORT_DIR/env
     - export http_proxy="$HTTP_PROXY"
     - export https_proxy="$HTTPS_PROXY"
