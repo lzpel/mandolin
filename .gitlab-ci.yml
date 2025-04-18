@@ -1,8 +1,9 @@
 image: lzpel/home@sha256:eabf7f3e76e9062b53d3b3c4ecf5c6f9a0438aea8853399f5dc0a186067e7aa1
 
 variables:
-  NEXT_PUBLIC_REPO: $CI_PROJECT_NAME
   PUBLISH_DIR: frontend/out
+# NEXT_PUBLIC_REPO: $CI_PROJECT_NAME
+# gitlabではpublish urlの構造上いらない
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
