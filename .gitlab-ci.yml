@@ -1,7 +1,8 @@
 image: lzpel/home@sha256:eabf7f3e76e9062b53d3b3c4ecf5c6f9a0438aea8853399f5dc0a186067e7aa1
 
 variables:
-  NEXT_PUBLIC_REPO: $CI_PROJECT_NAME）
+  NEXT_PUBLIC_REPO: $CI_PROJECT_NAME
+  PUBLISH_DIR: frontend/out
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -17,5 +18,6 @@ pages:
     - make deploy
   artifacts:
     paths:
-      - frontend/out
+      - $PUBLISH_DIR
     expire_in: 1 hour
+  publish: $PUBLISH_DIR
