@@ -14,6 +14,9 @@ const nextConfig = {
 			layers: true,
 		};
 		config.output.webassemblyModuleFilename = (options.isServer ? '../' : '') + 'static/wasm/webassembly.wasm';
+		// デバッグ出力
+		console.log("==== Webpack alias ====");
+		console.log(config.resolve.alias);
 		return config;
 	}
 };

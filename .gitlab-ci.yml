@@ -1,10 +1,7 @@
 image: lzpel/home@sha256:eabf7f3e76e9062b53d3b3c4ecf5c6f9a0438aea8853399f5dc0a186067e7aa1
 
 variables:
-  NODE_ENV: production
-  NEXT_PUBLIC_REPO: $CI_PROJECT_NAME
-  NEXT_DIR_PATH: frontend # subdir or .
-  NEXT_EXPORT_DIR: public # 出力先を GitLab Pages の仕様に合わせる（public/ フォルダに）
+  NEXT_PUBLIC_REPO: $CI_PROJECT_NAME）
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -14,20 +11,11 @@ cache:
 pages:
   stage: deploy
   script:
+    - make generate
     - printenv
     - find . -path '*/node_modules' -prune -o -print
-    - make generate
-    - cd $NEXT_DIR_PATH
-    - |
-      if [ -f yarn.lock ]; then
-        yarn install
-        yarn build
-        yarn export -o $NEXT_EXPORT_DIR
-      else
-        npm install
-        npm run build
-      fi
+    - make deploy
   artifacts:
     paths:
-      - $NEXT_DIR_PATH/out
+      - frontend/out
     expire_in: 1 hour
