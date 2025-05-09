@@ -12,7 +12,8 @@ fn main() {
 	let mut env = mandolin::environment(input_api).unwrap();
 	// add your templates
 	let content = fs::read_to_string("./templates/rust_server_axum.template").unwrap();
-	env.add_template("RUST_SERVER_AXUM", content.as_str()).unwrap();
+	env.add_template("RUST_SERVER_AXUM", content.as_str())
+		.unwrap();
 
 	let content = fs::read_to_string("./templates/schema.template").unwrap();
 	env.add_template("SCHEMA", content.as_str()).unwrap();

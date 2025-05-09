@@ -31,9 +31,17 @@ fn main() {
 	// memo
 	writeln!(file, "/*").unwrap();
 	for (path, name, _content) in &templates {
-		let path=path.replace(std::path::MAIN_SEPARATOR_STR, "/");
-		writeln!(file, r#"let content = fs::read_to_string("{path}").unwrap();"#).unwrap();
-		writeln!(file, r#"env.add_template("{name}", content.as_str()).unwrap();"#).unwrap();
+		let path = path.replace(std::path::MAIN_SEPARATOR_STR, "/");
+		writeln!(
+			file,
+			r#"let content = fs::read_to_string("{path}").unwrap();"#
+		)
+		.unwrap();
+		writeln!(
+			file,
+			r#"env.add_template("{name}", content.as_str()).unwrap();"#
+		)
+		.unwrap();
 	}
 	writeln!(file, "*/").unwrap();
 }
