@@ -24,8 +24,8 @@ pub fn jp_list(value: &minijinja::Value, prefix: &str) -> JpList {
 	recursive(prefix.to_string(), value, &mut output);
 	output
 }
-pub enum LsMode {
-	ALL,
+pub enum LsMode<'a> {
+	LS((&'a str, bool)),
 	SCHEMA,
 	OPERATION,
 }
@@ -36,7 +36,9 @@ pub fn ls(input: &JpList, mode: LsMode) -> minijinja::Value {
 	let ret: JpList = input
 		.iter()
 		.filter(|(k, v)| match mode {
-			LsMode::ALL => true,
+			LsMode::LS((path, recursive)) => k
+				.strip_prefix(&path)
+				.is_some_and(|v| recursive || !v.contains("/")),
 			LsMode::SCHEMA => {
 				openapiv3::Schema::deserialize(v).is_ok_and(|v| match v.schema_kind {
 					openapiv3::SchemaKind::Type(_) => true,

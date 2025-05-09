@@ -89,7 +89,7 @@ body.into()
 }
 pub fn axum_router<S:Server>()->axum::Router{
 	axum::Router::new()
-{%- for server in servers|default(value=[]) %}
+{%- for pointer, server in ls("#/servers/") %}
 		.nest_service("{{server.url}}", axum_router_operations::<S>())
 {%- endfor %}
 }

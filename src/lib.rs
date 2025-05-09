@@ -27,7 +27,13 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 	env.add_filter("to_snake_case", filter::to_snake_case);
 	{
 		let ls = value_jp.clone();
-		env.add_function("ls", move || function::ls(&ls, function::LsMode::ALL));
+		env.add_function("ls", move |value: &str| {
+			function::ls(&ls, function::LsMode::LS((value, false)))
+		});
+		let ls = value_jp.clone();
+		env.add_function("ls_recursive", move |value: &str| {
+			function::ls(&ls, function::LsMode::LS((value, true)))
+		});
 		let ls = value_jp.clone();
 		env.add_function("ls_operation", move || {
 			function::ls(&ls, function::LsMode::OPERATION)
@@ -77,9 +83,9 @@ mod tests {
 		writeln!(writer, "{}", content.as_ref())
 	}
 	#[test]
-	fn test() {
+	fn render() {
 		for (k, input_api) in api_map() {
-			let env = crate::environment(input_api).unwrap();
+			let env = environment(input_api).unwrap();
 			let template = env.get_template("RUST_SERVER_AXUM").unwrap();
 			let output = template.render(0).unwrap();
 			write(format!("output/{k}.rs"), output.as_str()).unwrap();
