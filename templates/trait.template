@@ -36,7 +36,7 @@ pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 {%- set ns = namespace(response_default_key=0) %}
 {%- for response_key, response in operation.responses|items %}
 	{{("status_"+response_key)|to_pascal_case}}{%-if response.content-%}({%- for content_type, media in response.content|items %}{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_type+"/schema",media.schema,1)}}{%-endfor%}){%-endif%},
-{%- if ns.response_default_key == 0 or response_key == "default"%}
+{%- if ns.response_default_key == 0%}
 {%- set ns.response_default_key=response_key %}
 {%- set ns.response_default=response %}
 {%- endif %}
@@ -44,7 +44,7 @@ pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 }
 impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 	fn default() -> Self{
-		Self::Status{{ns.response_default_key}}{%-if ns.response_default.content-%}(Default::default()){%-endif%}
+		Self::{{("status_"+ns.response_default_key)|to_pascal_case}}{%-if ns.response_default.content-%}(Default::default()){%-endif%}
 	}
 }
 {%- endmacro -%}

@@ -21,7 +21,10 @@ Vec<{{SCHEMA(pointer+"/items",schema.items,1)}}>
 {%- elif schema.type == "integer" -%}
 {%- if "u" in schema.format -%}u{%- else -%}i{%- endif -%}{%- if "int128" in schema.format -%}128{%- elif "int64" in schema.format -%}64{%- elif "int32" in schema.format -%}32{%- else -%}8{%- endif -%}
 {%- elif schema.type == "string" -%}
-{%- if schema.format and schema.format == "binary" -%}Vec<u8>{%- else -%}String{%- endif -%}
+{%- if schema.format == "binary" -%}Vec<u8>
+{%- elif schema.format == "uuid" -%}uuid::Uuid
+{%- else -%}String
+{%- endif -%}
 {%- elif schema.type == "number" -%}
 f64
 {%- elif schema.type == "boolean" -%}
@@ -36,14 +39,17 @@ u8
 {%- endmacro -%}
 
 {%- macro IDENTIFIED_SCHEMA(pointer, schema) -%}
-{%- if schema.type and schema.type == "object" %}
-
+{%- if schema.type == "object" %}
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct {{SCHEMA_NAME(pointer)}}{{'{'}}{{SCHEMA(pointer, schema)}}
 }
+{%- else %}
+pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endif %}
 {%- endmacro %}
 
 {%- for pointer, schema in ls_schema() -%}
+{%- if "/" not in pointer|replace("#/components/schemas/","") -%}
 {{ IDENTIFIED_SCHEMA(pointer, schema) }}
+{%- endif -%}
 {%- endfor %}
