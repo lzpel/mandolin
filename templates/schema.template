@@ -6,18 +6,18 @@
 {%- if schema.type -%}
 {%- if schema.type == "object" -%}
 {%- if schema.additionalProperties -%}
-HashMap<String,{{SCHEMA(pointer+"/additionalProperties",schema.additionalProperties,1)}}>
+HashMap<String,{{SCHEMA_NAME(pointer+"/additionalProperties")}}>
 {%- elif depth is defined -%}
 {{ SCHEMA_NAME(pointer) }}
 {%- else -%}
 {%- for property_key, property in schema.properties|items %}
-	pub r#{{property_key}}:
-{%- set inner=SCHEMA(pointer+"/properties/"+property_key,property,1) -%}
-{%- if schema.required and property_key in schema.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
+{%- with inner=SCHEMA_NAME(pointer+"/properties/"+property_key) -%}
+	pub r#{{property_key}}:{%- if schema.required and property_key in schema.required %}{{inner}}{%- else %}Option<{{inner}}>{%- endif %},
+{%- endwith %}
 {%- endfor %}
 {%- endif -%}
 {%- elif schema.type == "array" -%}
-Vec<{{SCHEMA(pointer+"/items",schema.items,1)}}>
+Vec<{{SCHEMA_NAME(pointer+"/items",schema.items,1)}}>
 {%- elif schema.type == "integer" -%}
 {%- if "u" in schema.format -%}u{%- else -%}i{%- endif -%}{%- if "int128" in schema.format -%}128{%- elif "int64" in schema.format -%}64{%- elif "int32" in schema.format -%}32{%- else -%}8{%- endif -%}
 {%- elif schema.type == "string" -%}
@@ -49,7 +49,5 @@ pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endmacro %}
 
 {%- for pointer, schema in ls_schema() -%}
-{%- if "/" not in pointer|replace("#/components/schemas/","") -%}
 {{ IDENTIFIED_SCHEMA(pointer, schema) }}
-{%- endif -%}
 {%- endfor %}
