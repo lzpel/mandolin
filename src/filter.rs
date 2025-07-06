@@ -1,6 +1,5 @@
 use crate::JpList;
 use serde::Deserialize;
-use std::collections::BTreeMap;
 
 pub fn encode(content: &str) -> String {
 	content.replace("~", "~0").replace("/", "~1") // RFC6901
@@ -50,35 +49,43 @@ pub fn to_pascal_case(s: &str) -> String {
 	result
 }
 
-pub fn r(jp_list: &JpList, value: minijinja::Value) -> Result<minijinja::Value, minijinja::Error> {
-	//valueが参照だったら参照を解決するだけの関数
-	fn reference(
-		jp_list: &JpList,
-		value: minijinja::Value,
-	) -> Result<minijinja::Value, minijinja::Error> {
-		match openapiv3::ReferenceOr::<()>::deserialize(&value) {
-			Ok(openapiv3::ReferenceOr::Reference { reference }) => jp_list
-				.iter()
-				.filter_map(|(a, b)| a.eq(&reference).then_some(b.clone()))
-				.next()
-				.ok_or(minijinja::Error::from(minijinja::ErrorKind::NonKey)),
-			_ => Ok(value),
+pub fn include_ref(jp_list: &JpList, value: minijinja::Value) -> Result<minijinja::Value, minijinja::Error> {
+	match openapiv3::ReferenceOr::<()>::deserialize(&value) {
+		Ok(openapiv3::ReferenceOr::Reference { reference }) => include_pointer(jp_list, reference.as_str()),
+		_ => Ok(value),
+	}
+	/*
+		pub fn include_ref(jp_list: &JpList, value: minijinja::Value) -> Result<minijinja::Value, minijinja::Error> {
+			//valueが参照だったら参照を解決するだけの関数
+			fn reference(
+				jp_list: &JpList,
+				value: minijinja::Value,
+			) -> Result<minijinja::Value, minijinja::Error> {
+				match openapiv3::ReferenceOr::<()>::deserialize(&value) {
+					Ok(openapiv3::ReferenceOr::Reference { reference }) => jp_list
+						.iter()
+						.filter_map(|(a, b)| a.eq(&reference).then_some(b.clone()))
+						.next()
+						.ok_or(minijinja::Error::from(minijinja::ErrorKind::NonKey)),
+					_ => Ok(value),
+				}
+			}
+			//それを適用する関数
+			let v = reference(jp_list, value)?;
+			if let Ok(v) = BTreeMap::<minijinja::Value, minijinja::Value>::deserialize(&v) {
+				return v
+					.into_iter()
+					.map(|(k, v)| reference(jp_list, v).map(|v| (k, v)))
+					.collect();
+			} else if let Ok(v) = Vec::<minijinja::Value>::deserialize(&v) {
+				return v.into_iter().map(|v| reference(jp_list, v)).collect();
+			}
+			Ok(v)
 		}
-	}
-	//それを適用する関数
-	let v = reference(jp_list, value)?;
-	if let Ok(v) = BTreeMap::<minijinja::Value, minijinja::Value>::deserialize(&v) {
-		return v
-			.into_iter()
-			.map(|(k, v)| reference(jp_list, v).map(|v| (k, v)))
-			.collect();
-	} else if let Ok(v) = Vec::<minijinja::Value>::deserialize(&v) {
-		return v.into_iter().map(|v| reference(jp_list, v)).collect();
-	}
-	Ok(v)
+	*/
 }
 
-pub fn point(jp_list: &JpList, value: &str) -> Result<minijinja::Value, minijinja::Error> {
+pub fn include_pointer(jp_list: &JpList, value: &str) -> Result<minijinja::Value, minijinja::Error> {
 	jp_list
 		.iter()
 		.filter_map(|(a, b)| a.eq(value).then_some(b.clone()))

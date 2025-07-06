@@ -16,9 +16,9 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 	}
 	{
 		let ls = value_jp.clone();
-		env.add_filter("r", move |value: minijinja::Value| filter::r(&ls, value));
+		env.add_filter("include_ref", move |value: minijinja::Value| filter::include_ref(&ls, value));
 		let ls = value_jp.clone();
-		env.add_filter("p", move |value: &str| filter::point(&ls, value));
+		env.add_filter("include_pointer", move |value: &str| filter::include_pointer(&ls, value));
 	}
 	env.add_filter("decode", filter::decode);
 	env.add_filter("encode", filter::encode);

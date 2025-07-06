@@ -11,13 +11,15 @@ pub fn axum_router_operations<S:Server>()->axum::Router{
 {%- endif%}
 		| async move{
 			let ret=S::{{OPERATION_NAME(pointer,operation)}}({{OPERATION_REQUEST_NAME(pointer,operation)}}{
-{%- for parameter in operation.parameters %}
+{%- for parameter in operation.parameters|include_ref %}
+{%- with parameter=parameter|include_ref %}
 				r#{{parameter.name}}:match {{parameter.in}}.get("{{parameter.name}}").and_then(|v| v.parse().ok())
 {%- if parameter.required -%}
 {Some(v)=>v, None=>return (axum::http::StatusCode::from_u16(400).unwrap(),[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}).as_bytes().to_vec())}
 {%- else -%}
 {Some(v)=>Some(v), None=>None}
 {%- endif -%},
+{%- endwith %}
 {%- endfor %}
 {%- if operation.requestBody %}
 {%- for content_key, content in operation.requestBody.content|items %}
@@ -27,16 +29,7 @@ match serde_json::from_slice(body.to_vec().as_slice()){Ok(v)=>v,Err(v) => { retu
 {%- else -%}
 body.into()
 {%- endif -%}
-{%- endfor -%}
-{%- endif %}
-{%- if operation.request_body %}
-				body:
-{%- if "json" in operation.request_body.default_content.media_type -%}
-match serde_json::from_slice(body.to_vec().as_slice()){Ok(v)=>v,Err(v) => { return (axum::http::StatusCode::INTERNAL_SERVER_ERROR,[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("{:?}", v).as_bytes().to_vec())}}
-{%- else -%}
-body.into()
-{%- endif -%}
-,
+{%- endfor -%},
 {%- endif %}
 			}).await;
 			match ret{
@@ -59,7 +52,7 @@ body.into()
 		}))
 {%- endfor %}
 		.route("/openapi.json", axum::routing::get(|| async move{
-			r###"{{"#"|p|tojson}}"###
+			r###"{{"#"|include_pointer|tojson}}"###
 		}))
 		.route("/ui", axum::routing::get(|| async move{
 			axum::response::Html(r###"
