@@ -48,7 +48,6 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use openapiv3::OpenAPI;
 	use std::collections::HashMap;
 	use std::fs;
 	use std::fs::File;
@@ -79,16 +78,17 @@ mod tests {
 	}
 	fn write<P: AsRef<Path>, S: AsRef<str>>(path: P, content: S) -> std::io::Result<()> {
 		let mut writer = std::io::BufWriter::new(File::create(path)?);
-		println!("{}", content.as_ref());
 		writeln!(writer, "{}", content.as_ref())
 	}
 	#[test]
 	fn render() {
 		for (k, input_api) in api_map() {
+			println!("render start: {k}");
 			let env = environment(input_api).unwrap();
 			let template = env.get_template("RUST_SERVER_AXUM").unwrap();
-			let output = template.render(0).unwrap();
+			let output = template.render(minijinja::context!(input => k)).unwrap();
 			write(format!("output/{k}.rs"), output.as_str()).unwrap();
+			println!("render complete: {k}");
 		}
 	}
 }
