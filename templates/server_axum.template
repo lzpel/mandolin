@@ -100,9 +100,13 @@ pub fn axum_router<S:Server>()->axum::Router{
 }
 
 pub fn print_axum_router(port:u16){
+{%- if servers|length > 0%}
 {%- for pointer, server in servers %}
 	println!("http://localhost:{}{{server.url}}/ui", port);
 {%- endfor %}
+{%- else%}
+	todo!("Add at least one server endpoint to the OpenAPI `servers` section.")
+{%- endif%}
 }
 {% endwith %}
 pub struct TestServer{}
@@ -110,12 +114,12 @@ impl Server for TestServer{}
 #[allow(dead_code)]
 #[tokio::main]
 async fn main() {
-    let port:u16 = std::env::var("PORT").unwrap_or("8080".to_string()).parse().expect("PORT should be integer");
+	let port:u16 = std::env::var("PORT").unwrap_or("8080".to_string()).parse().expect("PORT should be integer");
 	print_axum_router(port);
 	let app = axum_router::<TestServer>().layer(axum::extract::DefaultBodyLimit::disable());
 	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await.unwrap();
-    axum::serve(listener, app)
-        .with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
-        .await
-        .unwrap();
+	axum::serve(listener, app)
+		.with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
+		.await
+		.unwrap();
 }

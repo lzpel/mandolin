@@ -2,12 +2,12 @@
 name = "mandolin"
 version = "0.1.10"
 edition = "2021"
+license = "MIT"
 authors = ["lzpel"]
-description = "generate openapi-based server"
-readme = "README.md"
+description = "Input openapi.json/yaml, output server source code in rust."
 repository = "https://github.com/lzpel/mandolin"
 homepage = "https://lzpel.github.io/mandolin/"
-license = "MIT OR Apache-2.0"
+readme = "README.md"
 build = "build.rs"
 exclude = [".github/*", "frontend/*"]
 
@@ -17,8 +17,7 @@ serde = { version = "^1.0.219", features = ["derive"]}
 minijinja = { version = "^2.9", features = ["json", "deserialization"] }
 
 [dev-dependencies]
-serde_yaml = "^0.9.34+deprecated"
+serde_yaml = { version = "^0.9.34+deprecated" }
 
 [workspace]
-members = ["frontend/wasm"]
-
+members = ["frontend/wasm", "mandolin-cli"]

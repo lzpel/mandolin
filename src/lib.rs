@@ -77,6 +77,11 @@ mod tests {
 			.collect()
 	}
 	fn write<P: AsRef<Path>, S: AsRef<str>>(path: P, content: S) -> std::io::Result<()> {
+		let path = path.as_ref();
+		// 親ディレクトリがある場合は作成する
+		if let Some(parent) = path.parent() {
+			fs::create_dir_all(parent)?;
+		}
 		let mut writer = std::io::BufWriter::new(File::create(path)?);
 		writeln!(writer, "{}", content.as_ref())
 	}
@@ -86,8 +91,8 @@ mod tests {
 			println!("render start: {k}");
 			let env = environment(input_api).unwrap();
 			let template = env.get_template("RUST_SERVER_AXUM").unwrap();
-			let output = template.render(minijinja::context!(input => k)).unwrap();
-			write(format!("output/{k}.rs"), output.as_str()).unwrap();
+			let output = template.render(0).unwrap();
+			write(format!("out/{k}.rs"), output.as_str()).unwrap();
 			println!("render complete: {k}");
 		}
 	}

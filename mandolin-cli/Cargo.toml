@@ -1,0 +1,15 @@
+[package]
+name = "mandolin-cli"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["lzpel"]
+description = "Input openapi.json/yaml, output server source code in rust."
+repository = "https://github.com/lzpel/mandolin"
+homepage = "https://lzpel.github.io/mandolin/"
+
+[dependencies]
+mandolin = {version = "^0"}
+serde_yaml = { version = "^0.9.34+deprecated" }
+serde_json = { version = "^1" }
+clap = { version = "^4", features = ["derive"] }
