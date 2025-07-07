@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{filter, JpList};
 use serde::Deserialize;
 
@@ -55,4 +57,26 @@ pub fn ls(input: &JpList, mode: LsMode) -> minijinja::Value {
 		.cloned()
 		.collect();
 	minijinja::Value::from_serialize(ret)
+}
+
+pub type NestedStruct = HashMap<String, bool>;
+
+pub fn struct_clean(structs: &mut NestedStruct) {
+    structs.clear();
+}
+
+pub fn struct_push(structs: &mut NestedStruct, pointer: &str) {
+    if !structs.contains_key(pointer) {
+        structs.insert(pointer.to_string(), false);
+    }
+}
+
+pub fn struct_pop(structs: &mut NestedStruct) -> Option<String> {
+    for (key, value) in structs.iter_mut() {
+        if !*value {
+            *value = true;
+            return Some(key.clone());
+        }
+    }
+    None
 }

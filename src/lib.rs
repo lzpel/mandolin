@@ -2,6 +2,8 @@ mod filter;
 mod function;
 pub mod templates;
 
+use std::sync::Mutex;
+
 use openapiv3::OpenAPI;
 
 pub type JpUnit = (String, minijinja::Value);
@@ -42,6 +44,33 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 		env.add_function("ls_schema", move || {
 			function::ls(&ls, function::LsMode::SCHEMA)
 		});
+	}
+	{
+        	let v = std::sync::Arc::new(Mutex::new(function::NestedStruct::default()));
+		{
+        	let v = std::sync::Arc::clone(&v);
+			env.add_function("struct_clean",  move || {
+				if let Ok(mut structs) = v.lock() {
+					function::struct_clean(&mut structs);
+				}
+			});
+		}
+		{
+        	let v = std::sync::Arc::clone(&v);
+			env.add_function("struct_push",  move |value: &str| {
+				if let Ok(mut structs) = v.lock() {
+					function::struct_push(&mut structs, value);
+				}
+			});
+		}
+		{
+        	let v = std::sync::Arc::clone(&v);
+			env.add_function("struct_pop",  move || {
+				if let Ok(mut structs) = v.lock() {
+					function::struct_pop(&mut structs);
+				}
+			});
+		}
 	}
 	Ok(env)
 }
