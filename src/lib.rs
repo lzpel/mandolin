@@ -45,32 +45,16 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 			function::ls(&ls, function::LsMode::SCHEMA)
 		});
 	}
+     let queue = std::sync::Arc::new(Mutex::new(function::NestedStruct::default()));
 	{
-        	let v = std::sync::Arc::new(Mutex::new(function::NestedStruct::default()));
-		{
-        	let v = std::sync::Arc::clone(&v);
-			env.add_function("struct_clean",  move || {
-				if let Ok(mut structs) = v.lock() {
-					function::struct_clean(&mut structs);
-				}
-			});
-		}
-		{
-        	let v = std::sync::Arc::clone(&v);
-			env.add_function("struct_push",  move |value: &str| {
-				if let Ok(mut structs) = v.lock() {
-					function::struct_push(&mut structs, value);
-				}
-			});
-		}
-		{
-        	let v = std::sync::Arc::clone(&v);
-			env.add_function("struct_pop",  move || {
-				if let Ok(mut structs) = v.lock() {
-					function::struct_pop(&mut structs);
-				}
-			});
-		}
+		let q = std::sync::Arc::clone(&queue);
+		env.add_function("struct_clean",  move || {
+			function::struct_clean(&mut q.lock().unwrap())
+		});
+		let q = std::sync::Arc::clone(&queue);
+		env.add_function("struct_push",  move |pointer: &str, content: Option<&str>| {
+			function::struct_push(&mut q.lock().unwrap(), pointer, content)
+		});
 	}
 	Ok(env)
 }
