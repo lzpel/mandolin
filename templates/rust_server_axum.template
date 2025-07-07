@@ -16,4 +16,5 @@ tokio = { version = "*", features = ["rt", "rt-multi-thread", "macros", "signal"
 
 {% include "SCHEMA" %}
 {% include "TRAIT" %}
+{{ IDENTIFIED_SCHEMA_CLEAN() }}
 {% include "SERVER_AXUM" %}

@@ -7,15 +7,9 @@
 {%- macro SCHEMA(pointer,schema) -%}
 {%- if schema.type -%}
 {%- if schema.type == "object" -%}
-{%- if schema.additionalProperties -%}
-HashMap<String,{{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}}>
-{%- else -%}
-{%- for property_key, property in schema.properties|items %}
-{%- with inner=SCHEMA(pointer+"/properties/"+property_key, property) %}
-	pub r#{{property_key}}:{%- if schema.required and property_key in schema.required %}{{inner}}{%- else %}Option<{{inner}}>{%- endif %},
-{%- endwith %}
-{%- endfor %}
-{%- endif -%}
+{%- if schema.additionalProperties %}HashMap<String,{{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}}>
+{%- else %}{{SCHEMA_NAME(pointer)}}
+{%- endif %}
 {%- elif schema.type == "array" -%}
 Vec<{{SCHEMA(pointer+"/items",schema.items)}}>
 {%- elif schema.type == "integer" -%}
@@ -41,7 +35,12 @@ u8
 {%- macro IDENTIFIED_SCHEMA(pointer, schema) %}
 {%- if schema.type == "object" %}
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct {{SCHEMA_NAME(pointer)}}{{'{'}}{{SCHEMA(pointer, schema)}}
+pub struct {{SCHEMA_NAME(pointer)}}{{'{'}}
+{%- for property_key, property in schema.properties|items %}
+{%- with inner=SCHEMA(pointer+"/properties/"+property_key, property) %}
+	pub r#{{property_key}}:{%- if schema.required and property_key in schema.required %}{{inner}}{%- else %}Option<{{inner}}>{%- endif %},
+{%- endwith %}
+{%- endfor %}
 }
 {%- else %}
 pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
