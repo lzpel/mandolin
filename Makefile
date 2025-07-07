@@ -1,23 +1,28 @@
 generate: generate-wasm generate-frontend
 	cargo tree && cargo fmt
-	mkdir -p frontend/output
-	cp -r openapi frontend/output/
 generate-frontend:
 	cd frontend && npm install
+	o=frontend/output ; mkdir -p $$o && cp -r openapi $$o
 generate-wasm:
 	cd frontend/wasm && cargo tree && cargo fmt
 	cargo install wasm-pack
 	wasm-pack build frontend/wasm -d ../output
 test:
-	mkdir -p output
+	@: openapiから生成できることのテスト
 	cargo test
+	@: cliのテスト
+	cd mandolin-cli && find ../openapi -name '*.yaml' | xargs -IZ bash -c "cargo run -- -i Z -t RUST_SERVER_AXUM > out.rs;cat Z | cargo run -- -o out.rs -t RUST_SERVER_AXUM;"
+	@: フロントエンドビルドのテスト
+	cd frontend && npm run build
 run:
 	cd frontend && npm run dev
 deploy:
-	cd frontend && npm run build
+
 clean:
 	bash -c "cd frontend && npm cache clean --force"
 compile:
 	bash -c "cd frontend && find ../openapi/ -name '*.tsp' | xargs -IX npx tsp compile X --emit @typespec/openapi3"
-crate-next-app:
+cli:
+	cd mandolin-cli && cargo run -- -h
+create:
 	npx create-next-app@latest frontend --no-tailwind --no-turbopack --yes

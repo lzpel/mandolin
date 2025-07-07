@@ -2,6 +2,8 @@ mod filter;
 mod function;
 pub mod templates;
 
+use std::sync::Mutex;
+
 use openapiv3::OpenAPI;
 
 pub type JpUnit = (String, minijinja::Value);
@@ -16,9 +18,9 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 	}
 	{
 		let ls = value_jp.clone();
-		env.add_filter("r", move |value: minijinja::Value| filter::r(&ls, value));
+		env.add_filter("include_ref", move |value: minijinja::Value| filter::include_ref(&ls, value));
 		let ls = value_jp.clone();
-		env.add_filter("p", move |value: &str| filter::point(&ls, value));
+		env.add_filter("include_pointer", move |value: &str| filter::include_pointer(&ls, value));
 	}
 	env.add_filter("decode", filter::decode);
 	env.add_filter("encode", filter::encode);
@@ -43,12 +45,22 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 			function::ls(&ls, function::LsMode::SCHEMA)
 		});
 	}
+     let queue = std::sync::Arc::new(Mutex::new(function::NestedStruct::default()));
+	{
+		let q = std::sync::Arc::clone(&queue);
+		env.add_function("struct_clean",  move || {
+			function::struct_clean(&mut q.lock().unwrap())
+		});
+		let q = std::sync::Arc::clone(&queue);
+		env.add_function("struct_push",  move |pointer: &str, content: Option<&str>| {
+			function::struct_push(&mut q.lock().unwrap(), pointer, content)
+		});
+	}
 	Ok(env)
 }
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use openapiv3::OpenAPI;
 	use std::collections::HashMap;
 	use std::fs;
 	use std::fs::File;
@@ -78,17 +90,23 @@ mod tests {
 			.collect()
 	}
 	fn write<P: AsRef<Path>, S: AsRef<str>>(path: P, content: S) -> std::io::Result<()> {
+		let path = path.as_ref();
+		// 親ディレクトリがある場合は作成する
+		if let Some(parent) = path.parent() {
+			fs::create_dir_all(parent)?;
+		}
 		let mut writer = std::io::BufWriter::new(File::create(path)?);
-		println!("{}", content.as_ref());
 		writeln!(writer, "{}", content.as_ref())
 	}
 	#[test]
 	fn render() {
 		for (k, input_api) in api_map() {
+			println!("render start: {k}");
 			let env = environment(input_api).unwrap();
 			let template = env.get_template("RUST_SERVER_AXUM").unwrap();
 			let output = template.render(0).unwrap();
-			write(format!("output/{k}.rs"), output.as_str()).unwrap();
+			write(format!("out/{k}.rs"), output.as_str()).unwrap();
+			println!("render complete: {k}");
 		}
 	}
 }

@@ -11,44 +11,38 @@ pub fn axum_router_operations<S:Server>()->axum::Router{
 {%- endif%}
 		| async move{
 			let ret=S::{{OPERATION_NAME(pointer,operation)}}({{OPERATION_REQUEST_NAME(pointer,operation)}}{
-{%- for parameter in operation.parameters %}
+{%- for parameter in operation.parameters|include_ref %}
+{%- with parameter=parameter|include_ref %}
 				r#{{parameter.name}}:match {{parameter.in}}.get("{{parameter.name}}").and_then(|v| v.parse().ok())
 {%- if parameter.required -%}
 {Some(v)=>v, None=>return (axum::http::StatusCode::from_u16(400).unwrap(),[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}).as_bytes().to_vec())}
 {%- else -%}
 {Some(v)=>Some(v), None=>None}
 {%- endif -%},
+{%- endwith %}
 {%- endfor %}
 {%- if operation.requestBody %}
 {%- for content_key, content in operation.requestBody.content|items %}
 				body:
 {%- if "json" in content_key -%}
 match serde_json::from_slice(body.to_vec().as_slice()){Ok(v)=>v,Err(v) => { return (axum::http::StatusCode::INTERNAL_SERVER_ERROR,[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("{:?}", v).as_bytes().to_vec())}}
-{%- else -%}
+{%- else %}
 body.into()
-{%- endif -%}
-{%- endfor -%}
 {%- endif %}
-{%- if operation.request_body %}
-				body:
-{%- if "json" in operation.request_body.default_content.media_type -%}
-match serde_json::from_slice(body.to_vec().as_slice()){Ok(v)=>v,Err(v) => { return (axum::http::StatusCode::INTERNAL_SERVER_ERROR,[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("{:?}", v).as_bytes().to_vec())}}
-{%- else -%}
-body.into()
-{%- endif -%}
-,
+{%- break %}
+{%- endfor %},
 {%- endif %}
 			}).await;
 			match ret{
 {%- for response_key, response in operation.responses|items %}
-				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::Status{{response_key}}{%- if response.content -%}(v){%- endif -%} => (axum::http::StatusCode::from_u16({{response_key}}).unwrap(),
-{%- if response.content -%}
-{%- for contentType, media in response.content|items %}
-[(axum::http::header::CONTENT_TYPE, "{{contentType}}")],
-{%- if "json" in contentType-%}serde_json::to_vec_pretty(&v).expect("error serialize response json")
-{%- elif media.schema.format and media.schema.format == "binary" -%}v
-{%- else -%}v.as_bytes().to_vec()
-{%- endif -%}
+				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response.content -%}(v){%- endif -%} => (axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap(),
+{%- if response.content %}
+{%- for contentType, media in response.content|items %}[(axum::http::header::CONTENT_TYPE, "{{contentType}}")],
+{%- if "json" in contentType %}serde_json::to_vec_pretty(&v).expect("error serialize response json")
+{%- elif media.schema.format and media.schema.format == "binary" %}v
+{%- else %}v.as_bytes().to_vec()
+{%- endif %}
+{%- break %}
 {%- endfor %}
 {%- else -%}
 [(axum::http::header::CONTENT_TYPE, "text/plain")], "{{response.description}}".as_bytes().to_vec()
@@ -59,7 +53,7 @@ body.into()
 		}))
 {%- endfor %}
 		.route("/openapi.json", axum::routing::get(|| async move{
-			r###"{{"#"|p|tojson}}"###
+			r###"{{"#"|include_pointer|tojson}}"###
 		}))
 		.route("/ui", axum::routing::get(|| async move{
 			axum::response::Html(r###"
@@ -87,25 +81,39 @@ body.into()
 			"###)
 		}))
 }
+{% with servers = ls("#/servers/") %}
 pub fn axum_router<S:Server>()->axum::Router{
+{%- if ls("#/servers/")|length > 0 %}
 	axum::Router::new()
 {%- for pointer, server in ls("#/servers/") %}
 		.nest_service("{{server.url}}", axum_router_operations::<S>())
 {%- endfor %}
+{%- else %}
+	panic!("At least, one server define is required for mandolin. but no servers are define in openapi.");
+{%- endif %}
 }
-use std::env;
+
+pub fn print_axum_router(port:u16){
+{%- if servers|length > 0%}
+{%- for pointer, server in servers %}
+	println!("http://localhost:{}{{server.url}}/ui", port);
+{%- endfor %}
+{%- else%}
+	todo!("Add at least one server endpoint to the OpenAPI `servers` section.")
+{%- endif%}
+}
+{% endwith %}
 pub struct TestServer{}
 impl Server for TestServer{}
 #[allow(dead_code)]
 #[tokio::main]
 async fn main() {
+	let port:u16 = std::env::var("PORT").unwrap_or("8080".to_string()).parse().expect("PORT should be integer");
+	print_axum_router(port);
 	let app = axum_router::<TestServer>().layer(axum::extract::DefaultBodyLimit::disable());
-    let port:u16 = env::var("PORT").unwrap_or("8080".to_string()).parse().expect("PORT should be integer");
-	println!("http://localhost:{}/api/ui", port);
-	let bind=format!("0.0.0.0:{}", port);
-	let listener = tokio::net::TcpListener::bind(bind).await.unwrap();
-    axum::serve(listener, app)
-        .with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
-        .await
-        .unwrap();
+	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await.unwrap();
+	axum::serve(listener, app)
+		.with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
+		.await
+		.unwrap();
 }

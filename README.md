@@ -1,11 +1,16 @@
 # mandolin
+
 <a href="https://crates.io/crates/mandolin"><img alt="crates.io" src="https://img.shields.io/crates/v/mandolin.svg?style=for-the-badge&logo=rust" height="20"/></a>
 
-Generate server code in Rust from openapi specification and jinja2 templates.
+Input openapi.json/yaml, output server source code in rust.
 
 Online demo with wasm: https://lzpel.github.io/mandolin/
 
-## Using mandolin
+## What is this.
+
+Generate server code in Rust from openapi specification and jinja2 templates.
+
+## Getting started
 
 Render axum server code using builtin template
 
@@ -64,6 +69,7 @@ fn main() {
 
 ## version
 
+- 0.1.11 update to flatten nested schema. prepare cli-command `mandolin-cli`.
 - 0.1.7 hotfix
 - 0.1.6 independent from regex, tera
 - 0.1.5 fix ref filter
