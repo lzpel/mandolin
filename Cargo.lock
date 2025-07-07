@@ -170,16 +170,6 @@ checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 [[package]]
 name = "mandolin"
 version = "0.1.10"
-dependencies = [
- "minijinja",
- "openapiv3",
- "serde",
- "serde_yaml",
-]
-
-[[package]]
-name = "mandolin"
-version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c877f89c7230cd76fb1aa4c07450d39b1c01313cfbb0910ee7dca53b5440b4a4"
 dependencies = [
@@ -189,11 +179,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "mandolin"
+version = "0.1.11"
+dependencies = [
+ "minijinja",
+ "openapiv3",
+ "serde",
+ "serde_yaml",
+]
+
+[[package]]
 name = "mandolin-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
- "mandolin 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mandolin 0.1.10",
  "serde_json",
  "serde_yaml",
 ]
@@ -347,7 +347,7 @@ name = "wasm"
 version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
- "mandolin 0.1.10",
+ "mandolin 0.1.11",
  "serde_yaml",
  "wasm-bindgen",
 ]

@@ -69,6 +69,7 @@ fn main() {
 
 ## version
 
+- 0.1.11 update to flatten nested schema. prepare cli-command `mandolin-cli`.
 - 0.1.7 hotfix
 - 0.1.6 independent from regex, tera
 - 0.1.5 fix ref filter
