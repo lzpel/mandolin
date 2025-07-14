@@ -49,9 +49,14 @@ pub fn to_pascal_case(s: &str) -> String {
 	result
 }
 
-pub fn include_ref(jp_list: &JpList, value: minijinja::Value) -> Result<minijinja::Value, minijinja::Error> {
+pub fn include_ref(
+	jp_list: &JpList,
+	value: minijinja::Value,
+) -> Result<minijinja::Value, minijinja::Error> {
 	match openapiv3::ReferenceOr::<()>::deserialize(&value) {
-		Ok(openapiv3::ReferenceOr::Reference { reference }) => include_pointer(jp_list, reference.as_str()),
+		Ok(openapiv3::ReferenceOr::Reference { reference }) => {
+			include_pointer(jp_list, reference.as_str())
+		}
 		_ => Ok(value),
 	}
 	/*
@@ -85,7 +90,10 @@ pub fn include_ref(jp_list: &JpList, value: minijinja::Value) -> Result<minijinj
 	*/
 }
 
-pub fn include_pointer(jp_list: &JpList, value: &str) -> Result<minijinja::Value, minijinja::Error> {
+pub fn include_pointer(
+	jp_list: &JpList,
+	value: &str,
+) -> Result<minijinja::Value, minijinja::Error> {
 	jp_list
 		.iter()
 		.filter_map(|(a, b)| a.eq(value).then_some(b.clone()))

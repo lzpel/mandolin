@@ -59,22 +59,20 @@ pub fn ls(input: &JpList, mode: LsMode) -> minijinja::Value {
 	minijinja::Value::from_serialize(ret)
 }
 
-pub type NestedStruct = HashMap<String, Option<String>>;
+pub type NestedSchema = HashMap<String, Option<String>>;
 
-pub fn struct_clean(structs: &mut NestedStruct) ->NestedStruct{
-	eprintln!("@@@@ clean {:?}", structs);
-    let mut drained = HashMap::new();
-    for (key, value) in structs.iter_mut() {
-        if let Some(v) = value.take() {
-            drained.insert(key.clone(), Some(v));
-        }
-        // valueはtake()されたのでNoneになる
-    }
-    drained
+pub fn schema_drain(structs: &mut NestedSchema) -> NestedSchema {
+	let mut drained = HashMap::new();
+	for (key, value) in structs.iter_mut() {
+		if let Some(v) = value.take() {
+			drained.insert(key.clone(), Some(v));
+		}
+		// valueはtake()されたのでNoneになる
+	}
+	drained
 }
 
-pub fn struct_push(structs: &mut NestedStruct, pointer: &str, content: Option<&str>) ->bool{
-	eprintln!("@@@@ push {:?}", pointer);
+pub fn schema_push(structs: &mut NestedSchema, pointer: &str, content: Option<&str>) -> bool {
 	let is_first = !structs.contains_key(pointer);
 	structs.insert(pointer.to_string(), content.map(|v| v.to_string()));
 	return is_first;

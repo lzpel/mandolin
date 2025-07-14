@@ -18,9 +18,13 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 	}
 	{
 		let ls = value_jp.clone();
-		env.add_filter("include_ref", move |value: minijinja::Value| filter::include_ref(&ls, value));
+		env.add_filter("include_ref", move |value: minijinja::Value| {
+			filter::include_ref(&ls, value)
+		});
 		let ls = value_jp.clone();
-		env.add_filter("include_pointer", move |value: &str| filter::include_pointer(&ls, value));
+		env.add_filter("include_pointer", move |value: &str| {
+			filter::include_pointer(&ls, value)
+		});
 	}
 	env.add_filter("decode", filter::decode);
 	env.add_filter("encode", filter::encode);
@@ -45,16 +49,19 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 			function::ls(&ls, function::LsMode::SCHEMA)
 		});
 	}
-     let queue = std::sync::Arc::new(Mutex::new(function::NestedStruct::default()));
+	let queue = std::sync::Arc::new(Mutex::new(function::NestedSchema::default()));
 	{
 		let q = std::sync::Arc::clone(&queue);
-		env.add_function("struct_clean",  move || {
-			function::struct_clean(&mut q.lock().unwrap())
+		env.add_function("schema_drain", move || {
+			function::schema_drain(&mut q.lock().unwrap())
 		});
 		let q = std::sync::Arc::clone(&queue);
-		env.add_function("struct_push",  move |pointer: &str, content: Option<&str>| {
-			function::struct_push(&mut q.lock().unwrap(), pointer, content)
-		});
+		env.add_function(
+			"schema_push",
+			move |pointer: &str, content: Option<&str>| {
+				function::schema_push(&mut q.lock().unwrap(), pointer, content)
+			},
+		);
 	}
 	Ok(env)
 }
@@ -103,7 +110,7 @@ mod tests {
 		for (k, input_api) in api_map() {
 			println!("render start: {k}");
 			let env = environment(input_api).unwrap();
-			let template = env.get_template("RUST_SERVER_AXUM").unwrap();
+			let template = env.get_template("RUST_AXUM").unwrap();
 			let output = template.render(0).unwrap();
 			write(format!("out/{k}.rs"), output.as_str()).unwrap();
 			println!("render complete: {k}");
