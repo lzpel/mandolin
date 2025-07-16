@@ -22,10 +22,10 @@ export function addHonoOperations(app: Hono, implement: {{INTERFACE_NAME}}){
 {%- for pointer, operation in ls_operation() %}
 	app.{{(pointer|split)[-1]}}('{{(pointer|split)[-2]}}', (c) => {
 		if (implement.{{OPERATION_NAME(pointer,operation)}}===undefined)return;
-		const ret=implement.{{OPERATION_NAME(pointer,operation)}}({{OPERATION_REQUEST_NAME(pointer,operation)}}{
+		const req: {{OPERATION_REQUEST_NAME(pointer,operation)}} = {
 {%- for parameter in operation.parameters|include_ref %}
 {%- with parameter=parameter|include_ref %}
-				r#{{parameter.name}}:match {{parameter.in}}.get("{{parameter.name}}").and_then(|v| v.parse().ok())
+			{{parameter.name}}:match {{parameter.in}}.get("{{parameter.name}}").and_then(|v| v.parse().ok())
 {%- if parameter.required -%}
 {Some(v)=>v, None=>return (axum::http::StatusCode::from_u16(400).unwrap(),[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}).as_bytes().to_vec())}
 {%- else -%}
@@ -44,23 +44,29 @@ body.into()
 {%- break %}
 {%- endfor %},
 {%- endif %}
-			}).await;
-			match ret{
+		}
+		const response = await implement.{{OPERATION_NAME(pointer,operation)}}(request)
+		switch (response.code){
 {%- for response_key, response in operation.responses|items %}
-				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response.content -%}(v){%- endif -%} => (axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap(),
+{%- with code=response_key|replace("default","500")%}
+			case {{response_key}}:
 {%- if response.content %}
-{%- for contentType, media in response.content|items %}[(axum::http::header::CONTENT_TYPE, "{{contentType}}")],
-{%- if "json" in contentType %}serde_json::to_vec_pretty(&v).expect("error serialize response json")
-{%- elif media.schema.format and media.schema.format == "binary" %}v
-{%- else %}v.as_bytes().to_vec()
+{%- for contentType, media in response.content|items %}
+{%- if "json" in contentType %} 
+				return c.json(response.body, {{code}})
+{%- elif media.schema.format and media.schema.format == "binary" %}
+				return c.body(response.body, {{code}}, {'Content-Type': '{{contentType}}'})
+{%- else %}
+				return c.text(response.body, {{code}}, {'Content-Type': '{{contentType}}'})
 {%- endif %}
 {%- break %}
 {%- endfor %}
-{%- else -%}
-[(axum::http::header::CONTENT_TYPE, "text/plain")], "{{response.description}}".as_bytes().to_vec()
-{%- endif -%}
-),
+{%- else %}
+				return c.text("{{response.description}}")
+{%- endif %}
+{%- endwith %}
 {%- endfor %}
+		}
 	})
 {%- endfor %}
 class TestServer implements SimpleAPI{}

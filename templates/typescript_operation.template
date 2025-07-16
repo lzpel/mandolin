@@ -19,7 +19,7 @@
 type {{OPERATION_REQUEST_NAME(pointer,operation)}} = {
 {%- for parameter in operation.parameters|include_ref %}
 {%- with parameter=parameter|include_ref %}
-	{{parameter.name}}:{%-set inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
+	{{parameter.name}}:{%-with inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}{{inner}}|undefined{%- endif -%}{%- endwith %},
 {%- endwith %}
 {%- endfor %}
 {%- if operation.requestBody %}
@@ -33,19 +33,8 @@ type {{OPERATION_REQUEST_NAME(pointer,operation)}} = {
 
 {%- macro OPERATION_RESPONSE(pointer,operation) -%}
 // Response of {{OPERATION_NAME(pointer,operation)}}
-type {{OPERATION_RESPONSE_NAME(pointer,operation)}} = {
-{%- set ns = namespace(response_default_key=0) %}
+type {{OPERATION_RESPONSE_NAME(pointer,operation)}} = 
 {%- for response_key, response in operation.responses|items %}
-	{{("status_"+response_key)|to_pascal_case}}{%-if response.content-%}({%- for content_key, content in response.content|items %}{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_key|encode+"/schema",content.schema)}}{%-break%}{%-endfor%}){%-endif%},
-{%- if ns.response_default_key == 0%}
-{%- set ns.response_default_key=response_key %}
-{%- set ns.response_default=response %}
-{%- endif %}
+	| { code: {{response_key}};{%-if response.content%}{%- for content_key, content in response.content|items %} body:{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_key|encode+"/schema",content.schema)}}{%-break%}{%-endfor%}{%-endif%}}
 {%- endfor %}
-}
-impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
-	fn default() -> Self{
-		Self::{{("status_"+ns.response_default_key)|to_pascal_case}}{%-if ns.response_default.content-%}(Default::default()){%-endif%}
-	}
-}
 {%- endmacro -%}

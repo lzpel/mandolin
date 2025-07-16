@@ -14,7 +14,7 @@
 {{SCHEMA(pointer+"/items",schema.items)}}[]
 {%- elif schema.type == "integer" %}number
 {%- elif schema.type == "string" -%}
-{%- if schema.format == "binary" -%}Vec<u8>
+{%- if schema.format == "binary" -%}ArrayBuffer
 {%- elif schema.format == "uuid" %}uuid::Uuid
 {%- else %}string
 {%- endif %}
