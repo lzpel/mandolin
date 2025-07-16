@@ -1,0 +1,57 @@
+{%- macro SCHEMA_NAME(pointer) %}
+{%- if schema_push(pointer, none) %}
+{%- do schema_push(pointer, IDENTIFIED_SCHEMA(pointer, pointer|include_pointer)) %}
+{%- endif %}{{pointer|replace("#/components/schemas/","")|decode|to_pascal_case}}
+{%- endmacro %}
+
+{%- macro SCHEMA(pointer,schema) -%}
+{%- if schema.type -%}
+{%- if schema.type == "object" -%}
+{%- if schema.additionalProperties %}HashMap<String,{{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}}>
+{%- else %}{{SCHEMA_NAME(pointer)}}
+{%- endif %}
+{%- elif schema.type == "array" -%}
+{{SCHEMA(pointer+"/items",schema.items)}}[]
+{%- elif schema.type == "integer" %}number
+{%- elif schema.type == "string" -%}
+{%- if schema.format == "binary" -%}Vec<u8>
+{%- elif schema.format == "uuid" %}uuid::Uuid
+{%- else %}string
+{%- endif %}
+{%- elif schema.type == "number" %}number
+{%- elif schema.type == "boolean" %}boolean
+{%- else -%}
+{%- endif %}
+{%- elif schema["$ref"] -%}
+{{SCHEMA_NAME(schema["$ref"])}}
+{%- else -%}
+u8
+{%- endif %}
+{%- endmacro -%}
+
+{%- macro IDENTIFIED_SCHEMA(pointer, schema) %}
+{%- if schema.type == "object" %}
+type {{SCHEMA_NAME(pointer)}} = {
+{%- for property_key, property in schema.properties|items %}
+{%- with inner=SCHEMA(pointer+"/properties/"+property_key, property) %}
+	{{property_key}}:{%- if schema.required and property_key in schema.required %}{{inner}}{%- else %}{{inner}}|undefined{%- endif %},
+{%- endwith %}
+{%- endfor %}
+}
+{%- else %}
+pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
+{%- endif %}
+{%- endmacro %}
+
+{%- for pointer, schema in ls_schema() -%}
+{%- if "/" not in pointer|replace('#/components/schemas/',"") %}
+{{ IDENTIFIED_SCHEMA(pointer, schema) }}
+{% endif %}
+{%- endfor %}
+
+
+{%- macro IDENTIFIED_SCHEMA_DRAIN() %}
+{%- for pointer, output in schema_drain()|items -%}
+{{output}}
+{%- endfor %}
+{%- endmacro %}

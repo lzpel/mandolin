@@ -48,6 +48,25 @@ pub fn to_pascal_case(s: &str) -> String {
 	}
 	result
 }
+pub fn to_camel_case(s: &str) -> String {
+	let mut result = String::new();
+	let mut flag = false;
+	for c in s.chars() {
+		if c.is_ascii_alphanumeric() == false {
+			flag = true; //前置判定
+		} else {
+			// flag |= result.is_empty();
+			//↑当該判定
+			if flag {
+				result.push(c.to_ascii_uppercase())
+			} else {
+				result.push(c)
+			}
+			flag = false;
+		}
+	}
+	result
+}
 
 pub fn include_ref(
 	jp_list: &JpList,
