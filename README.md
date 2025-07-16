@@ -14,11 +14,12 @@ Generate server code in Rust from openapi specification and jinja2 templates.
 
 Render axum server code using builtin template
 
-```rust
+```rust:examples/example_custom.rs
 use mandolin;
 use serde_yaml;
 use std::fs;
 fn main() {
+	// read openapi.yaml
 	let input_api = serde_yaml::from_str(
 		fs::read_to_string("./openapi/openapi.yaml")
 			.unwrap()
@@ -26,20 +27,21 @@ fn main() {
 	)
 	.unwrap();
 	let env = mandolin::environment(input_api).unwrap();
-	let output = env.get_template("RUST_AXUM").unwrap().render(0).unwrap();
 	// write the rendered output
-	fs::write("./output/server_builtin.rs", output).unwrap();
+	let output = env.get_template("RUST_AXUM").unwrap().render(0).unwrap();
+	fs::write("./out/server_builtin.rs", output).unwrap();
 }
 ```
 
 Render axum server source code using your custom jinja2 template.
 
-```rust
+```rust:examples/example_custom.rs
 use mandolin;
 use serde_yaml;
 use std::fs;
 
 fn main() {
+	// read openapi.yaml
 	let input_api = serde_yaml::from_str(
 		fs::read_to_string("./openapi/openapi.yaml")
 			.unwrap()
@@ -48,18 +50,18 @@ fn main() {
 	.unwrap();
 	let mut env = mandolin::environment(input_api).unwrap();
 	// add your templates
-	let content = fs::read_to_string("./templates/rust_server_axum.template").unwrap();
+	let content = fs::read_to_string("./templates/rust_axum.template").unwrap();
 	env.add_template("RUST_AXUM", content.as_str()).unwrap();
 
 	let content = fs::read_to_string("./templates/rust_schema.template").unwrap();
 	env.add_template("RUST_SCHEMA", content.as_str()).unwrap();
 
-	let content = fs::read_to_string("./templates/rust_trait.template").unwrap();
-	env.add_template("RUXT_TRAIT", content.as_str()).unwrap();
+	let content = fs::read_to_string("./templates/rust_operation.template").unwrap();
+	env.add_template("RUST_OPERATION", content.as_str()).unwrap();
 
-	// render
-	let env = mandolin::environment(input_api).unwrap();
+	// write the rendered output
 	let output = env.get_template("RUST_AXUM").unwrap().render(0).unwrap();
+	fs::write("./out/server_builtin.rs", output).unwrap();
 }
 ```
 

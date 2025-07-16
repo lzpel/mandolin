@@ -15,7 +15,7 @@ tokio = { version = "*", features = ["rt", "rt-multi-thread", "macros", "signal"
 */
 
 {% include "RUST_SCHEMA" %}
-{% include "RUST_TRAIT" %}
+{% include "RUST_OPERATION" %}
 {{ IDENTIFIED_SCHEMA_DRAIN() }}
 
 use axum;

@@ -18,8 +18,8 @@ fn main() {
 	let content = fs::read_to_string("./templates/rust_schema.template").unwrap();
 	env.add_template("RUST_SCHEMA", content.as_str()).unwrap();
 
-	let content = fs::read_to_string("./templates/rust_trait.template").unwrap();
-	env.add_template("RUST_TRAIT", content.as_str()).unwrap();
+	let content = fs::read_to_string("./templates/rust_operation.template").unwrap();
+	env.add_template("RUST_OPERATION", content.as_str()).unwrap();
 
 	// write the rendered output
 	let output = env.get_template("RUST_AXUM").unwrap().render(0).unwrap();
