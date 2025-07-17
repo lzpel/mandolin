@@ -189,7 +189,7 @@ dependencies = [
 
 [[package]]
 name = "mandolin"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "minijinja",
  "openapiv3",
@@ -386,7 +386,7 @@ name = "wasm"
 version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
- "mandolin 0.1.11",
+ "mandolin 0.1.12",
  "serde_json",
  "serde_yaml",
  "wasm-bindgen",
