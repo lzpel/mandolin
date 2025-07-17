@@ -106,7 +106,7 @@ mod tests {
 		let mut writer = std::io::BufWriter::new(File::create(path)?);
 		writeln!(writer, "{}", content.as_ref())
 	}
-	fn render_target(template: &str, extention: &str){
+	fn render_target(template: &str, extention: &str) {
 		for (k, input_api) in api_map() {
 			println!("render start: {k}");
 			let env = environment(input_api).unwrap();

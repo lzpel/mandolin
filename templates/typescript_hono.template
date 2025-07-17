@@ -22,7 +22,7 @@ export function addHonoOperations(app: Hono, implement: {{INTERFACE_NAME}}){
 {%- for pointer, operation in ls_operation() %}
 	app.{{(pointer|split)[-1]}}('{{(pointer|split)[-2]}}', (c) => {
 		if (implement.{{OPERATION_NAME(pointer,operation)}}===undefined)return;
-		const req: {{OPERATION_REQUEST_NAME(pointer,operation)}} = {
+		const request: {{OPERATION_REQUEST_NAME(pointer,operation)}} = {
 {%- for parameter in operation.parameters|include_ref %}
 {%- with parameter=parameter|include_ref %}
 			{{parameter.name}}:match {{parameter.in}}.get("{{parameter.name}}").and_then(|v| v.parse().ok())
@@ -35,7 +35,7 @@ export function addHonoOperations(app: Hono, implement: {{INTERFACE_NAME}}){
 {%- endfor %}
 {%- if operation.requestBody %}
 {%- for content_key, content in operation.requestBody.content|items %}
-				body:
+			body:
 {%- if "json" in content_key -%}
 match serde_json::from_slice(body.to_vec().as_slice()){Ok(v)=>v,Err(v) => { return (axum::http::StatusCode::INTERNAL_SERVER_ERROR,[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("{:?}", v).as_bytes().to_vec())}}
 {%- else %}
@@ -49,7 +49,7 @@ body.into()
 		switch (response.code){
 {%- for response_key, response in operation.responses|items %}
 {%- with code=response_key|replace("default","500")%}
-			case {{response_key}}:
+			case {{code}}:
 {%- if response.content %}
 {%- for contentType, media in response.content|items %}
 {%- if "json" in contentType %} 
