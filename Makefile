@@ -18,7 +18,6 @@ deploy:
 clean:
 	bash -c "$${make_dirs}"
 compile:
-	bash -c "$${markdown_import}"
 	bash -c "cd frontend && find ../openapi/ -name '*.tsp' | xargs -IX npx tsp compile X --emit @typespec/openapi3"
 cli:
 	cd mandolin-cli && cargo run -- -h
@@ -61,7 +60,3 @@ generate:
 EOF
 endef
 export create
-define markdown_import
-sed -i -n 's/^```\(.*\)/```\1/p' README.md
-endef
-export markdown_import
