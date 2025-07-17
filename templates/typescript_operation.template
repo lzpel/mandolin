@@ -1,0 +1,42 @@
+{%- macro OPERATION_NAME(pointer,operation) -%}
+{%- if operation.operationId -%}
+{{operation.operationId|to_camel_case}}
+{%- else -%}
+{{pointer|decode|to_camel_case}}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro OPERATION_REQUEST_NAME(pointer,operation) -%}
+{{(OPERATION_NAME(pointer,operation)+"_request")|to_pascal_case}}
+{%- endmacro -%}
+
+{%- macro OPERATION_RESPONSE_NAME(pointer,operation) -%}
+{{(OPERATION_NAME(pointer,operation)+"_response")|to_pascal_case}}
+{%- endmacro -%}
+
+{%- macro OPERATION_REQUEST(pointer,operation) -%}
+// Request of {{OPERATION_NAME(pointer,operation)}}
+type {{OPERATION_REQUEST_NAME(pointer,operation)}} = {
+{%- for parameter in operation.parameters|include_ref %}
+{%- with parameter=parameter|include_ref %}
+	{{parameter.name}}:{%-with inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}{{inner}}|undefined{%- endif -%}{%- endwith %},
+{%- endwith %}
+{%- endfor %}
+{%- if operation.requestBody %}
+{%- for content_key, content in operation.requestBody.content|items %}
+	body:{{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema)}},
+{%- break %}
+{%- endfor %}
+{%- endif %}
+}
+{%- endmacro -%}
+
+{%- macro OPERATION_RESPONSE(pointer,operation) -%}
+// Response of {{OPERATION_NAME(pointer,operation)}}
+type {{OPERATION_RESPONSE_NAME(pointer,operation)}} = 
+{%- for response_key, response in operation.responses|items %}
+{%- with code=response_key|replace("default","500")%}
+	| { code: {{code}};{%-if response.content%}{%- for content_key, content in response.content|items %} body:{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_key|encode+"/schema",content.schema)}}{%-break%}{%-endfor%}{%-endif%}}
+{%- endwith %}
+{%- endfor %}
+{%- endmacro -%}

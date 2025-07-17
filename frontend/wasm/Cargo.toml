@@ -12,3 +12,4 @@ mandolin = { path = "../.." }
 wasm-bindgen = "*"
 console_error_panic_hook = "*"
 serde_yaml = "*"
+serde_json = "*"

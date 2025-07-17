@@ -18,15 +18,21 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 	}
 	{
 		let ls = value_jp.clone();
-		env.add_filter("include_ref", move |value: minijinja::Value| filter::include_ref(&ls, value));
+		env.add_filter("include_ref", move |value: minijinja::Value| {
+			filter::include_ref(&ls, value)
+		});
 		let ls = value_jp.clone();
-		env.add_filter("include_pointer", move |value: &str| filter::include_pointer(&ls, value));
+		env.add_filter("include_pointer", move |value: &str| {
+			filter::include_pointer(&ls, value)
+		});
 	}
 	env.add_filter("decode", filter::decode);
 	env.add_filter("encode", filter::encode);
 	env.add_filter("split", filter::split);
+	env.add_filter("re_replace", filter::re_replace);
 	env.add_filter("to_pascal_case", filter::to_pascal_case);
 	env.add_filter("to_snake_case", filter::to_snake_case);
+	env.add_filter("to_camel_case", filter::to_camel_case);
 	{
 		let ls = value_jp.clone();
 		env.add_function("ls", move |value: &str| {
@@ -45,16 +51,19 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 			function::ls(&ls, function::LsMode::SCHEMA)
 		});
 	}
-     let queue = std::sync::Arc::new(Mutex::new(function::NestedStruct::default()));
+	let queue = std::sync::Arc::new(Mutex::new(function::NestedSchema::default()));
 	{
 		let q = std::sync::Arc::clone(&queue);
-		env.add_function("struct_clean",  move || {
-			function::struct_clean(&mut q.lock().unwrap())
+		env.add_function("schema_drain", move || {
+			function::schema_drain(&mut q.lock().unwrap())
 		});
 		let q = std::sync::Arc::clone(&queue);
-		env.add_function("struct_push",  move |pointer: &str, content: Option<&str>| {
-			function::struct_push(&mut q.lock().unwrap(), pointer, content)
-		});
+		env.add_function(
+			"schema_push",
+			move |pointer: &str, content: Option<&str>| {
+				function::schema_push(&mut q.lock().unwrap(), pointer, content)
+			},
+		);
 	}
 	Ok(env)
 }
@@ -98,15 +107,19 @@ mod tests {
 		let mut writer = std::io::BufWriter::new(File::create(path)?);
 		writeln!(writer, "{}", content.as_ref())
 	}
-	#[test]
-	fn render() {
+	fn render_target(template: &str, extention: &str) {
 		for (k, input_api) in api_map() {
 			println!("render start: {k}");
 			let env = environment(input_api).unwrap();
-			let template = env.get_template("RUST_SERVER_AXUM").unwrap();
+			let template = env.get_template(template).unwrap();
 			let output = template.render(0).unwrap();
-			write(format!("out/{k}.rs"), output.as_str()).unwrap();
+			write(format!("out/{k}.{extention}"), output.as_str()).unwrap();
 			println!("render complete: {k}");
 		}
+	}
+	#[test]
+	fn render() {
+		render_target("TYPESCRIPT_HONO", "ts");
+		render_target("RUST_AXUM", "rs");
 	}
 }

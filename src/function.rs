@@ -59,23 +59,33 @@ pub fn ls(input: &JpList, mode: LsMode) -> minijinja::Value {
 	minijinja::Value::from_serialize(ret)
 }
 
-pub type NestedStruct = HashMap<String, Option<String>>;
+pub type NestedSchema = HashMap<String, Option<String>>;
 
-pub fn struct_clean(structs: &mut NestedStruct) ->NestedStruct{
-	eprintln!("@@@@ clean {:?}", structs);
-    let mut drained = HashMap::new();
-    for (key, value) in structs.iter_mut() {
-        if let Some(v) = value.take() {
-            drained.insert(key.clone(), Some(v));
-        }
-        // valueはtake()されたのでNoneになる
-    }
-    drained
+pub fn schema_drain(structs: &mut NestedSchema) -> NestedSchema {
+	let mut drained = HashMap::new();
+	for (key, value) in structs.iter_mut() {
+		if let Some(v) = value.take() {
+			drained.insert(key.clone(), Some(v));
+		}
+		// valueはtake()されたのでNoneになる
+	}
+	drained
 }
 
-pub fn struct_push(structs: &mut NestedStruct, pointer: &str, content: Option<&str>) ->bool{
-	eprintln!("@@@@ push {:?}", pointer);
-	let is_first = !structs.contains_key(pointer);
-	structs.insert(pointer.to_string(), content.map(|v| v.to_string()));
-	return is_first;
+// Schemaをキャッシュする
+// 循環参照を避けるために、(pointer=json_pointer, Value=None)⇒if keyが衝突しなければ⇒(Key=JsonPointer, Value=content)の順に二度呼び出す。
+// NoneがSomeに代わるときのみ実際に登録する。
+pub fn schema_push(structs: &mut NestedSchema, json_pointer: &str, content: Option<&str>) -> bool {
+	if let Some(v) = structs.get(json_pointer) {
+		// 存在する
+		if v.is_none() {
+			// 存在してかつNoneなら変更する。既にSomeならば、Noneに戻すような変更を行わない
+			structs.insert(json_pointer.to_string(), content.map(|c| c.to_string()));
+		}
+		return false;
+	} else {
+		// 存在しない
+		structs.insert(json_pointer.to_string(), content.map(|c| c.to_string()));
+		return true;
+	}
 }

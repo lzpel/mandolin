@@ -49,21 +49,21 @@ pub fn main() {
 		}
 	};
 
-    let input_api=match [
-        serde_yaml::from_str(input.as_str()).map_err(|_| ()),
-        serde_json::from_str(input.as_str()).map_err(|_| ()),
-    ]
-        .into_iter()
-        .find_map(Result::ok)
-		{
-			Some(v)=>v,
-			None=>{
-				eprintln!("Cannot parse input as json/yaml");
-				std::process::exit(1);
-			}
-		};
+	let input_api = match [
+		serde_yaml::from_str(input.as_str()).map_err(|_| ()),
+		serde_json::from_str(input.as_str()).map_err(|_| ()),
+	]
+	.into_iter()
+	.find_map(Result::ok)
+	{
+		Some(v) => v,
+		None => {
+			eprintln!("Cannot parse input as json/yaml");
+			std::process::exit(1);
+		}
+	};
 	let env = mandolin::environment(input_api).unwrap();
-	let template = env.get_template("RUST_SERVER_AXUM").unwrap();
+	let template = env.get_template("RUST_AXUM").unwrap();
 	let output = template.render(0).unwrap();
 	// write the rendered output
 	match &args.output {

@@ -2,15 +2,15 @@ use mandolin;
 use serde_yaml;
 use std::fs;
 fn main() {
+	// read openapi.yaml
 	let input_api = serde_yaml::from_str(
-		fs::read_to_string("./openapi/openapi.yaml")
+		fs::read_to_string("./openapi/openapi_petstore.yaml")
 			.unwrap()
 			.as_str(),
 	)
 	.unwrap();
 	let env = mandolin::environment(input_api).unwrap();
-	let template = env.get_template("RUST_SERVER_AXUM").unwrap();
-	let output = template.render(0).unwrap();
 	// write the rendered output
-	fs::write("./output/server_builtin.rs", output).unwrap();
+	let output = env.get_template("RUST_AXUM").unwrap().render(0).unwrap();
+	fs::write("./out/server_builtin.ts", output).unwrap();
 }

@@ -1,4 +1,5 @@
 use crate::JpList;
+use regex;
 use serde::Deserialize;
 
 pub fn encode(content: &str) -> String {
@@ -10,48 +11,55 @@ pub fn decode(content: &str) -> String {
 pub fn split(content: &str) -> Vec<String> {
 	content.split('/').map(decode).collect()
 }
+pub fn re_replace(content: &str, re: &str, replace: &str) -> String {
+	let re = regex::Regex::new(re).unwrap();
+	re.replace_all(content, replace).to_string()
+}
+fn to_case_words(s: &str) -> Vec<String> {
+	let re = regex::Regex::new(r"[A-Za-z0-9]+").unwrap();
+	re.find_iter(s)
+		.map(|m| m.as_str().to_ascii_lowercase())
+		.collect()
+}
 pub fn to_snake_case(s: &str) -> String {
-	let mut result = String::new();
-	let mut flag = false;
-	for c in s.chars() {
-		if c.is_ascii_alphanumeric() == false {
-			flag = true; //前置判定
-		} else {
-			flag |= c.is_uppercase();
-			flag &= !result.is_empty();
-			//↑当該判定
-			if flag {
-				result.push('_')
-			}
-			result.push(c.to_ascii_lowercase());
-			flag = false;
-		}
-	}
-	result
+	to_case_words(s).join("_")
 }
 pub fn to_pascal_case(s: &str) -> String {
-	let mut result = String::new();
-	let mut flag = false;
-	for c in s.chars() {
-		if c.is_ascii_alphanumeric() == false {
-			flag = true; //前置判定
-		} else {
-			flag |= result.is_empty();
-			//↑当該判定
-			if flag {
-				result.push(c.to_ascii_uppercase())
+	to_case_words(s)
+		.into_iter()
+		.map(|word| {
+			word.chars()
+				.enumerate()
+				.map(|(i, c)| if i == 0 { c.to_ascii_uppercase() } else { c })
+				.collect::<String>()
+		})
+		.collect()
+}
+pub fn to_camel_case(s: &str) -> String {
+	to_case_words(s)
+		.into_iter()
+		.enumerate()
+		.map(|(i, word)| {
+			if i > 0 {
+				word.chars()
+					.enumerate()
+					.map(|(i, c)| if i == 0 { c.to_ascii_uppercase() } else { c })
+					.collect::<String>()
 			} else {
-				result.push(c)
+				word
 			}
-			flag = false;
-		}
-	}
-	result
+		})
+		.collect()
 }
 
-pub fn include_ref(jp_list: &JpList, value: minijinja::Value) -> Result<minijinja::Value, minijinja::Error> {
+pub fn include_ref(
+	jp_list: &JpList,
+	value: minijinja::Value,
+) -> Result<minijinja::Value, minijinja::Error> {
 	match openapiv3::ReferenceOr::<()>::deserialize(&value) {
-		Ok(openapiv3::ReferenceOr::Reference { reference }) => include_pointer(jp_list, reference.as_str()),
+		Ok(openapiv3::ReferenceOr::Reference { reference }) => {
+			include_pointer(jp_list, reference.as_str())
+		}
 		_ => Ok(value),
 	}
 	/*
@@ -85,7 +93,10 @@ pub fn include_ref(jp_list: &JpList, value: minijinja::Value) -> Result<minijinj
 	*/
 }
 
-pub fn include_pointer(jp_list: &JpList, value: &str) -> Result<minijinja::Value, minijinja::Error> {
+pub fn include_pointer(
+	jp_list: &JpList,
+	value: &str,
+) -> Result<minijinja::Value, minijinja::Error> {
 	jp_list
 		.iter()
 		.filter_map(|(a, b)| a.eq(value).then_some(b.clone()))

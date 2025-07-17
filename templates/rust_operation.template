@@ -25,7 +25,7 @@ pub struct {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 {%- endfor %}
 {%- if operation.requestBody %}
 {%- for content_key, content in operation.requestBody.content|items %}
-    pub body:{{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema)}},
+	pub body:{{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema)}},
 {%- break %}
 {%- endfor %}
 {%- endif %}
@@ -51,29 +51,3 @@ impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 	}
 }
 {%- endmacro -%}
-
-use std::collections::HashMap;
-use serde;
-use std::future::Future;
-pub trait Server{
-{%- for pointer, operation in ls_operation() %}
-	// {{(pointer|split)[-1]}} {{(pointer|split)[-2]}}
-	fn {{OPERATION_NAME(pointer,operation)}}(request: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> impl Future<Output = {{OPERATION_RESPONSE_NAME(pointer,operation)}}> + Send{async{Default::default()}}
-{%- endfor %}
-}
-/*
-pub struct TestServer{}
-impl server::Server for TestServer{
-{%- for pointer, operation in ls_operation() %}
-	// {{(pointer|split)[-1]}} {{(pointer|split)[-2]}}
-	async fn {{OPERATION_NAME(pointer,operation)}}(request: {{operation.request_identifier}}) -> {{operation.response_identifier}}{Default::default()}
-{%- endfor %}
-}
-*/
-
-{%- for pointer, operation in ls_operation() %}
-{{OPERATION_REQUEST(pointer, operation)}}
-{%- endfor %}
-{%- for pointer, operation in ls_operation() %}
-{{OPERATION_RESPONSE(pointer, operation)}}
-{%- endfor %}
