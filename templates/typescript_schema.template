@@ -7,14 +7,13 @@
 {%- macro SCHEMA(pointer,schema) -%}
 {%- if schema.type -%}
 {%- if schema.type == "object" -%}
-{%- if schema.additionalProperties %}HashMap<String,{{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}}>
+{%- if schema.additionalProperties %}{ [key: string]: {{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}} }
 {%- else %}{{SCHEMA_NAME(pointer)}}
 {%- endif %}
-{%- elif schema.type == "array" -%}
-{{SCHEMA(pointer+"/items",schema.items)}}[]
+{%- elif schema.type == "array" %}{{SCHEMA(pointer+"/items",schema.items)}}[]
 {%- elif schema.type == "integer" %}number
-{%- elif schema.type == "string" -%}
-{%- if schema.format == "binary" -%}ArrayBuffer
+{%- elif schema.type == "string" %}
+{%- if schema.format == "binary" %}ArrayBuffer
 {%- elif schema.format == "uuid" %}uuid::Uuid
 {%- else %}string
 {%- endif %}
@@ -43,15 +42,8 @@ pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endif %}
 {%- endmacro %}
 
-{%- for pointer, schema in ls_schema() -%}
-{%- if "/" not in pointer|replace('#/components/schemas/',"") %}
-{{ IDENTIFIED_SCHEMA(pointer, schema) }}
-{% endif %}
-{%- endfor %}
-
-
 {%- macro IDENTIFIED_SCHEMA_DRAIN() %}
-{%- for pointer, output in schema_drain()|items -%}
+{%- for pointer, output in schema_drain()|items %}
 {{output}}
 {%- endfor %}
 {%- endmacro %}

@@ -20,32 +20,28 @@ interface {{INTERFACE_NAME}}{
 
 export function addHonoOperations(app: Hono, implement: {{INTERFACE_NAME}}){
 {%- for pointer, operation in ls_operation() %}
-	app.{{(pointer|split)[-1]}}('{{(pointer|split)[-2]}}', (c) => {
+	app.{{(pointer|split)[-1]}}('{{(pointer|split)[-2]}}', async (c) => {
 		if (implement.{{OPERATION_NAME(pointer,operation)}}===undefined)return;
-		const request: {{OPERATION_REQUEST_NAME(pointer,operation)}} = {
+		const request: Partial<{{OPERATION_REQUEST_NAME(pointer,operation)}}> = {}
 {%- for parameter in operation.parameters|include_ref %}
 {%- with parameter=parameter|include_ref %}
-			{{parameter.name}}:match {{parameter.in}}.get("{{parameter.name}}").and_then(|v| v.parse().ok())
-{%- if parameter.required -%}
-{Some(v)=>v, None=>return (axum::http::StatusCode::from_u16(400).unwrap(),[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}).as_bytes().to_vec())}
-{%- else -%}
-{Some(v)=>Some(v), None=>None}
-{%- endif -%},
+		let v{{loop.count}} = c.req.{{ {"path":"param", "query":"query", "header":"header", "cookie":"cookie" }[parameter.in] }}("{{parameter.name}}")
+{%- if parameter.required %}
+		if(v{{loop.count}}===undefined)return c.text("required parameter '{{parameter.name}}' is not in '{{parameter.in}}'", 500)
+{%- endif %}
+		request.{{parameter.name}} = v{{loop.count}};
 {%- endwith %}
 {%- endfor %}
 {%- if operation.requestBody %}
 {%- for content_key, content in operation.requestBody.content|items %}
-			body:
-{%- if "json" in content_key -%}
-match serde_json::from_slice(body.to_vec().as_slice()){Ok(v)=>v,Err(v) => { return (axum::http::StatusCode::INTERNAL_SERVER_ERROR,[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("{:?}", v).as_bytes().to_vec())}}
-{%- else %}
-body.into()
+		request.body = {%- if "json" in content_key %}(await c.req.json()) as {{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema", content.schema)}}
+{%- elif "text" in content_key %}await c.req.text()
+{%- else %}c.req.arrayBuffer()
 {%- endif %}
 {%- break %}
-{%- endfor %},
+{%- endfor %}
 {%- endif %}
-		}
-		const response = await implement.{{OPERATION_NAME(pointer,operation)}}(request)
+		const response = await implement.{{OPERATION_NAME(pointer,operation)}}(request as {{OPERATION_REQUEST_NAME(pointer,operation)}})
 		switch (response.code){
 {%- for response_key, response in operation.responses|items %}
 {%- with code=response_key|replace("default","500")%}
@@ -69,7 +65,7 @@ body.into()
 		}
 	})
 {%- endfor %}
-class TestServer implements SimpleAPI{}
+class TestServer implements {{INTERFACE_NAME}}{}
 export function main(){
 	const app = new Hono()
 	addHonoOperations(app,new TestServer());

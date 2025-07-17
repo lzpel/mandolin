@@ -47,13 +47,6 @@ pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endif %}
 {%- endmacro %}
 
-{%- for pointer, schema in ls_schema() -%}
-{%- if "/" not in pointer|replace('#/components/schemas/',"") %}
-{{ IDENTIFIED_SCHEMA(pointer, schema) }}
-{% endif %}
-{%- endfor %}
-
-
 {%- macro IDENTIFIED_SCHEMA_DRAIN() %}
 {%- for pointer, output in schema_drain()|items -%}
 {{output}}

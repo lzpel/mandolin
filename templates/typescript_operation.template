@@ -37,6 +37,6 @@ type {{OPERATION_RESPONSE_NAME(pointer,operation)}} =
 {%- for response_key, response in operation.responses|items %}
 {%- with code=response_key|replace("default","500")%}
 	| { code: {{code}};{%-if response.content%}{%- for content_key, content in response.content|items %} body:{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_key|encode+"/schema",content.schema)}}{%-break%}{%-endfor%}{%-endif%}}
-{%- endwith }
+{%- endwith %}
 {%- endfor %}
 {%- endmacro -%}

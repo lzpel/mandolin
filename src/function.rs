@@ -63,17 +63,34 @@ pub type NestedSchema = HashMap<String, Option<String>>;
 
 pub fn schema_drain(structs: &mut NestedSchema) -> NestedSchema {
 	let mut drained = HashMap::new();
+	eprintln!("drain start");
 	for (key, value) in structs.iter_mut() {
+		let mut flag=false;
 		if let Some(v) = value.take() {
+			flag=true;
 			drained.insert(key.clone(), Some(v));
 		}
+		eprintln!("drain pop {} {flag}", key.as_str());
 		// valueはtake()されたのでNoneになる
 	}
 	drained
 }
 
-pub fn schema_push(structs: &mut NestedSchema, pointer: &str, content: Option<&str>) -> bool {
-	let is_first = !structs.contains_key(pointer);
-	structs.insert(pointer.to_string(), content.map(|v| v.to_string()));
-	return is_first;
+// Schemaをキャッシュする
+// 循環参照を避けるために、(pointer=json_pointer, Value=None)⇒if keyが衝突しなければ⇒(Key=JsonPointer, Value=content)の順に二度呼び出す。
+// NoneがSomeに代わるときのみ実際に登録する。
+pub fn schema_push(structs: &mut NestedSchema, json_pointer: &str, content: Option<&str>) -> bool {
+	eprintln!("push {json_pointer} {}", if let Some(v) = content {1} else {0});
+	if let Some(v) = structs.get(json_pointer){
+		// 存在する
+		if v.is_none(){
+			// 存在してかつNoneなら変更する。既にSomeならば、Noneに戻すような変更を行わない
+			structs.insert(json_pointer.to_string(), content.map(|c| c.to_string()));
+		}
+		return false;
+	}else{
+		// 存在しない
+		structs.insert(json_pointer.to_string(), content.map(|c| c.to_string()));
+		return true;
+	}
 }
