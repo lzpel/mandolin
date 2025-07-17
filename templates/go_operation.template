@@ -1,0 +1,52 @@
+{%- macro OPERATION_NAME(pointer,operation) -%}
+{%- if operation.operationId -%}
+{{operation.operationId|to_snake_case}}
+{%- else -%}
+{{pointer|decode|to_snake_case}}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro OPERATION_REQUEST_NAME(pointer,operation) -%}
+{{(OPERATION_NAME(pointer,operation)+"_request")|to_pascal_case}}
+{%- endmacro -%}
+
+{%- macro OPERATION_RESPONSE_NAME(pointer,operation) -%}
+{{(OPERATION_NAME(pointer,operation)+"_response")|to_pascal_case}}
+{%- endmacro -%}
+
+{%- macro OPERATION_REQUEST(pointer,operation) -%}
+// Request of {{OPERATION_NAME(pointer,operation)}}
+type {{OPERATION_REQUEST_NAME(pointer,operation)}} struct {
+{%- for parameter in operation.parameters|include_ref %}
+{%- with parameter=parameter|include_ref %}
+	pub {{parameter.name}}:{%-set inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
+{%- endwith %}
+{%- endfor %}
+{%- if operation.requestBody %}
+{%- for content_key, content in operation.requestBody.content|items %}
+	pub body:{{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema)}},
+{%- break %}
+{%- endfor %}
+{%- endif %}
+}
+{%- endmacro -%}
+
+{%- macro OPERATION_RESPONSE(pointer,operation) -%}
+// Response of {{OPERATION_NAME(pointer,operation)}}
+#[derive(serde::Serialize,serde::Deserialize,Debug)]
+pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
+{%- set ns = namespace(response_default_key=0) %}
+{%- for response_key, response in operation.responses|items %}
+	{{("status_"+response_key)|to_pascal_case}}{%-if response.content-%}({%- for content_key, content in response.content|items %}{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_key|encode+"/schema",content.schema)}}{%-break%}{%-endfor%}){%-endif%},
+{%- if ns.response_default_key == 0%}
+{%- set ns.response_default_key=response_key %}
+{%- set ns.response_default=response %}
+{%- endif %}
+{%- endfor %}
+}
+impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
+	fn default() -> Self{
+		Self::{{("status_"+ns.response_default_key)|to_pascal_case}}{%-if ns.response_default.content-%}(Default::default()){%-endif%}
+	}
+}
+{%- endmacro -%}
