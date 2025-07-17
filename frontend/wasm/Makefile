@@ -3,4 +3,4 @@
 generate:
 	cargo tree && cargo fmt
 	cargo install wasm-pack
-	wasm-pack build . -d ../output
+	wasm-pack build . -d ../out

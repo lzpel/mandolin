@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout(props: Readonly<{ children: React.ReactNode }>) {
-    const full={margin: 0, height: "100%"}
+	const full={margin: 0, height: "100%"}
 	return (
 		<html lang="jp" style={full}>
 		<body style={{...full, display: "flex", flexFlow: "column"}}>

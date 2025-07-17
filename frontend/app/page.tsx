@@ -3,7 +3,7 @@ import path from "node:path";
 import Compare from "@/app/compare";
 
 export default async function Home() {
-	const files = readTextFilesInDirectory(path.join(process.cwd(), 'output', 'openapi'))
+	const files = readTextFilesInDirectory(path.join(process.cwd(), 'out'))
 	return (
 		<>
 			<h2>mandolin</h2>

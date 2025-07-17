@@ -20,18 +20,20 @@ interface {{INTERFACE_NAME}}{
 
 export function addHonoOperations(app: Hono, implement: {{INTERFACE_NAME}}){
 {%- for pointer, operation in ls_operation() %}
-	app.{{(pointer|split)[-1]}}('{{(pointer|split)[-2]}}', async (c) => {
-		if (implement.{{OPERATION_NAME(pointer,operation)}}===undefined)return;
+	app.{{(pointer|split)[-1]}}('{{ (pointer|split)[-2] | re_replace('\\{(\\w+)\\}', ':$1') }}', async (c) => {
+		if (implement.{{OPERATION_NAME(pointer,operation)}}===undefined)return c.text("not yet implemented", 500)
 		const request: Partial<{{OPERATION_REQUEST_NAME(pointer,operation)}}> = {}
+		{
 {%- for parameter in operation.parameters|include_ref %}
 {%- with parameter=parameter|include_ref %}
-		let v{{loop.count}} = c.req.{{ {"path":"param", "query":"query", "header":"header", "cookie":"cookie" }[parameter.in] }}("{{parameter.name}}")
+			let {{parameter.name|to_snake_case}} = c.req.{{ {"path":"param", "query":"query", "header":"header", "cookie":"cookie" }[parameter.in] }}("{{parameter.name}}")
 {%- if parameter.required %}
-		if(v{{loop.count}}===undefined)return c.text("required parameter '{{parameter.name}}' is not in '{{parameter.in}}'", 500)
+			if({{parameter.name|to_snake_case}}===undefined)return c.text("required parameter '{{parameter.name}}' is not in '{{parameter.in}}'", 400)
 {%- endif %}
-		request.{{parameter.name}} = v{{loop.count}};
+			request.{{parameter.name}} = {{parameter.name|to_snake_case}};
 {%- endwith %}
 {%- endfor %}
+		}
 {%- if operation.requestBody %}
 {%- for content_key, content in operation.requestBody.content|items %}
 		request.body = {%- if "json" in content_key %}(await c.req.json()) as {{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema", content.schema)}}
@@ -65,6 +67,7 @@ export function addHonoOperations(app: Hono, implement: {{INTERFACE_NAME}}){
 		}
 	})
 {%- endfor %}
+}
 class TestServer implements {{INTERFACE_NAME}}{}
 export function main(){
 	const app = new Hono()

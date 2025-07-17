@@ -43,7 +43,7 @@ create:
 	npx create-next-app@latest . --ts --eslint --app --use-npm --yes
 generate:
 	npm install
-	cp -rf ../openapi out
+	cp -rf ../openapi/. ./out
 run:
 	npm run dev
 deploy:
@@ -57,7 +57,7 @@ install -D /dev/stdin ./frontend/wasm/Makefile <<'EOF'
 generate:
 	cargo tree && cargo fmt
 	cargo install wasm-pack
-	wasm-pack build . -d ../output
+	wasm-pack build . -d ../out
 EOF
 endef
 export create

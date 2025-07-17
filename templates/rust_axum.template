@@ -124,7 +124,7 @@ body.into()
 		}))
 }
 {% with servers = ls("#/servers/") %}
-pub fn axum_router<S:Server>()->axum::Router{
+pub fn axum_router<S:{{INTERFACE_NAME}}>()->axum::Router{
 {%- if ls("#/servers/")|length > 0 %}
 	axum::Router::new()
 {%- for pointer, server in ls("#/servers/") %}
@@ -146,7 +146,7 @@ pub fn print_axum_router(port:u16){
 }
 {% endwith %}
 pub struct TestServer{}
-impl Server for TestServer{}
+impl {{INTERFACE_NAME}} for TestServer{}
 #[allow(dead_code)]
 #[tokio::main]
 async fn main() {

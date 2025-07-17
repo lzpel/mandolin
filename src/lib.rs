@@ -29,6 +29,7 @@ pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, mi
 	env.add_filter("decode", filter::decode);
 	env.add_filter("encode", filter::encode);
 	env.add_filter("split", filter::split);
+	env.add_filter("re_replace", filter::re_replace);
 	env.add_filter("to_pascal_case", filter::to_pascal_case);
 	env.add_filter("to_snake_case", filter::to_snake_case);
 	env.add_filter("to_camel_case", filter::to_camel_case);
