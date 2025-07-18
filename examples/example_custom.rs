@@ -13,14 +13,13 @@ fn main() {
 	let mut env = mandolin::environment(input_api).unwrap();
 	// add your templates
 	let content = fs::read_to_string("./templates/rust_axum.template").unwrap();
-	env.add_template("RUST_AXUM", content.as_str()).unwrap();
+	env.add_template("RUST_AXUM", &content).unwrap();
 
 	let content = fs::read_to_string("./templates/rust_schema.template").unwrap();
-	env.add_template("RUST_SCHEMA", content.as_str()).unwrap();
+	env.add_template("RUST_SCHEMA", &content).unwrap();
 
 	let content = fs::read_to_string("./templates/rust_operation.template").unwrap();
-	env.add_template("RUST_OPERATION", content.as_str())
-		.unwrap();
+	env.add_template("RUST_OPERATION", &content).unwrap();
 
 	// write the rendered output
 	let output = env.get_template("RUST_AXUM").unwrap().render(0).unwrap();

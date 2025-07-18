@@ -3,7 +3,7 @@ use serde_yaml;
 use std::fs;
 fn main() {
 	// read openapi.yaml
-	let input_string = fs::read_to_string("./openapi/openapi_plant.yaml").unwrap();
+	let input_string = fs::read_to_string("./openapi/openapi_petstore.yaml").unwrap();
 	let input_api = serde_yaml::from_str(&input_string.as_str()).unwrap();
 	// make environment
 	let env = mandolin::environment(input_api).unwrap();
