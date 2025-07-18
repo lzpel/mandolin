@@ -121,5 +121,6 @@ mod tests {
 	fn render() {
 		render_target("TYPESCRIPT_HONO", "ts");
 		render_target("RUST_AXUM", "rs");
+		render_target("GO_SERVER", "go");
 	}
 }

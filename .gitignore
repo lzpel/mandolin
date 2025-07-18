@@ -1,5 +1,6 @@
 output/
 out/
 out.*
+*_out.*
 target/
 node_modules/

@@ -1,6 +1,6 @@
 [package]
 name = "mandolin"
-version = "0.1.12"
+version = "0.1.13"
 edition = "2021"
 license = "MIT"
 authors = ["lzpel"]
@@ -9,7 +9,7 @@ repository = "https://github.com/lzpel/mandolin"
 homepage = "https://lzpel.github.io/mandolin/"
 readme = "README.md"
 build = "build.rs"
-exclude = [".github/*", "frontend/*"]
+exclude = [".github/*", "frontend/*", "openapi/*"]
 
 [dependencies]
 openapiv3 = "^2.0.0"
@@ -18,7 +18,15 @@ minijinja = { version = "^2.9", features = ["json", "preserve_order", "loop_cont
 regex = { version = "^1" }
 
 [dev-dependencies]
+# for test 
 serde_yaml = { version = "^0.9.34+deprecated" }
+# for examples/
+axum = { version = "^0.8" }
+serde= { version = "^1" }
+serde_json= { version = "^1" }
+tokio = { version = "^1", features = ["rt", "rt-multi-thread", "macros", "signal"] }
+uuid = { version = "^1", features = ["serde"] }
+chrono = { version = "^0", features = ["serde"] }
 
 [workspace]
 members = ["frontend/wasm", "mandolin-cli"]
