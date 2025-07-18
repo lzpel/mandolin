@@ -49,15 +49,17 @@ output typescript code `./out/server_builtin_axum.rs`
 serde= "*"
 serde_json= "*"
 axum="*"
-uuid = { version = "*", features = ["serde"] }
 tokio = { version = "*", features = ["rt", "rt-multi-thread", "macros", "signal"] }
+# optional
+uuid = { version = "*", features = ["serde"] }
+chrono = { version = "*", features = ["serde"] }
 
 */
 
 use std::collections::HashMap;
 use serde;
 use std::future::Future;
-pub trait SwaggerPetstoreOpenapi30{
+pub trait ApiInterface{
 	// put /pet
 	fn updatepet(request: UpdatepetRequest) -> impl Future<Output = UpdatepetResponse> + Send{async{Default::default()}}
 	// post /pet
@@ -67,15 +69,16 @@ pub trait SwaggerPetstoreOpenapi30{
 	// get /pet/findByTags
 ...
 use axum;
-pub fn axum_router_operations<S:SwaggerPetstoreOpenapi30>()->axum::Router{
-	axum::Router::new()
-		.route("/pet", axum::routing::put(|
+pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
+	let router = axum::Router::new();
+	let i = instance.clone();
+	let router = router.route("/pet", axum::routing::put(|
 			path: axum::extract::Path<HashMap<String,String>>,
 			query: axum::extract::Query<HashMap<String,String>>,
 			header: axum::http::HeaderMap,
 			body: axum::body::Bytes,
 		| async move{
-			let ret=S::updatepet(UpdatepetRequest{
+			let ret=S::updatepet(i.as_ref(), UpdatepetRequest{
 				body:match serde_json::from_slice(body.to_vec().as_slice()){Ok(v)=>v,Err(v) => { return (axum::http::StatusCode::INTERNAL_SERVER_ERROR,[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("{:?}", v).as_bytes().to_vec())}},
 			}).await;
 			match ret{
@@ -84,7 +87,10 @@ pub fn axum_router_operations<S:SwaggerPetstoreOpenapi30>()->axum::Router{
 				UpdatepetResponse::Status404=> (axum::http::StatusCode::from_u16(404).unwrap(),[(axum::http::header::CONTENT_TYPE, "text/plain")], "Pet not found".as_bytes().to_vec()),
 				UpdatepetResponse::Status422=> (axum::http::StatusCode::from_u16(422).unwrap(),[(axum::http::header::CONTENT_TYPE, "text/plain")], "Validation exception".as_bytes().to_vec()),
 			}
-		}))
+		}));
+	let i = instance.clone();
+	let router = router.route("/pet", axum::routing::post(|
+			path: axum::extract::Path<HashMap<String,String>>,
 ...
 pub struct TestServer{}
 impl SwaggerPetstoreOpenapi30 for TestServer{}
@@ -94,6 +100,34 @@ async fn main() {
 	let port:u16 = std::env::var("PORT").unwrap_or("8080".to_string()).parse().expect("PORT should be integer");
 	print_axum_router(port);
 	let app = axum_router::<TestServer>().layer(axum::extract::DefaultBodyLimit::disable());
+	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await.unwrap();
+	axum::serve(listener, app)
+		.with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
+		.await
+		.unwrap();
+}
+```
+
+You can run the mock server from `fn main`.
+You can add your implementation along with the generated trait `ApiInterface`.
+
+```rust
+use generated::ApiInterface;
+pub struct YourServer{}
+impl ApiInterface for YourServer{
+	// get /hello
+	async fn paths_hello_get(&self, _req: PathsHelloGetRequest) -> PathsHelloGetResponse{
+		PathsHelloGetResponse::Status200(PathsHelloGetResponses200ContentApplicationJsonSchema{
+			message: Some("Hello Mandolin".to_string()),
+		})
+	}
+}
+#[tokio::main]
+async fn main() {
+	let port:u16 = std::env::var("PORT").unwrap_or("8080".to_string()).parse().expect("PORT should be integer");
+	print_axum_router(port);
+	let api = YourServer{};
+	let app = axum_router(api).layer(axum::extract::DefaultBodyLimit::disable());
 	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await.unwrap();
 	axum::serve(listener, app)
 		.with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
@@ -213,6 +247,9 @@ fn main() {
 
 ## version
 
+- 0.1.13
+	- support date schema {type: "string", format: "date-time" or "date"}
+	- add &self argument in rust interface() 
 - 0.1.12 add target "TYPESCRIPT_HONO" https://github.com/honojs/hono
 - 0.1.11 update to flatten nested schema. prepare cli-command `mandolin-cli`.
 - 0.1.7 hotfix

@@ -28,7 +28,7 @@ pub trait ApiInterface{
 }
 /*
 pub struct TestServer{}
-impl server::{{INTERFACE_NAME}} for TestServer{
+impl server::ApiInterface for TestServer{
 {%- for pointer, operation in ls_operation() %}
 	// {{(pointer|split)[-1]}} {{(pointer|split)[-2]}}
 	async fn {{OPERATION_NAME(pointer,operation)}}(&self, _req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> {{OPERATION_RESPONSE_NAME(pointer,operation)}}{Default::default()}
