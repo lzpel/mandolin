@@ -9,5 +9,5 @@ fn main() {
 	let env = mandolin::environment(input_api).unwrap();
 	// write the rendered output
 	let output = env.get_template("RUST_AXUM").unwrap().render(0).unwrap();
-	fs::write("./out/server_builtin_axum.rs", output).unwrap();
+	fs::write("examples/server_builtin_axum.out.rs", output).unwrap();
 }

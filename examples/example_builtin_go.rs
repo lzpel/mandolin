@@ -9,10 +9,6 @@ fn main() {
 	// make environment
 	let env = mandolin::environment(input_api).unwrap();
 	// write the rendered output
-	let output = env
-		.get_template("GO_SERVER")
-		.unwrap()
-		.render(0)
-		.unwrap();
-	fs::write("./out/server_builtin_go.go", output).unwrap();
+	let output = env.get_template("GO_SERVER").unwrap().render(0).unwrap();
+	fs::write("examples/server_builtin_go_out.go", output).unwrap();
 }

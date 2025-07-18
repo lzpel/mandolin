@@ -13,5 +13,5 @@ fn main() {
 		.unwrap()
 		.render(0)
 		.unwrap();
-	fs::write("./out/server_builtin_hono.ts", output).unwrap();
+	fs::write("examples/server_builtin_hono_out.ts", output).unwrap();
 }
