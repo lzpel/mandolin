@@ -18,7 +18,12 @@ minijinja = { version = "^2.9", features = ["json", "preserve_order", "loop_cont
 regex = { version = "^1" }
 
 [dev-dependencies]
+axum = { version = "^0.8" }
+serde= { version = "^1" }
+serde_json= { version = "^1" }
 serde_yaml = { version = "^0.9.34+deprecated" }
+uuid = { version = "^1", features = ["serde"] }
+tokio = { version = "^1", features = ["rt", "rt-multi-thread", "macros", "signal"] }
 
 [workspace]
 members = ["frontend/wasm", "mandolin-cli"]
