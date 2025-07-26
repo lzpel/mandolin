@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@typespec/compiler": "latest",
     "@typespec/http": "latest",
     "@typespec/openapi3": "latest",
