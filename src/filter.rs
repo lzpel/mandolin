@@ -103,3 +103,11 @@ pub fn include_pointer(
 		.next()
 		.ok_or(minijinja::Error::from(minijinja::ErrorKind::NonKey))
 }
+
+#[cfg(test)]
+mod tests {
+	#[test]
+	fn re_replace(){
+		assert_eq!(super::re_replace("/files/{path_file}", r"(\{\s*)path", r"$1*path"), "/files/{*path_file}".to_string());
+	}
+}

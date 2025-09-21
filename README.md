@@ -247,6 +247,8 @@ fn main() {
 
 ## version
 
+- 0.1.14
+	- 0.1.14-alpha.3 support path arguments with wildcard like /files/{*filepath} in axum
 - 0.1.13
 	- support date schema {type: "string", format: "date-time" or "date"}
 	- add &self argument in rust interface() 

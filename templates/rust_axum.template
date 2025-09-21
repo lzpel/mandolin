@@ -46,7 +46,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 	let router = axum::Router::new();
 {%- for pointer, operation in ls_operation() %}
 	let i = instance.clone();
-	let router = router.route("{{(pointer|split)[-2]}}", axum::routing::{{(pointer|split)[-1]}}(|
+	let router = router.route("{{(pointer|split)[-2]|re_replace('(\\{\\s*)path', '$1*path')}}", axum::routing::{{(pointer|split)[-1]}}(|
 			path: axum::extract::Path<HashMap<String,String>>,
 			query: axum::extract::Query<HashMap<String,String>>,
 			header: axum::http::HeaderMap,
