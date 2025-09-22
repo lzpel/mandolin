@@ -14,9 +14,9 @@
 {{(OPERATION_NAME(pointer,operation)+"_response")|to_pascal_case}}
 {%- endmacro -%}
 
-{%- macro OPERATION_REQUEST(pointer,operation) -%}
+{%- macro OPERATION_REQUEST(pointer,operation,raw_request_type) -%}
 // Request of {{OPERATION_NAME(pointer,operation)}}
-#[derive(serde::Serialize,serde::Deserialize,Debug)]
+#[derive(Debug)]
 pub struct {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 {%- for parameter in operation.parameters|include_ref %}
 {%- with parameter=parameter|include_ref %}
@@ -29,12 +29,13 @@ pub struct {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 {%- break %}
 {%- endfor %}
 {%- endif %}
+	pub request: {{raw_request_type}},
 }
 {%- endmacro -%}
 
-{%- macro OPERATION_RESPONSE(pointer,operation) -%}
+{%- macro OPERATION_RESPONSE(pointer,operation,raw_response_type) -%}
 // Response of {{OPERATION_NAME(pointer,operation)}}
-#[derive(serde::Serialize,serde::Deserialize,Debug)]
+#[derive(Debug)]
 pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 {%- set ns = namespace(response_default_key=0) %}
 {%- for response_key, response in operation.responses|items %}
@@ -44,6 +45,8 @@ pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 {%- set ns.response_default=response %}
 {%- endif %}
 {%- endfor %}
+{#- allow custom response if raw_response_type is defined #}
+	Raw({{ raw_response_type }}),
 }
 impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 	fn default() -> Self{

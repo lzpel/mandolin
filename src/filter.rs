@@ -107,7 +107,10 @@ pub fn include_pointer(
 #[cfg(test)]
 mod tests {
 	#[test]
-	fn re_replace(){
-		assert_eq!(super::re_replace("/files/{path_file}", r"(\{\s*)path", r"$1*path"), "/files/{*path_file}".to_string());
+	fn re_replace() {
+		assert_eq!(
+			super::re_replace("/files/{path_file}", r"(\{\s*)path", r"$1*path"),
+			"/files/{*path_file}".to_string()
+		);
 	}
 }
