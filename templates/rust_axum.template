@@ -36,12 +36,16 @@ impl server::ApiInterface for TestServer{
 }
 */
 {%- for pointer, operation in ls_operation() %}
-{{OPERATION_REQUEST(pointer, operation)}}
-{{OPERATION_RESPONSE(pointer, operation)}}
+{{OPERATION_REQUEST(pointer, operation, "axum::http::Request<axum::body::Body>")}}
+{{OPERATION_RESPONSE(pointer, operation, "axum::response::Response")}}
 {%- endfor %}
 {{ IDENTIFIED_SCHEMA_DRAIN() }}
 
 use axum;
+#[allow(dead_code)]
+fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Response{
+	axum::response::Response::builder().header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(body)).unwrap()
+}
 pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
 {%- for pointer, operation in ls_operation() %}
@@ -50,23 +54,16 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			path: axum::extract::Path<HashMap<String,String>>,
 			query: axum::extract::Query<HashMap<String,String>>,
 			header: axum::http::HeaderMap,
-{%- if operation.requestBody %}
-{%- for content_key, content in operation.requestBody.content|items %}
-			body: 
-{%- if "text/" in content_key %}String
-{%- else %}axum::body::Bytes
-{%- endif %}
-{%- break %}
-{%- endfor %}
-{%- endif %}
+			request: axum::http::Request<axum::body::Body>,
 		| async move{
+			let (parts, body) = request.into_parts();
 			let ret=S::{{OPERATION_NAME(pointer,operation)}}(i.as_ref(), {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 {%- for parameter in operation.parameters|include_ref %}
 {%- with parameter=parameter|include_ref %}
 				r#{{parameter.name}}:{let v={{parameter.in}}.get("{{parameter.name}}")
 {%- if parameter.in == "header" %}.map(|v| v.to_str().unwrap_or_default())
 {%- endif %}.and_then(|v| v.parse().ok());
-{%- if parameter.required -%}match v {Some(v)=>v, None=>return (axum::http::StatusCode::from_u16(400).unwrap(),[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}).as_bytes().to_vec())}
+{%- if parameter.required -%}match v {Some(v)=>v, None=>return text_response(axum::http::StatusCode::from_u16(400).unwrap(), format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}))}
 {%- else %}v
 {%- endif %}},
 {%- endwith %}
@@ -74,30 +71,31 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 {%- if operation.requestBody %}
 {%- for content_key, content in operation.requestBody.content|items %}
 				body:
-{%- if "json" in content_key -%}
-match serde_json::from_slice(body.to_vec().as_slice()){Ok(v)=>v,Err(v) => { return (axum::http::StatusCode::INTERNAL_SERVER_ERROR,[(axum::http::header::CONTENT_TYPE, "text/plain")], format!("{:?}", v).as_bytes().to_vec())}}
+{%- if "json" in content_key %}match axum::body::to_bytes(body,  usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(axum::http::StatusCode::BAD_REQUEST, v)}
 {%- else %}body.into()
 {%- endif %}
 {%- break %}
 {%- endfor %},
 {%- endif %}
+				request: axum::http::Request::from_parts(parts, Default::default()),{#- reconstruct here without body which droped #}
 			}).await;
 			match ret{
 {%- for response_key, response in operation.responses|items %}
-				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response.content -%}(v){%- endif -%} => (axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap(),
+				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response.content -%}(v){%- endif -%} => axum::response::Response::builder().status(axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap())
 {%- if response.content %}
-{%- for contentType, media in response.content|items %}[(axum::http::header::CONTENT_TYPE, "{{contentType}}")],
-{%- if "json" in contentType %}serde_json::to_vec_pretty(&v).expect("error serialize response json")
-{%- elif media.schema.format and media.schema.format == "binary" %}v
-{%- else %}v.as_bytes().to_vec()
+{%- for contentType, media in response.content|items %}.header(axum::http::header::CONTENT_TYPE, "{{contentType}}")
+{%- if "json" in contentType %}.body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json")))
+{%- elif media.schema.format and media.schema.format == "binary" %}.body(axum::body::Body::from(v))
+{%- else %}.body(axum::body::Body::from(v))
 {%- endif %}
 {%- break %}
 {%- endfor %}
 {%- else -%}
-[(axum::http::header::CONTENT_TYPE, "text/plain")], "{{response.description}}".as_bytes().to_vec()
+.header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from("{{response.description}}"))
 {%- endif -%}
-),
+.unwrap(),
 {%- endfor %}
+				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::Raw(v)=>v,
 			}
 		}));
 {%- endfor %}
