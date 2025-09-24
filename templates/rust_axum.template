@@ -37,12 +37,13 @@ impl server::ApiInterface for TestServer{
 }
 */
 {%- for pointer, operation in ls_operation() %}
-{{OPERATION_REQUEST(pointer, operation, "axum::http::Request<axum::body::Body>")}}
+{{OPERATION_REQUEST(pointer, operation, "axum::http::Request<axum::body::Body>", "axum::extract::Multipart")}}
 {{OPERATION_RESPONSE(pointer, operation, "axum::response::Response")}}
 {%- endfor %}
 {{ IDENTIFIED_SCHEMA_DRAIN() }}
 
 use axum;
+use axum::extract::FromRequest;
 fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Response{
 	axum::response::Response::builder().header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(body)).unwrap()
 }
@@ -72,12 +73,13 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 {%- for content_key, content in operation.requestBody.content|items %}
 				body:
 {%- if "json" in content_key %}match axum::body::to_bytes(body,  usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(axum::http::StatusCode::BAD_REQUEST, v)}
+{%- elif "multipart" in content_key %}match axum::extract::Multipart::from_request(axum::http::Request::from_parts(parts.clone(), body), &()).await{Ok(v)=>v,Err(e)=>return text_response(axum::http::StatusCode::BAD_REQUEST, e.body_text())}
 {%- else %}body.into()
 {%- endif %}
 {%- break %}
 {%- endfor %},
 {%- endif %}
-				request: axum::http::Request::from_parts(parts, Default::default()),{#- reconstruct here without body which droped #}
+				request: axum::http::Request::from_parts(parts.clone(), Default::default()),{#- reconstruct here without body which droped #}
 			}).await;
 			match ret{
 {%- for response_key, response in operation.responses|items %}
