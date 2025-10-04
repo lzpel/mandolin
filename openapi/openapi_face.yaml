@@ -1,0 +1,417 @@
+openapi: 3.0.0
+info:
+  title: WebFaceSimulator API scheme
+  version: 0.0.0
+servers:
+  - url: /api
+    description: main server endpoint
+    variables: {}
+paths:
+  /cron:
+    get:
+      description: "\tタスクキューを進めます。実行可能なプロセスが存在すれば実行し、状態を更新します。1分毎など定期的に呼び出してください。"
+      operationId: Background_cron
+      responses:
+        '204':
+          description: >-
+            There is no content to send for this request, but the headers may be
+            useful. 
+  /image:
+    get:
+      description: "\tジョブのランナーとして指定可能なdocker image一覧です。FaceSimulatorはその一つです。"
+      operationId: Images_list
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /job:
+    get:
+      description: "\tジョブ一覧を返します"
+      operationId: Jobs_list
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      description: "\t新規にジョブを開始します。\n\t- filedata(required): 実行に必要なファイル一覧、アップロードされます。不要なら0件も可能。\n\t- filepath(required): filedataのパス、このパス通りに展開される\n\t- image(required): ジョブを実行するdocker image。\n\t- config: config用jsonファイル。指定しなければfileから推測されます（トップレベルかつ.json拡張子が付いたファイル）。"
+      operationId: Jobs_push
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                filedata:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                filepath:
+                  type: array
+                  items:
+                    type: string
+                image:
+                  type: string
+                config:
+                  type: string
+              required:
+                - filedata
+                - filepath
+                - image
+            encoding:
+              filedata:
+                contentType: '*/*'
+              filepath:
+                contentType: text/plain
+        required: true
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+  '/job/{id}':
+    delete:
+      description: "\tジョブを削除します"
+      operationId: Jobs_delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+          style: simple
+      responses:
+        '204':
+          description: >-
+            There is no content to send for this request, but the headers may be
+            useful. 
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+  '/job/{id}/files':
+    get:
+      description: "\tジョブのファイル一覧を返します"
+      operationId: Jobs_filelist
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+          style: simple
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+  '/job/{id}/files/{path_file}':
+    get:
+      description: "\tジョブのファイルを配信します。path_fileは/（スラッシュ）を含めて良いです。"
+      operationId: Jobs_file
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+          style: simple
+        - in: path
+          name: path_file
+          required: true
+          schema:
+            type: string
+          style: simple
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+  '/job/{id}/tasks':
+    get:
+      description: "\tジョブのタスク一覧を返します"
+      operationId: Jobs_tasklist
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+          style: simple
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /status:
+    get:
+      description: "\tシステム情報（GPUの使用状態）と稼働中のタスクを取得"
+      operationId: StatusInterface_status
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /task:
+    get:
+      operationId: Tasks_list
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+  '/task/{id}':
+    delete:
+      operationId: Tasks_stop
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+          style: simple
+      responses:
+        '204':
+          description: >-
+            There is no content to send for this request, but the headers may be
+            useful. 
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  schemas:
+    Device:
+      type: object
+      properties:
+        name:
+          type: string
+        memory_used_megabytes:
+          type: integer
+          format: int32
+        memory_size_megabytes:
+          type: integer
+          format: int32
+      required:
+        - name
+        - memory_used_megabytes
+        - memory_size_megabytes
+    Job:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        id_owner:
+          $ref: '#/components/schemas/UUID'
+        id_point:
+          $ref: '#/components/schemas/UUID'
+        string_name:
+          type: string
+        string_main:
+          type: string
+        string_kind:
+          type: string
+        string_tags:
+          type: array
+          items:
+            type: string
+        file_path:
+          type: string
+        file_name:
+          type: string
+          format: byte
+        file_main:
+          type: string
+          format: byte
+        time_generate:
+          type: string
+          format: date-time
+        time_deploy:
+          type: string
+          format: date-time
+        time_update:
+          type: string
+          format: date-time
+        count_watch:
+          type: integer
+          format: int32
+        count_comment:
+          type: integer
+          format: int32
+        count_bookmark:
+          type: integer
+          format: int32
+        float_progress_generate:
+          type: number
+          format: float
+        float_progress_deploy:
+          type: number
+          format: float
+        json_conf:
+          type: string
+        json_logs:
+          type: string
+      required:
+        - id
+        - id_owner
+        - id_point
+        - string_name
+        - string_main
+        - string_kind
+        - string_tags
+        - file_path
+        - file_name
+        - file_main
+        - time_generate
+        - time_deploy
+        - time_update
+        - count_watch
+        - count_comment
+        - count_bookmark
+        - float_progress_generate
+        - float_progress_deploy
+        - json_conf
+        - json_logs
+    Status:
+      type: object
+      properties:
+        device:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+      required:
+        - device
+    Task:
+      type: object
+      properties:
+        job:
+          $ref: '#/components/schemas/UUID'
+        target:
+          type: string
+        code:
+          type: integer
+          format: int32
+        is_running:
+          type: boolean
+        is_completed:
+          type: boolean
+      required:
+        - job
+        - target
+        - code
+        - is_running
+        - is_completed
+    UUID:
+      type: string
+      format: uuid
