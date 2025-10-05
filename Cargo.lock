@@ -523,7 +523,7 @@ dependencies = [
 
 [[package]]
 name = "mandolin"
-version = "0.1.14-alpha.4"
+version = "0.2.0"
 dependencies = [
  "axum",
  "chrono",
@@ -964,7 +964,7 @@ name = "wasm"
 version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
- "mandolin 0.1.14-alpha.4",
+ "mandolin 0.2.0",
  "serde_json",
  "serde_yaml",
  "wasm-bindgen",

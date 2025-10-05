@@ -23,5 +23,5 @@ fn main() {
 
 	// write the rendered output
 	let output = env.get_template("RUST_AXUM").unwrap().render(0).unwrap();
-	fs::write("./out/server_builtin.rs", output).unwrap();
+	fs::write("examples/example_axum_generated_custom.rs", output).unwrap();
 }

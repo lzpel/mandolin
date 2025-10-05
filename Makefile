@@ -1,7 +1,6 @@
 MAKE_RECURSIVE_DIRS := frontend frontend/wasm
-create:
-	bash -c "$${MAKE_RECURSIVE}"
 generate:
+	python markdown_import.py README.md
 	cargo tree && cargo fmt
 	bash -c "$${MAKE_RECURSIVE}"
 run:
@@ -9,6 +8,8 @@ run:
 deploy:
 	bash -c "$${MAKE_RECURSIVE}"
 test:
+	cargo run --example example_axum_generate
+	cargo build --example example_axum_generated
 	cargo test
 	bash -c "$${MAKE_RECURSIVE}"
 clean:
@@ -30,29 +31,3 @@ else
 fi
 endef
 export MAKE_RECURSIVE
-define create
-install -D /dev/stdin ./frontend/Makefile <<'EOF'
-%:
-	@echo "Unknown target '$$@' skipping"
-create:
-	npx create-next-app@latest . --ts --eslint --app --use-npm --yes
-generate:
-	npm install
-	cp -rf ../openapi/. ./out
-run:
-	npm run dev
-deploy:
-	npm run build
-clean:
-	npm cache clean --force
-EOF
-install -D /dev/stdin ./frontend/wasm/Makefile <<'EOF'
-%:
-	@echo "Unknown target '$$@' skipping"
-generate:
-	cargo tree && cargo fmt
-	cargo install wasm-pack
-	wasm-pack build . -d ../out
-EOF
-endef
-export create
