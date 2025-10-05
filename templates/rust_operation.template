@@ -14,7 +14,7 @@
 {{(OPERATION_NAME(pointer,operation)+"_response")|to_pascal_case}}
 {%- endmacro -%}
 
-{%- macro OPERATION_REQUEST(pointer,operation,type_request,type_multipart) -%}
+{%- macro OPERATION_REQUEST(pointer,operation,type_request) -%}
 // Request of {{OPERATION_NAME(pointer,operation)}}
 #[derive(Debug)]
 pub struct {{OPERATION_REQUEST_NAME(pointer,operation)}}{
@@ -25,10 +25,7 @@ pub struct {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 {%- endfor %}
 {%- if operation.requestBody %}
 {%- for content_key, content in operation.requestBody.content|items %}
-	pub body: 
-{%- if "multipart" in content_key %}{{type_multipart}}
-{%- else %}{{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema)}}
-{%- endif %},
+	pub body: {{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema)}},
 {%- break %}
 {%- endfor %}
 {%- endif %}
