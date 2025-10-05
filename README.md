@@ -203,8 +203,11 @@ fn main() {
 
 ## version
 
-- 0.1.14
-	- 0.1.14-alpha.3 support path arguments with wildcard like /files/{*filepath} in axum
+- 0.2.0
+	- update README.md
+	- fix many bugs.
+	- support parse multipart/form-data
+	- support catch-all path arguments like /files/{file_path} in axum
 - 0.1.13
 	- support date schema {type: "string", format: "date-time" or "date"}
 	- add &self argument in rust interface() 
