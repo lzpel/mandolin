@@ -1,12 +1,14 @@
 [package]
 name = "mandolin"
-version = "0.1.14-alpha.4"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 authors = ["lzpel"]
 description = "Input openapi.json/yaml, output server source code in rust."
 repository = "https://github.com/lzpel/mandolin"
 homepage = "https://lzpel.github.io/mandolin/"
+categories = ["web-programming::http-server","template-engine","api-bindings"]
+keywords = ["openapi", "generator", "axum", "server"]
 readme = "README.md"
 build = "build.rs"
 exclude = [".github/*", "frontend/*", "openapi/*"]

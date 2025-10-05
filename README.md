@@ -1,6 +1,7 @@
 # mandolin
 
-<a href="https://crates.io/crates/mandolin"><img alt="crates.io" src="https://img.shields.io/crates/v/mandolin.svg?style=for-the-badge&logo=rust" height="20"/></a>
+[![License](https://img.shields.io/github/license/lzpel/mandolin)](https://github.com/lzpel/mandolin/blob/main/LICENSE)
+[![Crates.io](https://img.shields.io/crates/v/mandolin.svg?logo=rust)](https://crates.io/crates/mandolin)
 
 Input openapi.json/yaml, output one server code in rust or typescript.
 
@@ -19,7 +20,9 @@ Currently, mandolin provide 2 builtin templates for following frameworks
 
 Render axum server code using builtin "RUST_AXUM" template
 
-```rust:examples/example_builtin_axum.rs
+* examples/example_builtin_axum.rs * 
+
+```rust <!--examples/example_builtin_axum.rs-->
 use mandolin;
 use serde_yaml;
 use std::fs;
