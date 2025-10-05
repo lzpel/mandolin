@@ -11,7 +11,7 @@ categories = ["web-programming::http-server","template-engine","api-bindings"]
 keywords = ["openapi", "generator", "axum", "server"]
 readme = "README.md"
 build = "build.rs"
-exclude = [".github/*", "frontend/*", "openapi/*"]
+exclude = [".github/*", "frontend/*", "openapi/*", "media/*"]
 
 [dependencies]
 openapiv3 = "^2.0.0"
