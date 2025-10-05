@@ -1,0 +1,35 @@
+{# axumのmultipartを受け取りschema型を返すexpressionです #}
+{%- macro EXPRESSION_MULTIPART(pointer,schema,multipart,expression_with_string_e) -%}
+match async |mut x: axum::extract::Multipart| -> std::result::Result<{{SCHEMA_NAME(pointer)}},String>{
+	let mut o:{{SCHEMA_NAME(pointer)}}=Default::default();
+	while let Some(field) = x.next_field().await.map_err(|e| e.body_text())? {
+		match field.name().unwrap_or_default() {
+{%- if schema.type == "object" %}
+{%- for property_key, property in schema.properties|items %}
+			"{{property_key}}" => 
+{%- with required=schema.required and property_key in schema.required -%}
+				{{EXPRESSION_MULTIPART_ITEM(pointer+"/properties/"+property_key, property, "o."+property_key, required)}}
+{%- endwith %},
+{%- endfor %}
+{%- endif %}
+			other => return Err(format!("unknown field {other} in multipart-formdata"))
+		}
+	}
+	Ok(o)
+}({{multipart}}).await {
+	Ok(v)=>v,
+	Err(e)=>{{expression_with_string_e}}
+}
+{%- endmacro %}
+
+{%- macro EXPRESSION_MULTIPART_ITEM(pointer,schema,value,value_is_required) %}
+{%- if schema.type == "array" -%}
+{{value}}.push({{EXPRESSION_MULTIPART_ITEM(pointer+"/items",schema.items)}})
+{%- elif schema.type == "string" %}
+{%- if value is defined %}{{value}}={%- if not value_is_required %}Some({%- endif %}{%- endif %}{#- ここから #}
+{%- if schema.format == "binary" %}field.bytes().await.map(|v| v.to_vec()).map_err(|e| e.body_text())?
+{%- else %}field.text().await.map_err(|e| e.body_text())?
+{%- endif %}
+{%- if value is defined %}{%- if not value_is_required %}){%- endif %}{%- endif %}{#- ここまで #}
+{%- endif %}
+{%- endmacro %}

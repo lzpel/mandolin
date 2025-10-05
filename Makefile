@@ -1,39 +1,35 @@
-export MAKEDIRS := frontend frontend/wasm
-SHELL := bash
+MAKE_RECURSIVE_DIRS := frontend frontend/wasm
 create:
-	bash -c "$${create}"
+	bash -c "$${MAKE_RECURSIVE}"
 generate:
 	cargo tree && cargo fmt
-	bash -c "$${make_dirs}"
-test:
-	@: openapiから生成できることのテスト
-	cargo test
-	@: cliのテスト
-	@: cd mandolin-cli && find ../openapi -name '*.yaml' | xargs -IZ bash -c "cargo run -- -i Z -t RUST_AXUM > out.rs;cat Z | cargo run -- -o out.rs -t RUST_AXUM;"
-	bash -c "$${make_dirs}"
+	bash -c "$${MAKE_RECURSIVE}"
 run:
-	bash -c "$${make_dirs}"
+	bash -c "$${MAKE_RECURSIVE}"
 deploy:
-	bash -c "$${make_dirs}"
+	bash -c "$${MAKE_RECURSIVE}"
+test:
+	cargo test
+	bash -c "$${MAKE_RECURSIVE}"
 clean:
-	bash -c "$${make_dirs}"
+	bash -c "$${MAKE_RECURSIVE}"
 compile:
 	bash -c "cd frontend && find ../openapi/ -name '*.tsp' | xargs -IX npx tsp compile X --emit @typespec/openapi3"
 cli:
 	cd mandolin-cli && cargo run -- -h
 search-%:
 	@git grep --color -r --text -n '$*' .
-define make_dirs
-if [ -n "$$parallel" ]; then
-	trap "kill 0" EXIT
-	for dir in $$MAKEDIRS; do
-		$(MAKE) -C $$dir $@ & done
+# 複数のディレクトリそれぞれでmake。環境変数MAKE_RECURSIVE_PARALLELが設定されていたら並列実行 MAKE_RECURSIVE_PARALLEL=1 bash -c "$${MAKE_RECURSIVE}"
+define MAKE_RECURSIVE
+if [ -n "$${MAKE_RECURSIVE_PARALLEL}" ]; then
+	trap 'kill 0' EXIT INT TERM
+	time printf '%s\n' $(MAKE_RECURSIVE_DIRS) | xargs -P0 -IX sh -c '$(MAKE) -C X $@'
 	wait
 else
-	time echo $$MAKEDIRS | xargs -n 1 | xargs -IX sh -c "$(MAKE) -C X $@ || exit 255"
+	time printf '%s\n' $(MAKE_RECURSIVE_DIRS) | xargs -IX sh -c '$(MAKE) -C X $@'
 fi
 endef
-export make_dirs
+export MAKE_RECURSIVE
 define create
 install -D /dev/stdin ./frontend/Makefile <<'EOF'
 %:
