@@ -12,6 +12,8 @@ test:
 	cargo build --example example_axum_generated
 	cargo test
 	bash -c "$${MAKE_RECURSIVE}"
+test-oauth2:
+	cargo run --example openapi_oauth2
 clean:
 	bash -c "$${MAKE_RECURSIVE}"
 compile:

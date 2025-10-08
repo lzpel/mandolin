@@ -107,13 +107,13 @@ mod tests {
 		let mut writer = std::io::BufWriter::new(File::create(path)?);
 		writeln!(writer, "{}", content.as_ref())
 	}
-	fn render_target(template: &str, extention: &str) {
+	fn render_target(template: &str, extension: &str) {
 		for (k, input_api) in api_map() {
 			println!("render start: {k}");
 			let env = environment(input_api).unwrap();
 			let template = env.get_template(template).unwrap();
 			let output = template.render(0).unwrap();
-			write(format!("out/{k}.{extention}"), output.as_str()).unwrap();
+			write(Path::new("out").join(&k).with_extension(extension).as_path(), output.as_str()).unwrap();
 			println!("render complete: {k}");
 		}
 	}
