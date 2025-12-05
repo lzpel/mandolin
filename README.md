@@ -64,14 +64,14 @@ use std::collections::HashMap;
 use serde;
 use std::future::Future;
 pub trait ApiInterface{
-	// delete /clean
-	fn operation_clean(&self, _req: OperationCleanRequest) -> impl Future<Output = OperationCleanResponse> + Send{async{Default::default()}}
-	// get /credential/iam
-	fn credential_get(&self, _req: CredentialGetRequest) -> impl Future<Output = CredentialGetResponse> + Send{async{Default::default()}}
-	// post /credential/sign_in
-	fn credential_sign_in(&self, _req: CredentialSignInRequest) -> impl Future<Output = CredentialSignInResponse> + Send{async{Default::default()}}
-	// post /credential/sign_up
-──────────────────────────────────────── 1237 lines omitted ────────────────────────────────────────
+	// post /auth
+	fn authapi_email(&self, _req: AuthapiEmailRequest) -> impl Future<Output = AuthapiEmailResponse> + Send{async{Default::default()}}
+	// get /auth/callback_oauth
+	fn authapi_callback_oauth(&self, _req: AuthapiCallbackOauthRequest) -> impl Future<Output = AuthapiCallbackOauthResponse> + Send{async{Default::default()}}
+	// get /auth/google
+	fn authapi_google(&self, _req: AuthapiGoogleRequest) -> impl Future<Output = AuthapiGoogleResponse> + Send{async{Default::default()}}
+	// get /auth/out
+──────────────────────────────────────── 412 lines omitted ────────────────────────────────────────
 		}));
 	return router;
 }
@@ -203,6 +203,8 @@ fn main() {
 
 ## version
 
+- 0.2.2 Fix bugs about no content response
+- 0.2.1 Add impl AsRef<axum::http::Request<axum::body::Body>> for Requests
 - 0.2.0
 	- update README.md
 	- fix many bugs.

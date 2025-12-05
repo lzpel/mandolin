@@ -10,8 +10,7 @@
 {%- if schema.additionalProperties %}HashMap<String,{{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}}>
 {%- else %}{{SCHEMA_NAME(pointer)}}
 {%- endif %}
-{%- elif schema.type == "array" -%}
-Vec<{{SCHEMA(pointer+"/items",schema.items)}}>
+{%- elif schema.type == "array" %}Vec<{{SCHEMA(pointer+"/items",schema.items)}}>
 {%- elif schema.type == "integer" -%}
 {%- if "u" in schema.format -%}u{%- else -%}i{%- endif -%}{%- if "int128" in schema.format -%}128{%- elif "int64" in schema.format -%}64{%- elif "int32" in schema.format -%}32{%- else -%}8{%- endif -%}
 {%- elif schema.type == "string" %}

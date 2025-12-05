@@ -14,6 +14,17 @@
 {{(OPERATION_NAME(pointer,operation)+"_response")|to_pascal_case}}
 {%- endmacro -%}
 
+{%- macro OPERATION_RESPONSE_TYPE(pointer,response) -%}
+{%- if response.content %}
+{%- for content_key, content in response.content|items -%}
+{%- with schema=SCHEMA(pointer+"/content/"+content_key|encode+"/schema",content.schema) %}
+{%- if schema %}{{schema}}/*{{content_key}}*/{%- endif %}
+{%- endwith %}
+{%- break %}
+{%- endfor %}
+{%- endif %}
+{%- endmacro -%}
+
 {%- macro OPERATION_REQUEST(pointer,operation,type_request) -%}
 // Request of {{OPERATION_NAME(pointer,operation)}}
 #[derive(Debug)]
@@ -42,18 +53,21 @@ impl AsRef<{{type_request}}> for {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 {%- set ns = namespace(response_default_key=0) %}
 {%- for response_key, response in operation.responses|items %}
-	{{("status_"+response_key)|to_pascal_case}}{%-if response.content-%}({%- for content_key, content in response.content|items %}{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_key|encode+"/schema",content.schema)}}{%-break%}{%-endfor%}){%-endif%},
+{%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
+	{{("status_"+response_key)|to_pascal_case}}{%-if response_type-%}({{response_type}}){%-endif%},
 {%- if ns.response_default_key == 0%}
-{%- set ns.response_default_key=response_key %}
 {%- set ns.response_default=response %}
+{%- set ns.response_default_key=response_key %}
+{%- set ns.response_default_type=response_type %}
 {%- endif %}
+{%- endwith %}
 {%- endfor %}
 {#- allow custom response if raw_response_type is defined #}
 	Raw({{ raw_response_type }}),
 }
 impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 	fn default() -> Self{
-		Self::{{("status_"+ns.response_default_key)|to_pascal_case}}{%-if ns.response_default.content-%}(Default::default()){%-endif%}
+		Self::{{("status_"+ns.response_default_key)|to_pascal_case}}{%-if ns.response_default_type-%}(Default::default()){%-endif%}
 	}
 }
 {%- endmacro -%}
