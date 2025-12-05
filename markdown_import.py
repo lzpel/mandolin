@@ -19,7 +19,8 @@ def replacer(match):
 	# 行数制限
 	if line_count and line_count.strip():
 		code=clamp_text_lines(code, int(line_count.strip()))
-	return f"```{lang} <!--{filepath} {(line_count or "").strip()}-->\n{code}\n```"
+	line_count = (line_count or "").strip()
+	return f"```{lang} <!--{filepath} {line_count}-->\n{code}\n```"
 def clamp_text_lines(text: str, linecount: int, *, sep_width: int = 40) -> str:
 	"""
 	text を linecount 行以内に収めて返す。

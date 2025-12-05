@@ -31,6 +31,9 @@ pub struct {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 {%- endif %}
 	pub request: {{type_request}},
 }
+impl AsRef<{{type_request}}> for {{OPERATION_REQUEST_NAME(pointer,operation)}}{
+	fn as_ref(&self) -> &{{type_request}}{&self.request}
+}
 {%- endmacro -%}
 
 {%- macro OPERATION_RESPONSE(pointer,operation,raw_response_type) -%}

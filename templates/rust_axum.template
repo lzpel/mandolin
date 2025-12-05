@@ -1,7 +1,4 @@
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-#![allow(unused_variables)]
-#![allow(dead_code)]
+
 {% include "RUST_SCHEMA" %}
 {% include "RUST_OPERATION" %}
 {% include "RUST_AXUM_EXTENSION" %}
@@ -10,9 +7,9 @@
 /* Cargo.toml for build this server
 
 [dependencies]
-serde= "*"
+serde= { version="*", features = ["derive"] }
 serde_json= "*"
-axum = { version = "*", features = ["multipart"]}
+axum = { version = "*", features = ["multipart"] }
 tokio = { version = "*", features = ["rt", "rt-multi-thread", "macros", "signal"] }
 # optional
 uuid = { version = "*", features = ["serde"] }
@@ -46,9 +43,11 @@ impl server::ApiInterface for TestServer{
 use axum;
 #[allow(unused_imports)]
 use axum::extract::FromRequest;
+#[allow(unused_variables)]
 fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Response{
 	axum::response::Response::builder().header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(body)).unwrap()
 }
+#[allow(unused_variables)]
 pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
 {%- for pointer, operation in ls_operation() %}

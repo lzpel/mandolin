@@ -1,5 +1,6 @@
 MAKE_RECURSIVE_DIRS := frontend frontend/wasm
 generate:
+	cargo run --example readme_axum_generate && cargo build --example readme_axum_generate_out
 	python markdown_import.py README.md
 	cargo tree && cargo fmt
 	bash -c "$${MAKE_RECURSIVE}"
@@ -8,8 +9,6 @@ run:
 deploy:
 	bash -c "$${MAKE_RECURSIVE}"
 test:
-	cargo run --example example_axum_generate
-	cargo build --example example_axum_generated
 	cargo test
 	bash -c "$${MAKE_RECURSIVE}"
 clean:

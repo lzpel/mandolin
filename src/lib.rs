@@ -9,7 +9,18 @@ use openapiv3::OpenAPI;
 pub type JpUnit = (String, minijinja::Value);
 pub type JpList = Vec<JpUnit>;
 
-pub fn environment(value: OpenAPI) -> Result<minijinja::Environment<'static>, minijinja::Error> {
+pub fn environment(
+	mut value: OpenAPI,
+) -> Result<minijinja::Environment<'static>, minijinja::Error> {
+	// Add default api if no api defined
+	if value.servers.is_empty() {
+		value.servers.push(openapiv3::Server {
+			url: "/api".to_string(),
+			description: Some("Default server added by mandolin".to_string()),
+			..Default::default()
+		});
+	}
+	// Add operators
 	let value = minijinja::Value::from_serialize(&value);
 	let value_jp = function::jp_list(&value, "#");
 	let mut env = minijinja::Environment::new();
