@@ -88,19 +88,17 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			}).await;
 			match ret{
 {%- for response_key, response in operation.responses|items %}
-				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response.content -%}(v){%- endif -%} => axum::response::Response::builder().status(axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap())
-{%- if response.content %}
-{%- for contentType, media in response.content|items %}.header(axum::http::header::CONTENT_TYPE, "{{contentType}}")
-{%- if "json" in contentType %}.body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json")))
-{%- elif media.schema.format and media.schema.format == "binary" %}.body(axum::body::Body::from(v))
+{%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
+				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response_type -%}(v){%- endif -%} => axum::response::Response::builder().status(axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap())
+{%- if response_type %}
+{%- if "application/json" in response_type %}.body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json")))
 {%- else %}.body(axum::body::Body::from(v))
 {%- endif %}
-{%- break %}
-{%- endfor %}
 {%- else -%}
-.header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from("{{response.description}}"))
+.body(axum::body::Body::empty())
 {%- endif -%}
 .unwrap(),
+{%- endwith %}
 {%- endfor %}
 				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::Raw(v)=>v,
 			}
