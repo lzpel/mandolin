@@ -169,16 +169,11 @@ paths:
               - rule
       security:
       - BearerAuth: []
-  "/user/{id}":
+  "/user":
     delete:
       operationId: UserApi_user_pop
       description: "\tユーザーを削除します、認証が必要"
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          "$ref": "#/components/schemas/UUID"
+      parameters: []
       responses:
         '204':
           description: 'There is no content to send for this request, but the headers
@@ -205,12 +200,7 @@ paths:
     get:
       operationId: UserApi_user_get
       description: "\tユーザー情報を取得します、認証が必要"
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          "$ref": "#/components/schemas/UUID"
+      parameters: []
       responses:
         '200':
           description: The request has succeeded.

@@ -25,10 +25,10 @@
 {%- endif %}
 {%- endmacro -%}
 
-{%- macro OPERATION_REQUEST(pointer,operation,type_request) -%}
-// Request of {{OPERATION_NAME(pointer,operation)}}
+{%- macro OPERATION_REQUEST(pointer, operation, type_request, type_security) -%}
+// Request of {{OPERATION_NAME(pointer, operation)}}
 #[derive(Debug)]
-pub struct {{OPERATION_REQUEST_NAME(pointer,operation)}}{
+pub struct {{OPERATION_REQUEST_NAME(pointer, operation)}}{
 {%- for parameter in operation.parameters|include_ref %}
 {%- with parameter=parameter|include_ref %}
 	pub {{parameter.name}}:{%-set inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
@@ -41,6 +41,9 @@ pub struct {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 {%- endfor %}
 {%- endif %}
 	pub request: {{type_request}},
+{%- if operation.security %}
+	pub security: {{type_security}}, /*{{operation.security}}*/
+{%- endif %}
 }
 impl AsRef<{{type_request}}> for {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 	fn as_ref(&self) -> &{{type_request}}{&self.request}

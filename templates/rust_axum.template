@@ -20,22 +20,23 @@ use std::collections::HashMap;
 use serde;
 use std::future::Future;
 pub trait ApiInterface{
+	fn authorize(&self, _req: axum::http::Request<axum::body::Body>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
 {%- for pointer, operation in ls_operation() %}
 	// {{(pointer|split)[-1]}} {{(pointer|split)[-2]}}
 	fn {{OPERATION_NAME(pointer,operation)}}(&self, _req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> impl Future<Output = {{OPERATION_RESPONSE_NAME(pointer,operation)}}> + Send{async{Default::default()}}
 {%- endfor %}
 }
-/*
-pub struct TestServer{}
-impl server::ApiInterface for TestServer{
-{%- for pointer, operation in ls_operation() %}
-	// {{(pointer|split)[-1]}} {{(pointer|split)[-2]}}
-	async fn {{OPERATION_NAME(pointer,operation)}}(&self, _req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> {{OPERATION_RESPONSE_NAME(pointer,operation)}}{Default::default()}
-{%- endfor %}
+
+
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct AuthContext{
+    pub subject: String,   // user identifier (e.g. "auth0|123", "google-oauth2|456")
+    pub subject_id: u128,  // UUID-compatible numeric ID
+    pub scopes: Vec<String>, // e.g. "read:foo", "write:bar"
 }
-*/
+
 {%- for pointer, operation in ls_operation() %}
-{{OPERATION_REQUEST(pointer, operation, "axum::http::Request<axum::body::Body>")}}
+{{OPERATION_REQUEST(pointer, operation, "axum::http::Request<axum::body::Body>", "AuthContext")}}
 {{OPERATION_RESPONSE(pointer, operation, "axum::response::Response")}}
 {%- endfor %}
 {{ IDENTIFIED_SCHEMA_DRAIN() }}
@@ -84,7 +85,13 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 {%- break %}
 {%- endfor %},
 {%- endif %}
-				request: axum::http::Request::from_parts(parts.clone(), Default::default())
+				request: axum::http::Request::from_parts(parts.clone(), Default::default()),
+{%- if operation.security %}
+				security: match i.as_ref().authorize(axum::http::Request::from_parts(parts.clone(), Default::default())).await {
+					Ok(v)=>v,
+					Err(e)=>return text_response(axum::http::StatusCode::UNAUTHORIZED, e)
+				},
+{%- endif %}
 			}).await;
 			match ret{
 {%- for response_key, response in operation.responses|items %}
@@ -158,7 +165,13 @@ pub fn print_axum_router(port:u16){
 }
 {% endwith %}
 pub struct TestServer{}
-impl ApiInterface for TestServer{}
+impl ApiInterface for TestServer{
+	// implement necessary method
+{%- for pointer, operation in ls_operation() %}
+	// {{(pointer|split)[-1]}} {{(pointer|split)[-2]}}
+	// async fn {{OPERATION_NAME(pointer,operation)}}(&self, _req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> {{OPERATION_RESPONSE_NAME(pointer,operation)}}{Default::default()}
+{%- endfor %}
+}
 #[allow(dead_code)]
 #[tokio::main]
 async fn main() {
