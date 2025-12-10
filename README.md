@@ -1,9 +1,9 @@
-# mandolin
+# mandolin: Strongly Typed Rust Code Generator from OpenAPI
 
 [![GitHub License](https://img.shields.io/github/license/lzpel/cloudmama)](https://github.com/lzpel/mandolin/blob/main/LICENSE)
 [![Crates.io](https://img.shields.io/crates/v/mandolin.svg?logo=rust)](https://crates.io/crates/mandolin)
 
-Input openapi.json/yaml, output one server code in rust or typescript.
+Input openapi.json/yaml, output one server code in rust.
 
 Online demo with wasm: https://lzpel.github.io/mandolin/
 
