@@ -19,6 +19,20 @@ Currently, mandolin provide 1 builtin templates for following frameworks
 
 ## Getting started
 
+Install mandolin
+
+```bash
+$ cargo install mandolin
+```
+
+Render axum server code using builtin "RUST_AXUM" template
+
+```bash
+$ mandolin -i ./openapi/openapi_plant.yaml -t RUST_AXUM -o ./examples/readme_axum_generate_out.rs
+```
+
+## You can also use mandolin as library
+
 Render axum server code using builtin "RUST_AXUM" template
 
 ```rust <!--examples/readme_axum_generate.rs 60-->
@@ -28,7 +42,7 @@ fn main() {
 	// read openapi.yaml
 	let input_openapi_path = std::env::args()
 		.nth(1)
-		.unwrap_or_else(|| "./openapi/openapi_plant.yaml".to_string());
+		.unwrap_or_else(|| "./openapi/openapi_sarod.yaml".to_string());
 	let input_string = std::fs::read_to_string(input_openapi_path).unwrap();
 	let input_api = serde_yaml::from_str(&input_string.as_str()).unwrap();
 	// make environment
@@ -40,6 +54,7 @@ fn main() {
 
 ```
 
+## Example of generated code
 
 ```rust <!--examples/readme_axum_generate_out.rs 60-->
 
@@ -64,30 +79,30 @@ use std::collections::HashMap;
 use serde;
 use std::future::Future;
 pub trait ApiInterface{
+	fn authorize(&self, _req: axum::http::Request<axum::body::Body>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
 	// post /auth
 	fn authapi_email(&self, _req: AuthapiEmailRequest) -> impl Future<Output = AuthapiEmailResponse> + Send{async{Default::default()}}
 	// get /auth/callback_oauth
 	fn authapi_callback_oauth(&self, _req: AuthapiCallbackOauthRequest) -> impl Future<Output = AuthapiCallbackOauthResponse> + Send{async{Default::default()}}
 	// get /auth/google
 	fn authapi_google(&self, _req: AuthapiGoogleRequest) -> impl Future<Output = AuthapiGoogleResponse> + Send{async{Default::default()}}
+──────────────────────────────────────── 434 lines omitted ────────────────────────────────────────
+	// async fn authapi_email(&self, _req: AuthapiEmailRequest) -> AuthapiEmailResponse{Default::default()}
+	// get /auth/callback_oauth
+	// async fn authapi_callback_oauth(&self, _req: AuthapiCallbackOauthRequest) -> AuthapiCallbackOauthResponse{Default::default()}
+	// get /auth/google
+	// async fn authapi_google(&self, _req: AuthapiGoogleRequest) -> AuthapiGoogleResponse{Default::default()}
 	// get /auth/out
-──────────────────────────────────────── 412 lines omitted ────────────────────────────────────────
-		}));
-	return router;
+	// async fn authapi_out(&self, _req: AuthapiOutRequest) -> AuthapiOutResponse{Default::default()}
+	// get /rule
+	// async fn ruleapi_rule_list(&self, _req: RuleapiRuleListRequest) -> RuleapiRuleListResponse{Default::default()}
+	// post /rule
+	// async fn ruleapi_rule_push(&self, _req: RuleapiRulePushRequest) -> RuleapiRulePushResponse{Default::default()}
+	// get /user
+	// async fn userapi_user_get(&self, _req: UserapiUserGetRequest) -> UserapiUserGetResponse{Default::default()}
+	// delete /user
+	// async fn userapi_user_pop(&self, _req: UserapiUserPopRequest) -> UserapiUserPopResponse{Default::default()}
 }
-
-pub fn axum_router<S: ApiInterface + Sync + Send + 'static>(instance: S)->axum::Router{
-	let instance_arc=std::sync::Arc::new(instance);
-	axum::Router::new()
-		.nest_service("/api", axum_router_operations(instance_arc.clone()))
-}
-
-pub fn print_axum_router(port:u16){
-	println!("http://localhost:{}/api/ui", port);
-}
-
-pub struct TestServer{}
-impl ApiInterface for TestServer{}
 #[allow(dead_code)]
 #[tokio::main]
 async fn main() {
@@ -102,6 +117,8 @@ async fn main() {
 		.unwrap();
 }
 ```
+
+## Running the generated server with your implementation
 
 You can run the mock server from `fn main`.
 You can add your implementation along with the generated trait `ApiInterface` like followings.
@@ -203,6 +220,7 @@ fn main() {
 
 ## version
 
+- 0.2.3 add binary target
 - 0.2.2 Fix bugs about no content response
 - 0.2.1 Add impl AsRef<axum::http::Request<axum::body::Body>> for Requests
 - 0.2.0

@@ -9,9 +9,9 @@ struct Args {
 		short = 'i',
 		long = "input",
 		value_name = "FILE",
-		help = "Sets the input JSON/YAML file. If omitted, stdin will be used."
+		help = "Sets the input JSON/YAML file. If '-' specified, stdin will be used."
 	)]
-	input: Option<String>,
+	input: String,
 	#[clap(
 		short = 'o',
 		long = "output",
@@ -23,6 +23,7 @@ struct Args {
 		short = 't',
 		long = "template",
 		value_name = "TEMPLATE",
+		default_value = "RUST_AXUM",
 		help = "Sets the template name"
 	)]
 	template: String,
@@ -30,15 +31,8 @@ struct Args {
 pub fn main() {
 	// コマンドライン引数をパース
 	let args = Args::parse();
-	let input = match &args.input {
-		Some(filename) => {
-			// Someの場合: ファイルから読み込む
-			std::fs::read_to_string(filename).unwrap_or_else(|e| {
-				eprintln!("Cannot read {}\n{:?}", filename, e);
-				std::process::exit(1);
-			})
-		}
-		None => {
+	let input = match args.input.as_str() {
+		"-" => {
 			// Noneの場合: 標準入力から読み込む
 			let mut buffer = String::new();
 			if let Err(e) = std::io::stdin().read_to_string(&mut buffer) {
@@ -46,6 +40,13 @@ pub fn main() {
 				std::process::exit(1);
 			}
 			buffer
+		}
+		filename => {
+			// Someの場合: ファイルから読み込む
+			std::fs::read_to_string(filename).unwrap_or_else(|e| {
+				eprintln!("Cannot read {}\n{:?}", filename, e);
+				std::process::exit(1);
+			})
 		}
 	};
 
@@ -63,7 +64,7 @@ pub fn main() {
 		}
 	};
 	let env = mandolin::environment(input_api).unwrap();
-	let template = env.get_template("RUST_AXUM").unwrap();
+	let template = env.get_template(args.template.as_str()).unwrap();
 	let output = template.render(0).unwrap();
 	// write the rendered output
 	match &args.output {
