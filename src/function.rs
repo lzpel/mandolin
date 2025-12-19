@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{filter, JpList};
+use crate::{JpList, filter};
 use serde::Deserialize;
 
 pub fn jp_list(value: &minijinja::Value, prefix: &str) -> JpList {

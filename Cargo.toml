@@ -1,7 +1,7 @@
 [package]
 name = "mandolin"
-version = "0.2.3"
-edition = "2021"
+version = "0.2.4-alpha.1"
+edition = "2024"
 license = "MIT"
 authors = ["lzpel"]
 description = "Input openapi.json/yaml, output server source code in rust."

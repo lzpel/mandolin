@@ -46,7 +46,11 @@ use axum;
 use axum::extract::FromRequest;
 #[allow(unused_variables)]
 fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Response{
-	axum::response::Response::builder().header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(body)).unwrap()
+	axum::response::Response::builder()
+		.status(code)
+		.header(axum::http::header::CONTENT_TYPE, "text/plain")
+		.body(axum::body::Body::from(body))
+		.unwrap()
 }
 #[allow(unused_variables)]
 pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
