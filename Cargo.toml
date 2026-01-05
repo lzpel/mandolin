@@ -1,6 +1,6 @@
 [package]
 name = "mandolin"
-version = "0.2.4-alpha.1"
+version = "0.2.5-alpha.1"
 edition = "2024"
 license = "MIT"
 authors = ["lzpel"]

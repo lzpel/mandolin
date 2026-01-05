@@ -42,9 +42,6 @@ pub struct AuthContext{
 {{ IDENTIFIED_SCHEMA_DRAIN() }}
 
 use axum;
-#[allow(unused_imports)]
-use axum::extract::FromRequest;
-#[allow(unused_variables)]
 fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Response{
 	axum::response::Response::builder()
 		.status(code)
@@ -52,7 +49,6 @@ fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Re
 		.body(axum::body::Body::from(body))
 		.unwrap()
 }
-#[allow(unused_variables)]
 pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
 {%- for pointer, operation in ls_operation() %}
@@ -176,7 +172,9 @@ impl ApiInterface for TestServer{
 	// async fn {{OPERATION_NAME(pointer,operation)}}(&self, _req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> {{OPERATION_RESPONSE_NAME(pointer,operation)}}{Default::default()}
 {%- endfor %}
 }
-#[allow(dead_code)]
+
+{{ UTILITY() }}
+
 #[tokio::main]
 async fn main() {
 	let port:u16 = std::env::var("PORT").unwrap_or("8080".to_string()).parse().expect("PORT should be integer");
