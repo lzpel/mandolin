@@ -42,6 +42,7 @@ pub struct AuthContext{
 {{ IDENTIFIED_SCHEMA_DRAIN() }}
 
 use axum;
+use axum::extract::FromRequest;
 fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Response{
 	axum::response::Response::builder()
 		.status(code)

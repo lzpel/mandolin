@@ -86,7 +86,7 @@ pub trait ApiInterface{
 	fn authapi_email(&self, _req: AuthapiEmailRequest) -> impl Future<Output = AuthapiEmailResponse> + Send{async{Default::default()}}
 	// get /auth/callback_oauth
 	fn authapi_callback_oauth(&self, _req: AuthapiCallbackOauthRequest) -> impl Future<Output = AuthapiCallbackOauthResponse> + Send{async{Default::default()}}
-──────────────────────────────────────── 545 lines omitted ────────────────────────────────────────
+──────────────────────────────────────── 546 lines omitted ────────────────────────────────────────
 			.map(|s| s.to_ascii_lowercase())
 			.filter(|s| !s.is_empty());
 
