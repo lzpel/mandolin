@@ -4,7 +4,7 @@ fn main() {
 	// read openapi.yaml
 	let input_openapi_path = std::env::args()
 		.nth(1)
-		.unwrap_or_else(|| "./openapi/openapi_sarod.yaml".to_string());
+		.unwrap_or_else(|| "./openapi/openapi_plant.yaml".to_string());
 	let input_string = std::fs::read_to_string(input_openapi_path).unwrap();
 	let input_api = serde_yaml::from_str(&input_string.as_str()).unwrap();
 	// make environment

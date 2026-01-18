@@ -18,7 +18,9 @@
 {%- if response.content %}
 {%- for content_key, content in response.content|items -%}
 {%- with schema=SCHEMA(pointer+"/content/"+content_key|encode+"/schema",content.schema) %}
-{%- if schema %}{{schema}}/*{{content_key}}*/{%- endif %}
+{%- if schema %}{{content_key}}
+{{schema}}
+{%- endif %}
 {%- endwith %}
 {%- break %}
 {%- endfor %}
@@ -57,7 +59,7 @@ pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 {%- set ns = namespace(response_default_key=0) %}
 {%- for response_key, response in operation.responses|items %}
 {%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
-	{{("status_"+response_key)|to_pascal_case}}{%-if response_type-%}({{response_type}}){%-endif%},
+	{{("status_"+response_key)|to_pascal_case}}{%-if response_type-%}({{response_type|lines|last}}){%-endif%},
 {%- if ns.response_default_key == 0%}
 {%- set ns.response_default=response %}
 {%- set ns.response_default_key=response_key %}
@@ -65,8 +67,9 @@ pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 {%- endif %}
 {%- endwith %}
 {%- endfor %}
-{#- allow custom response if raw_response_type is defined #}
-	Raw({{ raw_response_type }}),
+{%- if raw_response_type %}
+	Raw({{ raw_response_type }}),// allow custom response if raw_response_type is defined
+{%- endif %}
 }
 impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 	fn default() -> Self{

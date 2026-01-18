@@ -92,20 +92,25 @@ mod tests {
 			.unwrap()
 			.filter_map(Result::ok)
 			.filter_map(|entry| {
-				entry
-					.path()
-					.to_str()
-					.unwrap_or_default()
-					.contains("yaml")
-					.then(|| {
-						(
-							entry.file_name().to_str().unwrap_or_default().to_string(),
-							serde_yaml::from_reader(std::io::BufReader::new(
-								File::open(entry.path()).unwrap(),
-							))
-							.unwrap(),
-						)
-					})
+				let path = entry.path();
+				let extension = path.extension()?.to_str()?;
+				let name = entry.file_name().to_str()?.to_string();
+
+				match extension {
+					"yaml" | "yml" => {
+						let file = File::open(&path).ok()?;
+						let reader = std::io::BufReader::new(file);
+						let openapi = serde_yaml::from_reader(reader).ok()?;
+						Some((name, openapi))
+					}
+					"json" => {
+						let file = File::open(&path).ok()?;
+						let reader = std::io::BufReader::new(file);
+						let openapi = serde_json::from_reader(reader).ok()?;
+						Some((name, openapi))
+					}
+					_ => None,
+				}
 			})
 			.collect()
 	}

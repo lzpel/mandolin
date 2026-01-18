@@ -42,7 +42,7 @@ fn main() {
 	// read openapi.yaml
 	let input_openapi_path = std::env::args()
 		.nth(1)
-		.unwrap_or_else(|| "./openapi/openapi_sarod.yaml".to_string());
+		.unwrap_or_else(|| "./openapi/openapi_plant.yaml".to_string());
 	let input_string = std::fs::read_to_string(input_openapi_path).unwrap();
 	let input_api = serde_yaml::from_str(&input_string.as_str()).unwrap();
 	// make environment
@@ -82,11 +82,11 @@ use serde;
 use std::future::Future;
 pub trait ApiInterface{
 	fn authorize(&self, _req: axum::http::Request<axum::body::Body>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
-	// post /auth
-	fn authapi_email(&self, _req: AuthapiEmailRequest) -> impl Future<Output = AuthapiEmailResponse> + Send{async{Default::default()}}
-	// get /auth/callback_oauth
-	fn authapi_callback_oauth(&self, _req: AuthapiCallbackOauthRequest) -> impl Future<Output = AuthapiCallbackOauthResponse> + Send{async{Default::default()}}
-──────────────────────────────────────── 546 lines omitted ────────────────────────────────────────
+	// delete /clean
+	fn operation_clean(&self, _req: OperationCleanRequest) -> impl Future<Output = OperationCleanResponse> + Send{async{Default::default()}}
+	// get /credential/iam
+	fn credential_get(&self, _req: CredentialGetRequest) -> impl Future<Output = CredentialGetResponse> + Send{async{Default::default()}}
+──────────────────────────────────────── 1355 lines omitted ────────────────────────────────────────
 			.map(|s| s.to_ascii_lowercase())
 			.filter(|s| !s.is_empty());
 
@@ -220,6 +220,10 @@ fn main() {
 
 ## version
 
+- 0.2.5
+  - Improve `rust_axum.template` to correctly set `Content-Type` header
+- 0.2.4
+  - Internal bug fixes and improvements to response handling
 - 0.2.3 add binary target
 - 0.2.2 Fix bugs about no content response
 - 0.2.1 Add impl AsRef<axum::http::Request<axum::body::Body>> for Requests

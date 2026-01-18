@@ -98,7 +98,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 {%- for response_key, response in operation.responses|items %}
 {%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
 				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response_type -%}(v){%- endif -%} => axum::response::Response::builder().status(axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap())
-{%- if response_type %}
+{%- if response_type %}.header(axum::http::header::CONTENT_TYPE, "{{response_type|lines|first}}")
 {%- if "application/json" in response_type %}.body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json")))
 {%- else %}.body(axum::body::Body::from(v))
 {%- endif %}
