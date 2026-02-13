@@ -1,78 +1,59 @@
-use clap::Parser;
-use mandolin;
-use serde_yaml;
-use std::io::Read;
-#[derive(Parser, Debug)]
-#[clap(author, version, about = "Input openapi.json/yaml, output server source code in rust.", long_about = None)]
-struct Args {
-	#[clap(
-		short = 'i',
-		long = "input",
-		value_name = "FILE",
-		help = "Sets the input JSON/YAML file. If '-' specified, stdin will be used."
-	)]
-	input: String,
-	#[clap(
-		short = 'o',
-		long = "output",
-		value_name = "FILE",
-		help = "Sets the output source file. If omitted, stdout will be used."
-	)]
-	output: Option<String>,
-	#[clap(
-		short = 't',
-		long = "template",
-		value_name = "TEMPLATE",
-		default_value = "RUST_AXUM",
-		help = "Sets the template name"
-	)]
-	template: String,
-}
-pub fn main() {
-	// コマンドライン引数をパース
-	let args = Args::parse();
-	let input = match args.input.as_str() {
-		"-" => {
-			// Noneの場合: 標準入力から読み込む
-			let mut buffer = String::new();
-			if let Err(e) = std::io::stdin().read_to_string(&mut buffer) {
-				eprintln!("Cannot read from stdin\n{:?}", e);
-				std::process::exit(1);
-			}
-			buffer
-		}
-		filename => {
-			// Someの場合: ファイルから読み込む
-			std::fs::read_to_string(filename).unwrap_or_else(|e| {
-				eprintln!("Cannot read {}\n{:?}", filename, e);
-				std::process::exit(1);
-			})
-		}
-	};
+//! mandolin CLI — OpenAPI仕様からサーバコードを生成する
+//!
+//! 使用例:
+//!   mandolin -i openapi.yaml -t RUST_AXUM -o server.rs
+//!   cat openapi.json | mandolin -i - -t RUST_AXUM > server.rs
 
-	let input_api = match [
-		serde_yaml::from_str(input.as_str()).map_err(|_| ()),
-		serde_json::from_str(input.as_str()).map_err(|_| ()),
-	]
-	.into_iter()
-	.find_map(Result::ok)
-	{
-		Some(v) => v,
-		None => {
-			eprintln!("Cannot parse input as json/yaml");
-			std::process::exit(1);
-		}
-	};
-	let env = mandolin::environment(input_api).unwrap();
-	let template = env.get_template(args.template.as_str()).unwrap();
-	let output = template.render(0).unwrap();
-	// write the rendered output
-	match &args.output {
-		Some(v) => {
-			std::fs::write(v.as_str(), output).unwrap();
-		}
-		None => {
-			print!("{}", output);
-		}
-	}
+use clap::Parser;
+use std::io::Read;
+
+/// OpenAPI仕様からサーバコードを生成するコマンドラインツール
+#[derive(Parser)]
+#[command(name = "mandolin", about = "Generate server code from OpenAPI specification")]
+struct Args {
+    /// 入力ファイルパス（"-" で標準入力から読み込み）
+    #[arg(short, long)]
+    input: String,
+
+    /// 出力ファイルパス（省略時は標準出力）
+    #[arg(short, long)]
+    output: Option<String>,
+
+    /// テンプレート名（デフォルト: RUST_AXUM）
+    #[arg(short, long, default_value = "RUST_AXUM")]
+    template: String,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
+
+    // 入力ファイルまたは標準入力を読み込む
+    let input = if args.input == "-" {
+        let mut buf = String::new();
+        std::io::stdin().read_to_string(&mut buf)?;
+        buf
+    } else {
+        std::fs::read_to_string(&args.input)?
+    };
+
+    // YAMLまたはJSONとしてパースする
+    let api: openapiv3::OpenAPI = if args.input.ends_with(".json") {
+        serde_json::from_str(&input)?
+    } else {
+        serde_yaml::from_str(&input)?
+    };
+
+    // テンプレート環境を構築してレンダリング
+    let env = mandolin::environment(api)?;
+    let template = env.get_template(&args.template)?;
+    let output = template.render(0)?;
+
+    // 出力先に書き込む
+    if let Some(path) = args.output {
+        std::fs::write(&path, &output)?;
+    } else {
+        print!("{}", output);
+    }
+
+    Ok(())
 }

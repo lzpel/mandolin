@@ -1,32 +1,41 @@
-MAKE_RECURSIVE_DIRS := frontend frontend/wasm
-generate:
-	cargo run --example readme_axum_generate && cargo build --example readme_axum_generate_out
-	python markdown_import.py README.md
-	cargo tree && cargo fmt
+.PHONY: test clean build
+
+
+# OpenAPIファイルからRustサーバコードを生成し、全テストを実行する
+test:
+	cargo test -- --nocapture
 	bash -c "$${MAKE_RECURSIVE}"
+
+# OpenAPIファイルから各言語のコードを生成してout/に出力する
+generate:
+	@mkdir -p out
+	@for f in openapi/*.yaml openapi/*.json; do \
+		[ -f "$$f" ] || continue; \
+		case "$$f" in *.tsp) continue;; esac; \
+		name=$$(basename "$$f"); \
+		echo "=== $$name → rs ==="; \
+		cargo run -- -i "$$f" -t RUST_AXUM -o "out/$$name.rs"; \
+		echo "=== $$name → ts ==="; \
+		cargo run -- -i "$$f" -t TYPESCRIPT_HONO -o "out/$$name.ts"; \
+	done
+	@echo "=== All generation complete ==="
+	bash -c "$${MAKE_RECURSIVE}"
+
 run:
 	bash -c "$${MAKE_RECURSIVE}"
-deploy:
+
+deploy: generate
 	bash -c "$${MAKE_RECURSIVE}"
-test:
-	cargo test
-	bash -c "$${MAKE_RECURSIVE}"
+
 clean:
+	rm -rf out/
+	cargo clean
 	bash -c "$${MAKE_RECURSIVE}"
-compile:
-	bash -c "cd frontend && find ../openapi/ -name '*.tsp' | xargs -IX npx tsp compile X --emit @typespec/openapi3"
-cli:
-	cd mandolin-cli && cargo run -- -h
-search-%:
-	@git grep --color -r --text -n '$*' .
+
+MAKE_RECURSIVE_DIRS := frontend frontend/wasm
+
 # 複数のディレクトリそれぞれでmake。環境変数MAKE_RECURSIVE_PARALLELが設定されていたら並列実行 MAKE_RECURSIVE_PARALLEL=1 bash -c "$${MAKE_RECURSIVE}"
 define MAKE_RECURSIVE
-if [ -n "$${MAKE_RECURSIVE_PARALLEL}" ]; then
-	trap 'kill 0' EXIT INT TERM
-	time printf '%s\n' $(MAKE_RECURSIVE_DIRS) | xargs -P0 -IX sh -c '$(MAKE) -C X $@'
-	wait
-else
-	time printf '%s\n' $(MAKE_RECURSIVE_DIRS) | xargs -IX sh -c '$(MAKE) -C X $@'
-fi
+time printf '%s\n' $(MAKE_RECURSIVE_DIRS) | xargs -IX sh -c '$(MAKE) -C X $@'
 endef
-export MAKE_RECURSIVE
+export
