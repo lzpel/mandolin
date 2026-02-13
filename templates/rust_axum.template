@@ -1,0 +1,555 @@
+{# ==================== #}
+{# Rust/Axum テンプレート #}
+{# ==================== #}
+{# OpenAPI仕様からRust/Axumサーバコードを生成する単一ファイルテンプレート #}
+{# テンプレート内の全てのマクロとコード生成ロジックが1ファイルに統合されている #}
+
+{# HTTPメソッド一覧: OpenAPIのpathItemからオペレーションを抽出するために使用 #}
+{%- set methods = ["get","put","post","delete","options","head","patch","trace"] %}
+
+{# ===== スキーママクロ ===== #}
+{# OpenAPIのスキーマ定義からRustの型定義を生成する #}
+
+{# スキーマ名を生成するマクロ #}
+{# JSON Pointerからパスカルケースの型名を導出し、スキーマキャッシュに登録する #}
+{# 例: "#/components/schemas/Pet" → "Pet" #}
+{%- macro SCHEMA_NAME(pointer) %}
+{%- if schema_push(pointer, none) %}
+{%- do schema_push(pointer, IDENTIFIED_SCHEMA(pointer, pointer|include_pointer)) %}
+{%- endif %}{{pointer|replace("#/components/schemas/","")|decode|to_pascal_case}}
+{%- endmacro %}
+
+{# OpenAPIのスキーマ定義を対応するRust型に変換するマクロ #}
+{# object→構造体名, array→Vec<T>, integer→i32等, string→String等, $ref→参照先の型名 #}
+{%- macro SCHEMA(pointer,schema) -%}
+{%- if schema.type -%}
+{%- if schema.type == "object" -%}
+{%- if schema.additionalProperties %}HashMap<String,{{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}}>
+{%- else %}{{SCHEMA_NAME(pointer)}}
+{%- endif %}
+{%- elif schema.type == "array" %}Vec<{{SCHEMA(pointer+"/items",schema.items)}}>
+{%- elif schema.type == "integer" -%}
+{%- if "u" in schema.format -%}u{%- else -%}i{%- endif -%}{%- if "int128" in schema.format -%}128{%- elif "int64" in schema.format -%}64{%- elif "int32" in schema.format -%}32{%- else -%}8{%- endif -%}
+{%- elif schema.type == "string" %}
+{%- if schema.format == "binary" %}Vec<u8>
+{%- elif schema.format == "uuid" %}uuid::Uuid
+{%- elif schema.format == "date" %}chrono::NaiveDate
+{%- elif schema.format == "date-time" %}chrono::DateTime<chrono::Utc>
+{%- else %}String
+{%- endif %}
+{%- elif schema.type == "number" %}f64
+{%- elif schema.type == "boolean" %}bool
+{%- else %}
+{%- endif %}
+{%- elif schema["$ref"] %}{{SCHEMA_NAME(schema["$ref"])}}
+{%- else %}u8
+{%- endif %}
+{%- endmacro -%}
+
+{# 名前付きスキーマ定義を生成するマクロ #}
+{# objectの場合はstruct定義、それ以外はtype aliasを生成する #}
+{%- macro IDENTIFIED_SCHEMA(pointer, schema) %}
+{%- if schema.type == "object" %}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct {{SCHEMA_NAME(pointer)}}{{'{'}}
+{%- for property_key, property in schema.properties|items %}
+{%- with inner=SCHEMA(pointer+"/properties/"+property_key, property) %}
+	pub r#{{property_key}}:{%- if schema.required and property_key in schema.required %}{{inner}}{%- else %}Option<{{inner}}>{%- endif %},
+{%- endwith %}
+{%- endfor %}
+}
+{%- else %}
+pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
+{%- endif %}
+{%- endmacro %}
+
+{# キャッシュされた全スキーマ定義を出力するマクロ #}
+{# SCHEMA_NAME()呼出時に蓄積されたスキーマをまとめて出力する #}
+{%- macro IDENTIFIED_SCHEMA_DRAIN() %}
+{%- for pointer, output in schema_drain()|items -%}
+{{output}}
+{%- endfor %}
+{%- endmacro %}
+
+{# ===== オペレーションマクロ ===== #}
+{# OpenAPIのオペレーション定義からRustのリクエスト/レスポンス型を生成する #}
+
+{# オペレーション名をスネークケースで返すマクロ #}
+{# operationIdがあればそれを使い、なければポインタから導出する #}
+{%- macro OPERATION_NAME(pointer,operation) -%}
+{%- if operation.operationId -%}
+{{operation.operationId|to_snake_case}}
+{%- else -%}
+{{pointer|decode|to_snake_case}}
+{%- endif -%}
+{%- endmacro -%}
+
+{# リクエスト構造体名をパスカルケースで返すマクロ #}
+{%- macro OPERATION_REQUEST_NAME(pointer,operation) -%}
+{{(OPERATION_NAME(pointer,operation)+"_request")|to_pascal_case}}
+{%- endmacro -%}
+
+{# レスポンスenum名をパスカルケースで返すマクロ #}
+{%- macro OPERATION_RESPONSE_NAME(pointer,operation) -%}
+{{(OPERATION_NAME(pointer,operation)+"_response")|to_pascal_case}}
+{%- endmacro -%}
+
+{# レスポンスのContent-Typeと型を抽出するマクロ #}
+{# 最初のcontent typeのみを使用する #}
+{%- macro OPERATION_RESPONSE_TYPE(pointer,response) -%}
+{%- if response.content %}
+{%- for content_key, content in response.content|items -%}
+{%- with schema=SCHEMA(pointer+"/content/"+content_key|encode+"/schema",content.schema) %}
+{%- if schema %}{{content_key}}
+{{schema}}
+{%- endif %}
+{%- endwith %}
+{%- break %}
+{%- endfor %}
+{%- endif %}
+{%- endmacro -%}
+
+{# リクエスト構造体を生成するマクロ #}
+{# パラメータ（path/query/header）とリクエストボディを含む #}
+{%- macro OPERATION_REQUEST(pointer, operation, type_request, type_security) -%}
+// {{OPERATION_NAME(pointer, operation)}}のリクエスト型
+#[derive(Debug)]
+pub struct {{OPERATION_REQUEST_NAME(pointer, operation)}}{
+{%- for parameter in operation.parameters %}
+	pub {{parameter.name}}:{%-set inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
+{%- endfor %}
+{%- if operation.requestBody %}
+{%- for content_key, content in operation.requestBody.content|items %}
+	pub body: {{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema)}},
+{%- break %}
+{%- endfor %}
+{%- endif %}
+	pub request: {{type_request}},
+{%- if operation.security %}
+	pub security: {{type_security}}, /*{{operation.security}}*/
+{%- endif %}
+}
+impl AsRef<{{type_request}}> for {{OPERATION_REQUEST_NAME(pointer,operation)}}{
+	fn as_ref(&self) -> &{{type_request}}{&self.request}
+}
+{%- endmacro -%}
+
+{# レスポンスenumを生成するマクロ #}
+{# HTTPステータスコードごとにバリアントを持つ。Rawバリアントでカスタムレスポンスも可能 #}
+{%- macro OPERATION_RESPONSE(pointer,operation,raw_response_type) -%}
+// {{OPERATION_NAME(pointer,operation)}}のレスポンス型
+#[derive(Debug)]
+pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
+{%- set ns = namespace(response_default_key=0) %}
+{%- for response_key, response in operation.responses|items %}
+{%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
+	{{("status_"+response_key)|to_pascal_case}}{%-if response_type-%}({{response_type|lines|last}}){%-endif%},
+{%- if ns.response_default_key == 0%}
+{%- set ns.response_default=response %}
+{%- set ns.response_default_key=response_key %}
+{%- set ns.response_default_type=response_type %}
+{%- endif %}
+{%- endwith %}
+{%- endfor %}
+{%- if raw_response_type %}
+	Raw({{ raw_response_type }}),// カスタムレスポンス用バリアント
+{%- endif %}
+}
+impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
+	fn default() -> Self{
+		Self::{{("status_"+ns.response_default_key)|to_pascal_case}}{%-if ns.response_default_type-%}(Default::default()){%-endif%}
+	}
+}
+{%- endmacro -%}
+
+{# ===== Axum固有ヘルパーマクロ ===== #}
+
+{# multipart/form-dataのリクエストボディをパースするマクロ #}
+{# axum::extract::Multipartからスキーマ型を構築する #}
+{%- macro EXPRESSION_MULTIPART(pointer,schema,multipart,expression_with_string_e) -%}
+match async |mut x: axum::extract::Multipart| -> std::result::Result<{{SCHEMA_NAME(pointer)}},String>{
+	let mut o:{{SCHEMA_NAME(pointer)}}=Default::default();
+	while let Some(field) = x.next_field().await.map_err(|e| e.body_text())? {
+		match field.name().unwrap_or_default() {
+{%- if schema.type == "object" %}
+{%- for property_key, property in schema.properties|items %}
+			"{{property_key}}" =>
+{%- with required=schema.required and property_key in schema.required -%}
+				{{EXPRESSION_MULTIPART_ITEM(pointer+"/properties/"+property_key, property, "o."+property_key, required)}}
+{%- endwith %},
+{%- endfor %}
+{%- endif %}
+			other => return Err(format!("unknown field {other} in multipart-formdata"))
+		}
+	}
+	Ok(o)
+}({{multipart}}).await {
+	Ok(v)=>v,
+	Err(e)=>{{expression_with_string_e}}
+}
+{%- endmacro %}
+
+{# multipartの各フィールドをパースするヘルパーマクロ #}
+{# 配列・文字列・バイナリを型に応じて処理する #}
+{%- macro EXPRESSION_MULTIPART_ITEM(pointer,schema,value,value_is_required) %}
+{%- if schema.type == "array" -%}
+{{value}}.push({{EXPRESSION_MULTIPART_ITEM(pointer+"/items",schema.items)}})
+{%- elif schema.type == "string" %}
+{%- if value is defined %}{{value}}={%- if not value_is_required %}Some({%- endif %}{%- endif %}
+{%- if schema.format == "binary" %}field.bytes().await.map(|v| v.to_vec()).map_err(|e| e.body_text())?
+{%- else %}field.text().await.map_err(|e| e.body_text())?
+{%- endif %}
+{%- if value is defined %}{%- if not value_is_required %}){%- endif %}{%- endif %}
+{%- endif %}
+{%- endmacro %}
+
+{# ===== ユーティリティマクロ ===== #}
+
+{# HTTPリクエストからオリジンURLを推定するユーティリティ関数を生成するマクロ #}
+{# Forwarded, X-Forwarded-*, Hostヘッダの優先順位に従う #}
+{%- macro UTILITY() -%}
+/// HTTPリクエストからオリジンURL(scheme://host)を推定する
+/// Forwarded > X-Forwarded-* > Host の優先順位で判定する
+pub fn origin_from_request<B>(req: &axum::http::Request<B>) -> Option<String> {
+	fn first_csv(s: &str) -> &str {
+		s.split(',').next().unwrap_or(s).trim()
+	}
+	fn unquote(s: &str) -> &str {
+		let s = s.trim();
+		if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
+			&s[1..s.len() - 1]
+		} else {
+			s
+		}
+	}
+	fn guess_scheme(host: &str) -> &'static str {
+		let hostname = host
+			.trim_start_matches('[')
+			.split(']')
+			.next()
+			.unwrap_or(host)
+			.split(':')
+			.next()
+			.unwrap_or(host);
+		match hostname {
+			"localhost" | "127.0.0.1" | "::1" => "http",
+			_ => "https",
+		}
+	}
+	fn mk_origin(proto: Option<String>, host: String) -> String {
+		let proto = proto.unwrap_or_else(|| guess_scheme(&host).to_string());
+		format!("{proto}://{host}")
+	}
+
+	let headers = req.headers();
+
+	// 0) URIのauthority部分を確認（絶対URIが渡された場合）
+	if let Some(auth) = req.uri().authority() {
+		let host = auth.as_str().to_string();
+		return Some(mk_origin(None, host));
+	}
+
+	// 1) Forwarded (RFC 7239)
+	if let Some(raw) = headers
+		.get(axum::http::header::FORWARDED)
+		.and_then(|v| v.to_str().ok())
+	{
+		let first = first_csv(raw);
+		let mut proto: Option<String> = None;
+		let mut host: Option<String> = None;
+
+		for part in first.split(';') {
+			let mut it = part.trim().splitn(2, '=');
+			let k = it.next().unwrap_or("").trim().to_ascii_lowercase();
+			let v = unquote(it.next().unwrap_or(""));
+
+			match k.as_str() {
+				"proto" if !v.is_empty() => proto = Some(v.to_ascii_lowercase()),
+				"host" if !v.is_empty() => host = Some(v.to_string()),
+				_ => {}
+			}
+		}
+
+		if let Some(host) = host {
+			return Some(mk_origin(proto, host));
+		}
+	}
+
+	// 2) X-Forwarded-*
+	if let Some(mut host) = headers
+		.get("x-forwarded-host")
+		.and_then(|v| v.to_str().ok())
+		.map(first_csv)
+		.filter(|s| !s.is_empty())
+		.map(str::to_string)
+	{
+		if !host.contains(':') {
+			if let Some(port) = headers
+				.get("x-forwarded-port")
+				.and_then(|v| v.to_str().ok())
+				.map(str::trim)
+				.filter(|s| !s.is_empty())
+			{
+				host = format!("{host}:{port}");
+			}
+		}
+
+		let proto = headers
+			.get("x-forwarded-proto")
+			.and_then(|v| v.to_str().ok())
+			.map(first_csv)
+			.map(|s| s.to_ascii_lowercase())
+			.filter(|s| !s.is_empty());
+
+		return Some(mk_origin(proto, host));
+	}
+
+	// 3) Hostヘッダにフォールバック
+	let host = headers
+		.get(axum::http::header::HOST)
+		.and_then(|h| h.to_str().ok())
+		.map(str::trim)
+		.filter(|s| !s.is_empty())?
+		.to_string();
+
+	Some(format!("{}://{}", guess_scheme(&host), host))
+}
+{%- endmacro -%}
+
+{# ===== include_pointer互換マクロ ===== #}
+{# $ref事前解決後もスキーママクロがポインタで値を参照する必要があるため、 #}
+{# specグローバル変数からポインタで値を取得するフィルタの代替として #}
+{# specオブジェクトを直接走査するマクロを提供する #}
+{%- macro RESOLVE_POINTER(pointer) %}
+{%- set segments = pointer|replace("#/","")|split("/") %}
+{%- set result = spec %}
+{%- for seg in segments %}
+{%- set result = result[seg|decode] %}
+{%- endfor %}
+{{result}}
+{%- endmacro %}
+
+{# ===== コード生成本体 ===== #}
+// このファイルはmandolin https://github.com/lzpel/mandolin によりOpenAPI仕様から自動生成されました
+
+/* このサーバをビルドするためのCargo.toml
+
+[dependencies]
+serde= { version="*", features = ["derive"] }
+serde_json= "*"
+axum = { version = "*", features = ["multipart"] }
+tokio = { version = "*", features = ["rt", "rt-multi-thread", "macros", "signal"] }
+# optional
+uuid = { version = "*", features = ["serde"] }
+chrono = { version = "*", features = ["serde"] }
+*/
+
+use std::collections::HashMap;
+use serde;
+use std::future::Future;
+
+/// APIインターフェーストレイト
+/// 各オペレーションに対応するメソッドを実装することでサーバロジックを定義する
+pub trait ApiInterface{
+	/// 認証処理: リクエストからAuthContextを生成する
+	fn authorize(&self, _req: axum::http::Request<axum::body::Body>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
+{%- for path_key, path_item in spec.paths|items %}
+{%- for method in methods %}
+{%- if path_item[method] is defined %}
+{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
+{%- set operation = path_item[method] %}
+	// {{method|upper}} {{path_key}}
+	fn {{OPERATION_NAME(pointer,operation)}}(&self, _req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> impl Future<Output = {{OPERATION_RESPONSE_NAME(pointer,operation)}}> + Send{async{Default::default()}}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+}
+
+
+/// 認証コンテキスト: 認証情報を保持する構造体
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct AuthContext{
+    pub subject: String,   // ユーザー識別子 (例: "auth0|123", "google-oauth2|456")
+    pub subject_id: u128,  // UUID互換の数値ID
+    pub scopes: Vec<String>, // スコープ (例: "read:foo", "write:bar")
+}
+
+{# リクエスト/レスポンス型の生成 #}
+{%- for path_key, path_item in spec.paths|items %}
+{%- for method in methods %}
+{%- if path_item[method] is defined %}
+{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
+{%- set operation = path_item[method] %}
+{{OPERATION_REQUEST(pointer, operation, "axum::http::Request<axum::body::Body>", "AuthContext")}}
+{{OPERATION_RESPONSE(pointer, operation, "axum::response::Response")}}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+
+{# キャッシュされたスキーマ定義を全て出力 #}
+{{ IDENTIFIED_SCHEMA_DRAIN() }}
+
+use axum;
+use axum::extract::FromRequest;
+
+/// テキストレスポンスを生成するヘルパー関数
+fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Response{
+	axum::response::Response::builder()
+		.status(code)
+		.header(axum::http::header::CONTENT_TYPE, "text/plain")
+		.body(axum::body::Body::from(body))
+		.unwrap()
+}
+
+/// 全オペレーションのルートハンドラを登録したaxum::Routerを返す
+pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
+	let router = axum::Router::new();
+{%- for path_key, path_item in spec.paths|items %}
+{%- for method in methods %}
+{%- if path_item[method] is defined %}
+{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
+{%- set operation = path_item[method] %}
+	let i = instance.clone();
+	let router = router.route("{{path_key|re_replace('(\\{\\s*)path', '$1*path')}}", axum::routing::{{method}}(|
+			path: axum::extract::Path<HashMap<String,String>>,
+			query: axum::extract::Query<HashMap<String,String>>,
+			header: axum::http::HeaderMap,
+			request: axum::http::Request<axum::body::Body>,
+		| async move{
+			let (parts, body) = request.into_parts();
+			let ret=S::{{OPERATION_NAME(pointer,operation)}}(i.as_ref(), {{OPERATION_REQUEST_NAME(pointer,operation)}}{
+{%- for parameter in operation.parameters %}
+				r#{{parameter.name}}:{let v={{parameter.in}}.get("{{parameter.name}}")
+{%- if parameter.in == "header" %}.map(|v| v.to_str().unwrap_or_default())
+{%- endif %}.and_then(|v| v.parse().ok());
+{%- if parameter.required -%}match v {Some(v)=>v, None=>return text_response(axum::http::StatusCode::from_u16(400).unwrap(), format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}))}
+{%- else %}v
+{%- endif %}},
+{%- endfor %}
+{%- if operation.requestBody %}
+{%- for content_key, content in operation.requestBody.content|items %}
+				body:
+{%- if "json" in content_key %}match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(axum::http::StatusCode::BAD_REQUEST, v)}
+{%- elif "multipart" in content_key %}{
+	let r=axum::http::Request::from_parts(parts.clone(), body);
+	let v=match axum::extract::Multipart::from_request(r, &()).await{Ok(v)=>v,Err(e)=>return text_response(axum::http::StatusCode::BAD_REQUEST, e.body_text())};
+	{{EXPRESSION_MULTIPART(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema,"v","return text_response(axum::http::StatusCode::BAD_REQUEST,e)")}}
+}
+{%- else %}match axum::body::to_bytes(body, usize::MAX).await{Ok(v)=>v.into(),Err(v)=>return text_response(axum::http::StatusCode::BAD_REQUEST,format!("{v:?}"))}
+{%- endif %}
+{%- break %}
+{%- endfor %},
+{%- endif %}
+				request: axum::http::Request::from_parts(parts.clone(), Default::default()),
+{%- if operation.security %}
+				security: match i.as_ref().authorize(axum::http::Request::from_parts(parts.clone(), Default::default())).await {
+					Ok(v)=>v,
+					Err(e)=>return text_response(axum::http::StatusCode::UNAUTHORIZED, e)
+				},
+{%- endif %}
+			}).await;
+			match ret{
+{%- for response_key, response in operation.responses|items %}
+{%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
+				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response_type -%}(v){%- endif -%} => axum::response::Response::builder().status(axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap())
+{%- if response_type %}.header(axum::http::header::CONTENT_TYPE, "{{response_type|lines|first}}")
+{%- if "application/json" in response_type %}.body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json")))
+{%- else %}.body(axum::body::Body::from(v))
+{%- endif %}
+{%- else -%}
+.body(axum::body::Body::empty())
+{%- endif -%}
+.unwrap(),
+{%- endwith %}
+{%- endfor %}
+				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::Raw(v)=>v,
+			}
+		}));
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+	let router = router.route("/openapi.json", axum::routing::get(|| async move{
+			r###"{{spec|tojson}}"###
+		}))
+		.route("/ui", axum::routing::get(|| async move{
+			axum::response::Html(r###"
+			<html lang="en">
+			<head>
+			  <meta charset="utf-8" />
+			  <meta name="viewport" content="width=device-width, initial-scale=1" />
+			  <meta name="description" content="SwaggerUI" />
+			  <title>SwaggerUI</title>
+			  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
+			</head>
+			<body>
+			<div id="swagger-ui"></div>
+			<script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" crossorigin></script>
+			<script>
+			  window.onload = () => {
+				window.ui = SwaggerUIBundle({
+				  url: location.href.replace("/ui","/openapi.json"),
+				  dom_id: '#swagger-ui',
+				});
+			  };
+			</script>
+			</body>
+			</html>
+			"###)
+		}));
+	return router;
+}
+
+/// サーバのURLプレフィックスにnest_serviceでルーターをマウントする
+pub fn axum_router<S: ApiInterface + Sync + Send + 'static>(instance: S)->axum::Router{
+	let instance_arc=std::sync::Arc::new(instance);
+{%- if spec.servers|length > 0 %}
+	axum::Router::new()
+{%- for server in spec.servers %}
+		.nest_service("{{server.url}}", axum_router_operations(instance_arc.clone()))
+{%- endfor %}
+{%- else %}
+	panic!("At least, one server define is required for mandolin. but no servers are define in openapi.");
+{%- endif %}
+}
+
+/// サーバのURL一覧を標準出力に表示する
+pub fn print_axum_router(port:u16){
+{%- if spec.servers|length > 0 %}
+{%- for server in spec.servers %}
+	println!("http://localhost:{}{{server.url}}/ui", port);
+{%- endfor %}
+{%- else %}
+	todo!("Add at least one server endpoint to the OpenAPI `servers` section.")
+{%- endif %}
+}
+
+/// テスト用のサーバ実装（全メソッドがデフォルト値を返す）
+pub struct TestServer{}
+impl ApiInterface for TestServer{
+	// 必要なメソッドをここに実装する
+{%- for path_key, path_item in spec.paths|items %}
+{%- for method in methods %}
+{%- if path_item[method] is defined %}
+{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
+{%- set operation = path_item[method] %}
+	// {{method|upper}} {{path_key}}
+	// async fn {{OPERATION_NAME(pointer,operation)}}(&self, _req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> {{OPERATION_RESPONSE_NAME(pointer,operation)}}{Default::default()}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+}
+
+{{ UTILITY() }}
+
+#[tokio::main]
+async fn main() {
+	let port:u16 = std::env::var("PORT").unwrap_or("8080".to_string()).parse().expect("PORT should be integer");
+	print_axum_router(port);
+	let api = TestServer{};
+	let app = axum_router(api).layer(axum::extract::DefaultBodyLimit::disable());
+	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await.unwrap();
+	axum::serve(listener, app)
+		.with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
+		.await
+		.unwrap();
+}

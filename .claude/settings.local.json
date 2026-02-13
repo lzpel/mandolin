@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(*)"
+      "Bash(*)",
+      "Edit(*)",
+      "Write(*)",
+      "NotebookEdit(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "Bash(cargo run:*)",
+      "Bash(cargo test:*)",
+      "Bash(ls:*)",
+      "Bash(rustc:*)",
+      "Bash(make -C /home/smith/mandolin test)"
     ]
   }
 }
