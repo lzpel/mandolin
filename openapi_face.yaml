@@ -9,7 +9,7 @@ servers:
 paths:
   /cron:
     get:
-      description: "\tタスクキューを進めます。実行可能なプロセスが存在すれば実行し、状態を更新します。1分毎など定期的に呼び出してください。"
+      description: "Advances the task queue. Executes any runnable processes and updates their state. Should be called periodically, e.g., every minute."
       operationId: Background_cron
       responses:
         '204':
@@ -18,7 +18,7 @@ paths:
             useful. 
   /image:
     get:
-      description: "\tジョブのランナーとして指定可能なdocker image一覧です。FaceSimulatorはその一つです。"
+      description: "Lists docker images that can be specified as a job runner. FaceSimulator is one of them."
       operationId: Images_list
       responses:
         '200':
@@ -37,7 +37,7 @@ paths:
                 type: string
   /job:
     get:
-      description: "\tジョブ一覧を返します"
+      description: "Returns a list of jobs."
       operationId: Jobs_list
       responses:
         '200':
@@ -55,7 +55,7 @@ paths:
               schema:
                 type: string
     post:
-      description: "\t新規にジョブを開始します。\n\t- filedata(required): 実行に必要なファイル一覧、アップロードされます。不要なら0件も可能。\n\t- filepath(required): filedataのパス、このパス通りに展開される\n\t- image(required): ジョブを実行するdocker image。\n\t- config: config用jsonファイル。指定しなければfileから推測されます（トップレベルかつ.json拡張子が付いたファイル）。"
+      description: "Starts a new job.\n\t- filedata (required): List of files required for execution, to be uploaded. Can be empty if not needed.\n\t- filepath (required): Paths for filedata, extracted according to these paths.\n\t- image (required): Docker image to execute the job.\n\t- config: JSON file for configuration. If not specified, inferred from file (top-level file with .json extension)."
       operationId: Jobs_push
       requestBody:
         content:
@@ -101,7 +101,7 @@ paths:
                 type: string
   '/job/{id}':
     delete:
-      description: "\tジョブを削除します"
+      description: "Deletes a job."
       operationId: Jobs_delete
       parameters:
         - in: path
@@ -129,7 +129,7 @@ paths:
                 type: string
   '/job/{id}/files':
     get:
-      description: "\tジョブのファイル一覧を返します"
+      description: "Returns a list of files for the job."
       operationId: Jobs_filelist
       parameters:
         - in: path
@@ -161,7 +161,7 @@ paths:
                 type: string
   '/job/{id}/files/{path_file}':
     get:
-      description: "\tジョブのファイルを配信します。path_fileは/（スラッシュ）を含めて良いです。"
+      description: "Delivers a file for the job. path_file can include / (slashes)."
       operationId: Jobs_file
       parameters:
         - in: path
@@ -198,7 +198,7 @@ paths:
                 type: string
   '/job/{id}/tasks':
     get:
-      description: "\tジョブのタスク一覧を返します"
+      description: "Returns a list of tasks for the job."
       operationId: Jobs_tasklist
       parameters:
         - in: path
@@ -230,7 +230,7 @@ paths:
                 type: string
   /status:
     get:
-      description: "\tシステム情報（GPUの使用状態）と稼働中のタスクを取得"
+      description: "Retrieves system information (GPU usage status) and running tasks."
       operationId: StatusInterface_status
       responses:
         '200':

@@ -9,7 +9,7 @@
     "/auth/callback_oauth": {
       "get": {
         "operationId": "AuthApi_callback_oauth",
-        "description": "\tユーザーを追加します\n\toauth コールバック用",
+        "description": "Adds a user.\nFor OAuth callback.",
         "parameters": [
           {
             "name": "code",
@@ -57,7 +57,7 @@
     "/auth/email": {
       "post": {
         "operationId": "AuthApi_email",
-        "description": "\t指定メールアドレスにそのメールアドレスが正しいことを確認するリンクを送ります\n\tそのリンクを踏んだ人だけがユーザー追加画面にたどり着けます\n\turi: コールバック用にドメインをフロントエンドから抽出する\n\temail: メールアドレス",
+        "description": "Sends a link to the specified email address to verify it.\nOnly those who click the link can reach the user addition screen.\nuri: Extract domain from frontend for callback\nemail: Email address",
         "parameters": [],
         "responses": {
           "204": {
@@ -104,7 +104,7 @@
     "/auth/google": {
       "get": {
         "operationId": "AuthApi_google",
-        "description": "\tgoogle ログイン",
+        "description": "Google login",
         "parameters": [],
         "responses": {
           "200": {
@@ -123,7 +123,7 @@
     "/auth/out": {
       "get": {
         "operationId": "AuthApi_out",
-        "description": "\tログアウト",
+        "description": "Logout",
         "parameters": [],
         "responses": {
           "204": {
@@ -142,7 +142,7 @@
     "/page": {
       "post": {
         "operationId": "PageApi_push",
-        "description": "\t動画を追加/更新します、認証が必要",
+        "description": "Adds/updates a video. Requires authentication.",
         "parameters": [],
         "responses": {
           "200": {
@@ -216,7 +216,7 @@
       },
       "get": {
         "operationId": "PageApi_get",
-        "description": "\tホーム画面用の動画一覧を返します、認証が必要",
+        "description": "Returns a list of videos for the home screen. Requires authentication.",
         "parameters": [],
         "responses": {
           "200": {
@@ -263,7 +263,7 @@
     "/page/upload": {
       "post": {
         "operationId": "PageApi_upload",
-        "description": "\t大容量ファイルを一次的な領域にアップロードするためのurlを返します",
+        "description": "Returns a URL for uploading large files to a temporary area.",
         "parameters": [
           {
             "name": "fileName",
@@ -320,7 +320,7 @@
     "/user": {
       "delete": {
         "operationId": "UserApi_user_pop",
-        "description": "\tユーザーを削除します、認証が必要",
+        "description": "Deletes a user. Requires authentication.",
         "parameters": [],
         "responses": {
           "204": {
@@ -362,7 +362,7 @@
       },
       "get": {
         "operationId": "UserApi_user_get",
-        "description": "\tユーザー情報を取得します、認証が必要",
+        "description": "Retrieves user information. Requires authentication.",
         "parameters": [],
         "responses": {
           "200": {
@@ -404,7 +404,7 @@
       },
       "post": {
         "operationId": "UserApi_user_set",
-        "description": "\tユーザーの名前やプロフィールの設定を行う、認証が必要",
+        "description": "Sets user name or profile. Requires authentication.",
         "parameters": [],
         "responses": {
           "200": {
@@ -637,7 +637,7 @@
   "servers": [
     {
       "url": "/api",
-      "description": "開発用",
+      "description": "For development",
       "variables": {}
     }
   ]
