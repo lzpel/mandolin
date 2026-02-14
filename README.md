@@ -1,5 +1,8 @@
 # mandolin
 
+[![GitHub License](https://img.shields.io/github/license/lzpel/cloudmama)](https://github.com/lzpel/mandolin/blob/main/LICENSE)
+[![Crates.io](https://img.shields.io/crates/v/mandolin.svg?logo=rust)](https://crates.io/crates/mandolin)
+
 Mandolin is a tool to generate server-side code from OpenAPI specifications (YAML/JSON).
 It currently supports:
 
