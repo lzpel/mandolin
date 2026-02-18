@@ -1,0 +1,434 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Lambda360 API",
+    "version": "0.0.0"
+  },
+  "tags": [],
+  "paths": {
+    "/hello": {
+      "get": {
+        "operationId": "Hello_sayHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shape": {
+      "post": {
+        "operationId": "Shape_compute",
+        "description": "ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "model/gltf-binary": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShapeNode"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/step/{sha256}": {
+      "get": {
+        "operationId": "Step_exists",
+        "parameters": [
+          {
+            "name": "sha256",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileExists"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/view": {
+      "get": {
+        "operationId": "Viewer_view",
+        "parameters": [
+          {
+            "name": "sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "model/gltf-binary": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FileExists": {
+        "type": "object",
+        "required": [
+          "exists"
+        ],
+        "properties": {
+          "exists": {
+            "type": "boolean"
+          },
+          "uploadUrl": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "IntersectNode": {
+        "type": "object",
+        "required": [
+          "op",
+          "a",
+          "b"
+        ],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "intersect"
+            ]
+          },
+          "a": {
+            "$ref": "#/components/schemas/ShapeNode"
+          },
+          "b": {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        ],
+        "description": "ブーリアン共通部分 (BRepAlgoAPI_Common)"
+      },
+      "NumberOrExpr": {
+        "anyOf": [
+          {
+            "type": "number",
+            "format": "double"
+          },
+          {
+            "type": "string"
+          }
+        ],
+        "description": "数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"
+      },
+      "RotateNode": {
+        "type": "object",
+        "required": [
+          "op",
+          "shape",
+          "axis",
+          "deg"
+        ],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "rotate"
+            ]
+          },
+          "shape": {
+            "$ref": "#/components/schemas/ShapeNode"
+          },
+          "axis": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NumberOrExpr"
+            },
+            "description": "回転軸ベクトル [ax, ay, az]"
+          },
+          "deg": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NumberOrExpr"
+              }
+            ],
+            "description": "回転角度 (度)"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        ],
+        "description": "回転"
+      },
+      "ScaleNode": {
+        "type": "object",
+        "required": [
+          "op",
+          "shape",
+          "factor"
+        ],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "scale"
+            ]
+          },
+          "shape": {
+            "$ref": "#/components/schemas/ShapeNode"
+          },
+          "factor": {
+            "$ref": "#/components/schemas/NumberOrExpr"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        ],
+        "description": "一様拡大縮小"
+      },
+      "ShapeNode": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "type": "string"
+          }
+        },
+        "discriminator": {
+          "propertyName": "op",
+          "mapping": {
+            "step": "#/components/schemas/StepNode",
+            "union": "#/components/schemas/UnionShapeNode",
+            "intersect": "#/components/schemas/IntersectNode",
+            "subtract": "#/components/schemas/SubtractNode",
+            "scale": "#/components/schemas/ScaleNode",
+            "translate": "#/components/schemas/TranslateNode",
+            "rotate": "#/components/schemas/RotateNode",
+            "stretch": "#/components/schemas/StretchNode"
+          }
+        },
+        "description": "形状演算ノードの基底モデル。`op` フィールドで種別を識別する。\n\nop の取り得る値:\nstep, union, intersect, subtract, scale, translate, rotate, stretch"
+      },
+      "StepNode": {
+        "type": "object",
+        "required": [
+          "op",
+          "path"
+        ],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "step"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "description": "STEPファイルのパス (S3キー等)"
+          },
+          "content_hash": {
+            "type": "string",
+            "description": "キャッシュ無効化用コンテンツハッシュ \"sha256:<hex64>\""
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        ],
+        "description": "STEPファイルの読み込み"
+      },
+      "StretchNode": {
+        "type": "object",
+        "required": [
+          "op",
+          "shape",
+          "cut",
+          "delta"
+        ],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "stretch"
+            ]
+          },
+          "shape": {
+            "$ref": "#/components/schemas/ShapeNode"
+          },
+          "cut": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NumberOrExpr"
+            },
+            "description": "切断面の座標 [cx, cy, cz] (mm)"
+          },
+          "delta": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NumberOrExpr"
+            },
+            "description": "各軸方向の伸縮量 [dx, dy, dz] (mm)"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        ],
+        "description": "伸縮: 切断面で形状を分割して指定方向に伸ばす"
+      },
+      "SubtractNode": {
+        "type": "object",
+        "required": [
+          "op",
+          "a",
+          "b"
+        ],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "subtract"
+            ]
+          },
+          "a": {
+            "$ref": "#/components/schemas/ShapeNode"
+          },
+          "b": {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        ],
+        "description": "ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)"
+      },
+      "TranslateNode": {
+        "type": "object",
+        "required": [
+          "op",
+          "shape",
+          "xyz"
+        ],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "translate"
+            ]
+          },
+          "shape": {
+            "$ref": "#/components/schemas/ShapeNode"
+          },
+          "xyz": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NumberOrExpr"
+            },
+            "description": "移動量 [x, y, z] (mm)"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        ],
+        "description": "平行移動"
+      },
+      "UnionShapeNode": {
+        "type": "object",
+        "required": [
+          "op",
+          "a",
+          "b"
+        ],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "union"
+            ]
+          },
+          "a": {
+            "$ref": "#/components/schemas/ShapeNode"
+          },
+          "b": {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShapeNode"
+          }
+        ],
+        "description": "ブーリアン合体 (BRepAlgoAPI_Fuse)"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Main server",
+      "variables": {}
+    }
+  ]
+}

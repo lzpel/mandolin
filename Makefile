@@ -12,7 +12,7 @@ generate:
 	@for f in openapi/*.yaml openapi/*.json; do \
 		[ -f "$$f" ] || continue; \
 		case "$$f" in *.tsp) continue;; esac; \
-		name=$$(basename "$$f"); \
+		name=$$(basename "$$f"); name=$${name%.*}; \
 		echo "=== $$name → rs ==="; \
 		cargo run -- -i "$$f" -t RUST_AXUM -o "out/$$name.rs"; \
 		echo "=== $$name → ts ==="; \
