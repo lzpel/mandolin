@@ -9,8 +9,8 @@
 {# ===== スキーママクロ ===== #}
 {# OpenAPIのスキーマ定義からTypeScriptの型定義を生成する #}
 
-{# スキーマ名を生成するマクロ #}
-{# JSON Pointerからパスカルケースの型名を導出し、スキーマキャッシュに登録する #}
+{# インライン匿名スキーマ名を生成するマクロ #}
+{# Named schemas ($ref to components/schemas) はPhase 1 + ref_name フィルタで処理する #}
 {%- macro SCHEMA_NAME(pointer) %}
 {%- if schema_push(pointer, none) %}
 {%- do schema_push(pointer, IDENTIFIED_SCHEMA(pointer, pointer|include_pointer)) %}
@@ -18,9 +18,11 @@
 {%- endmacro %}
 
 {# OpenAPIのスキーマ定義を対応するTypeScript型に変換するマクロ #}
-{# object→型名, array→T[], integer/number→number, string→string等 #}
+{# $ref → ref_name フィルタで型名取得（Phase 1でその型が既に生成済み）#}
+{# object → 型名（インライン匿名はSCHEMA_NAMEキャッシュ経由）#}
 {%- macro SCHEMA(pointer,schema) -%}
-{%- if schema.type -%}
+{%- if schema["$ref"] %}{{schema["$ref"]|ref_name}}
+{%- elif schema.type -%}
 {%- if schema.type == "object" -%}
 {%- if schema.additionalProperties %}{ [key: string]: {{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}} }
 {%- else %}{{SCHEMA_NAME(pointer)}}
@@ -35,8 +37,6 @@
 {%- elif schema.type == "boolean" %}boolean
 {%- else -%}
 {%- endif %}
-{%- elif schema["$ref"] -%}
-{{SCHEMA_NAME(schema["$ref"])}}
 {%- else -%}
 number
 {%- endif %}
@@ -47,7 +47,7 @@ number
 {%- macro IDENTIFIED_SCHEMA(pointer, schema) %}
 {%- if schema.type == "object" %}
 type {{SCHEMA_NAME(pointer)}} = {
-{%- for property_key, property in schema.properties|items %}
+{%- for property_key, property in schema.properties|default({})|items %}
 {%- with inner=SCHEMA(pointer+"/properties/"+property_key, property) %}
 	{{property_key}}:{%- if schema.required and property_key in schema.required %}{{inner}}{%- else %}{{inner}}|undefined{%- endif %},
 {%- endwith %}
@@ -58,7 +58,8 @@ type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endif %}
 {%- endmacro %}
 
-{# キャッシュされた全スキーマ定義を出力するマクロ #}
+{# キャッシュされたインライン匿名スキーマ定義を出力するマクロ #}
+{# Named schemasはPhase 1で出力済みなのでここには含まれない #}
 {%- macro IDENTIFIED_SCHEMA_DRAIN() %}
 {%- for pointer, output in schema_drain()|items %}
 {{output}}
@@ -87,14 +88,17 @@ type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endmacro -%}
 
 {# リクエスト型定義を生成するマクロ #}
+{# parameters と requestBody は deref フィルタで $ref を解決する #}
 {%- macro OPERATION_REQUEST(pointer,operation) -%}
-// {{OPERATION_NAME(pointer,operation)}}のリクエスト型
+// Request type for {{OPERATION_NAME(pointer,operation)}}
 type {{OPERATION_REQUEST_NAME(pointer,operation)}} = {
-{%- for parameter in operation.parameters %}
+{%- for parameter_ref in operation.parameters %}
+{%- set parameter = parameter_ref|deref %}
 	{{parameter.name}}:{%-with inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}{{inner}}|undefined{%- endif -%}{%- endwith %},
 {%- endfor %}
 {%- if operation.requestBody %}
-{%- for content_key, content in operation.requestBody.content|items %}
+{%- set requestBody = operation.requestBody|deref %}
+{%- for content_key, content in requestBody.content|items %}
 	body:{{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema)}},
 {%- break %}
 {%- endfor %}
@@ -103,11 +107,12 @@ type {{OPERATION_REQUEST_NAME(pointer,operation)}} = {
 {%- endmacro -%}
 
 {# レスポンスのユニオン型を生成するマクロ #}
-{# 各ステータスコードごとにcode+body型を持つ判別付きユニオンを生成する #}
+{# responses は deref フィルタで $ref を解決する #}
 {%- macro OPERATION_RESPONSE(pointer,operation) -%}
-// {{OPERATION_NAME(pointer,operation)}}のレスポンス型
+// Response type for {{OPERATION_NAME(pointer,operation)}}
 type {{OPERATION_RESPONSE_NAME(pointer,operation)}} =
-{%- for response_key, response in operation.responses|items %}
+{%- for response_key, response_ref in operation.responses|items %}
+{%- set response = response_ref|deref %}
 {%- with code=response_key|replace("default","500")%}
 	| { code: {{code}};{%-if response.content%}{%- for content_key, content in response.content|items %} body:{{SCHEMA(pointer+"/responses/"+response_key+"/content/"+content_key|encode+"/schema",content.schema)}}{%-break%}{%-endfor%}{%-endif%}}
 {%- endwith %}
@@ -118,7 +123,19 @@ type {{OPERATION_RESPONSE_NAME(pointer,operation)}} =
 import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
 
-// このファイルはmandolin https://github.com/lzpel/mandolin によりOpenAPI仕様から自動生成されました
+// This file was automatically generated from OpenAPI specification by mandolin https://github.com/lzpel/mandolin
+
+{# ===== Phase 1: 名前付きスキーマ定義 ===== #}
+{# components/schemasの全エントリを先行登録してから直接出力する #}
+{# これにより$ref参照箇所でref_nameフィルタが正しい型名を返せる #}
+{%- if spec.components and spec.components.schemas %}
+{%- for schema_name, schema in spec.components.schemas|items %}
+{%- do schema_push("#/components/schemas/"+schema_name, none) %}
+{%- endfor %}
+{%- for schema_name, schema in spec.components.schemas|items %}
+{{IDENTIFIED_SCHEMA("#/components/schemas/"+schema_name, schema)}}
+{%- endfor %}
+{%- endif %}
 
 {# リクエスト/レスポンス型の生成 #}
 {%- for path_key, path_item in spec.paths|items %}
@@ -131,9 +148,11 @@ import { serve } from '@hono/node-server'
 {%- endif %}
 {%- endfor %}
 {%- endfor %}
+
+{# インライン匿名スキーマの出力 #}
 {{ IDENTIFIED_SCHEMA_DRAIN() }}
 
-/// APIインターフェース: 各オペレーションのハンドラを定義する
+/// API Interface: Define handlers for each operation
 interface ApiInterface{
 {%- for path_key, path_item in spec.paths|items %}
 {%- for method in methods %}
@@ -147,7 +166,7 @@ interface ApiInterface{
 {%- endfor %}
 }
 
-/// Honoアプリにオペレーションルートを登録する関数
+/// Register operation routes to Hono app
 export function addHonoOperations(app: Hono, implement: ApiInterface){
 {%- for path_key, path_item in spec.paths|items %}
 {%- for method in methods %}
@@ -158,7 +177,8 @@ export function addHonoOperations(app: Hono, implement: ApiInterface){
 		if (implement.{{OPERATION_NAME(pointer,operation)}}===undefined)return c.text("not yet implemented", 500)
 		const request: Partial<{{OPERATION_REQUEST_NAME(pointer,operation)}}> = {}
 		{
-{%- for parameter in operation.parameters %}
+{%- for parameter_ref in operation.parameters %}
+{%- set parameter = parameter_ref|deref %}
 			let {{parameter.name|to_snake_case}} = c.req.{{ {"path":"param", "query":"query", "header":"header", "cookie":"cookie" }[parameter.in] }}("{{parameter.name}}")
 {%- if parameter.required %}
 			if({{parameter.name|to_snake_case}}===undefined)return c.text("required parameter '{{parameter.name}}' is not in '{{parameter.in}}'", 400)
@@ -167,7 +187,8 @@ export function addHonoOperations(app: Hono, implement: ApiInterface){
 {%- endfor %}
 		}
 {%- if operation.requestBody %}
-{%- for content_key, content in operation.requestBody.content|items %}
+{%- set requestBody = operation.requestBody|deref %}
+{%- for content_key, content in requestBody.content|items %}
 		request.body = {%- if "json" in content_key %}(await c.req.json()) as {{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema", content.schema)}}
 {%- elif "text" in content_key %}await c.req.text()
 {%- else %}c.req.arrayBuffer()
@@ -177,7 +198,8 @@ export function addHonoOperations(app: Hono, implement: ApiInterface){
 {%- endif %}
 		const response = await implement.{{OPERATION_NAME(pointer,operation)}}(request as {{OPERATION_REQUEST_NAME(pointer,operation)}})
 		switch (response.code){
-{%- for response_key, response in operation.responses|items %}
+{%- for response_key, response_ref in operation.responses|items %}
+{%- set response = response_ref|deref %}
 {%- with code=response_key|replace("default","500")%}
 			case {{code}}:
 {%- if response.content %}
@@ -203,10 +225,10 @@ export function addHonoOperations(app: Hono, implement: ApiInterface){
 {%- endfor %}
 }
 
-/// テスト用のサーバ実装（全メソッド未実装）
+/// Test server implementation (all methods not yet implemented)
 class TestServer implements ApiInterface{}
 
-/// サーバを起動するエントリポイント
+/// Entry point to start the server
 export function main(){
 	const app = new Hono()
 	addHonoOperations(app,new TestServer());

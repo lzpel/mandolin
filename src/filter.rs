@@ -32,6 +32,16 @@ pub fn decode(s: &str) -> String {
     s.replace("~1", "/").replace("~0", "~")
 }
 
+/// $refパスから型名を抽出しパスカルケースに変換する
+/// 例: "#/components/schemas/my_point" → "MyPoint"
+pub fn ref_name(ref_path: &str) -> String {
+    ref_path
+        .rsplit('/')
+        .next()
+        .unwrap_or(ref_path)
+        .to_pascal_case()
+}
+
 /// 正規表現による文字列置換
 /// テンプレートからAxumのワイルドカードパス変換等に使用
 pub fn re_replace(content: &str, re: &str, replace: &str) -> String {
