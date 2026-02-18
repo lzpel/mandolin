@@ -1,28 +1,31 @@
 {# ==================== #}
-{# Rust/Axum Template   #}
+{# Rust/Axum テンプレート #}
 {# ==================== #}
-{# Single file template to generate Rust/Axum server code from OpenAPI specification #}
-{# All macros and code generation logic are integrated into this single file #}
+{# OpenAPI仕様からRust/Axumサーバコードを生成する単一ファイルテンプレート #}
+{# 全マクロとコード生成ロジックをこの単一ファイルに統合する #}
 
-{# HTTP method list: Used to extract operations from OpenAPI pathItem #}
+{# HTTPメソッド一覧: OpenAPIのpathItemからオペレーションを抽出するために使用 #}
 {%- set methods = ["get","put","post","delete","options","head","patch","trace"] %}
 
-{# ===== Schema Macros ===== #}
-{# Generate Rust type definitions from OpenAPI schema definitions #}
+{# ===== スキーママクロ ===== #}
+{# OpenAPIのスキーマ定義からRustの型定義を生成する #}
 
-{# Macro to generate schema names #}
-{# Derive PascalCase type names from JSON Pointer and register in schema cache #}
-{# Example: "#/components/schemas/Pet" → "Pet" #}
+{# インライン匿名スキーマ名を生成するマクロ #}
+{# JSON PointerからパスカルケースのRust型名を導出し、スキーマキャッシュに登録する #}
+{# 名前付きスキーマ（components/schemasへの$ref）はPhase 1とref_nameフィルタで処理する #}
 {%- macro SCHEMA_NAME(pointer) %}
 {%- if schema_push(pointer, none) %}
 {%- do schema_push(pointer, IDENTIFIED_SCHEMA(pointer, pointer|include_pointer)) %}
 {%- endif %}{{pointer|replace("#/components/schemas/","")|decode|to_pascal_case}}
 {%- endmacro %}
 
-{# Macro to convert OpenAPI schema definitions to corresponding Rust types #}
-{# object→struct name, array→Vec<T>, integer→i32 etc., string→String etc., $ref→referenced type name #}
+{# OpenAPIのスキーマ定義を対応するRust型に変換するマクロ #}
+{# $ref → ref_nameフィルタで型名取得（Phase 1でその型が生成済みであることが保証される）#}
+{# object → struct名（インライン匿名はSCHEMA_NAMEキャッシュ経由）#}
+{# array → Vec<T>、integer → i32等、string → String等 #}
 {%- macro SCHEMA(pointer,schema) -%}
-{%- if schema.type -%}
+{%- if schema["$ref"] %}{%- if (schema["$ref"]|include_pointer).discriminator %}Box<{{schema["$ref"]|ref_name}}>{%- else %}{{schema["$ref"]|ref_name}}{%- endif %}
+{%- elif schema.type -%}
 {%- if schema.type == "object" -%}
 {%- if schema.additionalProperties %}HashMap<String,{{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}}>
 {%- else %}{{SCHEMA_NAME(pointer)}}
@@ -41,41 +44,85 @@
 {%- elif schema.type == "boolean" %}bool
 {%- else %}
 {%- endif %}
-{%- elif schema["$ref"] %}{{SCHEMA_NAME(schema["$ref"])}}
-{%- else %}u8
+{%- elif schema.allOf %}{{SCHEMA(pointer+"/allOf/0", schema.allOf[0])}}
+{%- elif schema.anyOf %}serde_json::Value
+{%- else %}serde_json::Value
 {%- endif %}
 {%- endmacro -%}
 
-{# Macro to generate named schema definitions #}
-{# Generate struct definitions for objects, type aliases for others #}
+{# 名前付きスキーマ定義を生成するマクロ #}
+{# objectはstruct定義、それ以外はtype aliasを生成する #}
 {%- macro IDENTIFIED_SCHEMA(pointer, schema) %}
-{%- if schema.type == "object" %}
+{%- if schema.type == "object" and schema.discriminator %}
+#[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
+#[serde(tag="{{schema.discriminator.propertyName}}")]
+pub enum {{SCHEMA_NAME(pointer)}}{
+{%- for disc_key, disc_ref in schema.discriminator.mapping|items %}
+{%- set child = disc_ref|include_pointer %}
+	#[serde(rename="{{disc_key}}")]
+	{{disc_key|to_pascal_case}}{
+{%- for prop_key, prop in child.properties|default({})|items %}
+{%- if prop_key != schema.discriminator.propertyName %}
+{%- with inner=SCHEMA(disc_ref+"/properties/"+prop_key, prop) %}
+		r#{{prop_key}}:{%- if child.required and prop_key in child.required %}{{inner}}{%- else %}Option<{{inner}}>{%- endif %},
+{%- endwith %}
+{%- endif %}
+{%- endfor %}
+	},
+{%- endfor %}
+}
+impl Default for {{SCHEMA_NAME(pointer)}}{fn default()->Self{
+{%- if schema.discriminator["x-default"] %}
+{%- set default_key = schema.discriminator["x-default"] %}
+{%- set default_ref = schema.discriminator.mapping[default_key] %}
+{%- set child = default_ref|include_pointer %}
+	Self::{{default_key|to_pascal_case}}{
+{%- for prop_key, prop in child.properties|default({})|items %}
+{%- if prop_key != schema.discriminator.propertyName %}
+		r#{{prop_key}}:Default::default(),
+{%- endif %}
+{%- endfor %}
+	}
+{%- else %}
+	compile_error!("'x-default' is required on discriminator '{{SCHEMA_NAME(pointer)}}': e.g. \"x-default\": \"step\"")
+{%- endif %}
+}}
+{%- elif schema.type == "object" %}
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct {{SCHEMA_NAME(pointer)}}{{'{'}}
-{%- for property_key, property in schema.properties|items %}
+{%- for property_key, property in schema.properties|default({})|items %}
 {%- with inner=SCHEMA(pointer+"/properties/"+property_key, property) %}
 	pub r#{{property_key}}:{%- if schema.required and property_key in schema.required %}{{inner}}{%- else %}Option<{{inner}}>{%- endif %},
 {%- endwith %}
 {%- endfor %}
 }
+{%- elif schema.anyOf %}
+#[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
+#[serde(untagged)]
+pub enum {{SCHEMA_NAME(pointer)}}{
+{%- for item in schema.anyOf %}
+	Variant{{loop.index0}}({{SCHEMA(pointer+"/anyOf/"+loop.index0|string, item)}}),
+{%- endfor %}
+}
+impl Default for {{SCHEMA_NAME(pointer)}}{fn default()->Self{Self::Variant0(Default::default())}}
 {%- else %}
 pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endif %}
 {%- endmacro %}
 
-{# Macro to output all cached schema definitions #}
-{# Output schemas accumulated during SCHEMA_NAME() calls #}
+{# キャッシュされた全インライン匿名スキーマ定義を出力するマクロ #}
+{# components/schemasの名前付きスキーマはPhase 1で出力済みのため、ここには含まれない #}
 {%- macro IDENTIFIED_SCHEMA_DRAIN() %}
 {%- for pointer, output in schema_drain()|items -%}
 {{output}}
 {%- endfor %}
 {%- endmacro %}
 
-{# ===== Operation Macros ===== #}
-{# Generate Rust request/response types from OpenAPI operation definitions #}
+{# ===== オペレーションマクロ ===== #}
+{# OpenAPIのオペレーション定義からRustのリクエスト/レスポンス型を生成する #}
 
-{# Macro to return operation name in snake_case #}
-{# Use operationId if available, otherwise derive from pointer #}
+{# オペレーション名をスネークケースで返すマクロ #}
+{# operationIdがあればそれを使用し、なければpointerから導出する #}
 {%- macro OPERATION_NAME(pointer,operation) -%}
 {%- if operation.operationId -%}
 {{operation.operationId|to_snake_case}}
@@ -84,18 +131,18 @@ pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endif -%}
 {%- endmacro -%}
 
-{# Macro to return request struct name in PascalCase #}
+{# リクエストstruct名をパスカルケースで返すマクロ #}
 {%- macro OPERATION_REQUEST_NAME(pointer,operation) -%}
 {{(OPERATION_NAME(pointer,operation)+"_request")|to_pascal_case}}
 {%- endmacro -%}
 
-{# Macro to return response enum name in PascalCase #}
+{# レスポンスenum名をパスカルケースで返すマクロ #}
 {%- macro OPERATION_RESPONSE_NAME(pointer,operation) -%}
 {{(OPERATION_NAME(pointer,operation)+"_response")|to_pascal_case}}
 {%- endmacro -%}
 
-{# Macro to extract response Content-Type and type #}
-{# Use the first content type only #}
+{# レスポンスのContent-TypeとRust型を取得するマクロ #}
+{# 最初のContent-Typeのみ使用する #}
 {%- macro OPERATION_RESPONSE_TYPE(pointer,response) -%}
 {%- if response.content %}
 {%- for content_key, content in response.content|items -%}
@@ -109,17 +156,20 @@ pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endif %}
 {%- endmacro -%}
 
-{# Macro to generate request structs #}
-{# Includes parameters (path/query/header) and request body #}
+{# リクエストstructを生成するマクロ #}
+{# パラメータ（path/query/header）とリクエストボディを含む #}
+{# $ref要素を処理するためparametersとrequestBodyにderefフィルタを適用する #}
 {%- macro OPERATION_REQUEST(pointer, operation, type_request, type_security) -%}
 // Request type for {{OPERATION_NAME(pointer, operation)}}
 #[derive(Debug)]
 pub struct {{OPERATION_REQUEST_NAME(pointer, operation)}}{
-{%- for parameter in operation.parameters %}
+{%- for parameter_ref in operation.parameters %}
+{%- set parameter = parameter_ref|deref %}
 	pub {{parameter.name}}:{%-set inner=SCHEMA(pointer+"/parameters/"+loop.index0|string,parameter.schema) -%}{%- if parameter.required -%}{{inner}}{%- else -%}Option<{{inner}}>{%- endif -%},
 {%- endfor %}
 {%- if operation.requestBody %}
-{%- for content_key, content in operation.requestBody.content|items %}
+{%- set requestBody = operation.requestBody|deref %}
+{%- for content_key, content in requestBody.content|items %}
 	pub body: {{SCHEMA(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema)}},
 {%- break %}
 {%- endfor %}
@@ -134,14 +184,16 @@ impl AsRef<{{type_request}}> for {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 }
 {%- endmacro -%}
 
-{# Macro to generate response enums #}
-{# Has variants for each HTTP status code. Custom response possible via Raw variant #}
+{# レスポンスenumを生成するマクロ #}
+{# HTTPステータスコードごとにバリアントを持つ。Rawバリアントでカスタムレスポンスも可能 #}
+{# $ref要素を処理するためresponsesにderefフィルタを適用する #}
 {%- macro OPERATION_RESPONSE(pointer,operation,raw_response_type) -%}
 // Response type for {{OPERATION_NAME(pointer,operation)}}
 #[derive(Debug)]
 pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 {%- set ns = namespace(response_default_key=0) %}
-{%- for response_key, response in operation.responses|items %}
+{%- for response_key, response_ref in operation.responses|items %}
+{%- set response = response_ref|deref %}
 {%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
 	{{("status_"+response_key)|to_pascal_case}}{%-if response_type-%}({{response_type|lines|last}}){%-endif%},
 {%- if ns.response_default_key == 0%}
@@ -162,17 +214,17 @@ impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 }
 {%- endmacro -%}
 
-{# ===== Axum Specific Helper Macros ===== #}
+{# ===== Axum固有ヘルパーマクロ ===== #}
 
-{# Macro to parse multipart/form-data request body #}
-{# Construct schema type from axum::extract::Multipart #}
+{# multipart/form-dataリクエストボディをパースするマクロ #}
+{# axum::extract::Multipartからスキーマ型を構築する #}
 {%- macro EXPRESSION_MULTIPART(pointer,schema,multipart,expression_with_string_e) -%}
 match async |mut x: axum::extract::Multipart| -> std::result::Result<{{SCHEMA_NAME(pointer)}},String>{
 	let mut o:{{SCHEMA_NAME(pointer)}}=Default::default();
 	while let Some(field) = x.next_field().await.map_err(|e| e.body_text())? {
 		match field.name().unwrap_or_default() {
 {%- if schema.type == "object" %}
-{%- for property_key, property in schema.properties|items %}
+{%- for property_key, property in schema.properties|default({})|items %}
 			"{{property_key}}" =>
 {%- with required=schema.required and property_key in schema.required -%}
 				{{EXPRESSION_MULTIPART_ITEM(pointer+"/properties/"+property_key, property, "o."+property_key, required)}}
@@ -203,10 +255,10 @@ match async |mut x: axum::extract::Multipart| -> std::result::Result<{{SCHEMA_NA
 {%- endif %}
 {%- endmacro %}
 
-{# ===== Utility Macros ===== #}
+{# ===== ユーティリティマクロ ===== #}
 
-{# Macro to generate utility function to estimate origin URL from HTTP request #}
-{# Follows priority: Forwarded, X-Forwarded-*, Host headers #}
+{# HTTPリクエストからオリジンURLを推定するユーティリティ関数を生成するマクロ #}
+{# 優先順位: Forwarded > X-Forwarded-* > Host ヘッダ #}
 {%- macro UTILITY() -%}
 /// Estimates the origin URL (scheme://host) from an HTTP request
 /// Priority: Forwarded > X-Forwarded-* > Host
@@ -316,20 +368,7 @@ pub fn origin_from_request<B>(req: &axum::http::Request<B>) -> Option<String> {
 }
 {%- endmacro -%}
 
-{# ===== include_pointer Compatible Macro ===== #}
-{# Schema macros need to refer to values by pointer even after $ref pre-resolution, #}
-{# so we provide a macro to traverse the spec object directly as a replacement #}
-{# for the filter that gets values from the spec global variable by pointer #}
-{%- macro RESOLVE_POINTER(pointer) %}
-{%- set segments = pointer|replace("#/","")|split("/") %}
-{%- set result = spec %}
-{%- for seg in segments %}
-{%- set result = result[seg|decode] %}
-{%- endfor %}
-{{result}}
-{%- endmacro %}
-
-{# ===== Code Generation Body ===== #}
+{# ===== コード生成本体 ===== #}
 // This file was automatically generated from OpenAPI specification by mandolin https://github.com/lzpel/mandolin
 
 /* Cargo.toml to build this server
@@ -374,7 +413,7 @@ pub struct AuthContext{
     pub scopes: Vec<String>, // Scopes (e.g., "read:foo", "write:bar")
 }
 
-{# Generate request/response types #}
+{# リクエスト/レスポンス型の生成 #}
 {%- for path_key, path_item in spec.paths|items %}
 {%- for method in methods %}
 {%- if path_item[method] is defined %}
@@ -386,7 +425,19 @@ pub struct AuthContext{
 {%- endfor %}
 {%- endfor %}
 
-{# Output all cached schema definitions #}
+{# ===== Phase 1: 名前付きスキーマ定義 ===== #}
+{# components/schemasの全エントリを先行登録してから直接出力する #}
+{# これによりpaths内の$ref参照がこれらの正規名に解決されることを保証する #}
+{%- if spec.components and spec.components.schemas %}
+{%- for schema_name, schema in spec.components.schemas|items %}
+{%- do schema_push("#/components/schemas/"+schema_name, none) %}
+{%- endfor %}
+{%- for schema_name, schema in spec.components.schemas|items %}
+{{IDENTIFIED_SCHEMA("#/components/schemas/"+schema_name, schema)}}
+{%- endfor %}
+{%- endif %}
+
+{# 生成中に発見されたインライン匿名スキーマを出力する #}
 {{ IDENTIFIED_SCHEMA_DRAIN() }}
 
 use axum;
@@ -418,8 +469,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 		| async move{
 			let (parts, body) = request.into_parts();
 			let ret=S::{{OPERATION_NAME(pointer,operation)}}(i.as_ref(), {{OPERATION_REQUEST_NAME(pointer,operation)}}{
-{%- for parameter in operation.parameters %}
-				r#{{parameter.name}}:{let v={{parameter.in}}.get("{{parameter.name}}")
+{%- for parameter_ref in operation.parameters %}
+{%- set parameter = parameter_ref|deref %}
+			r#{{parameter.name}}:{let v={{parameter.in}}.get("{{parameter.name}}")
 {%- if parameter.in == "header" %}.map(|v| v.to_str().unwrap_or_default())
 {%- endif %}.and_then(|v| v.parse().ok());
 {%- if parameter.required -%}match v {Some(v)=>v, None=>return text_response(axum::http::StatusCode::from_u16(400).unwrap(), format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}))}
@@ -427,8 +479,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 {%- endif %}},
 {%- endfor %}
 {%- if operation.requestBody %}
-{%- for content_key, content in operation.requestBody.content|items %}
-				body:
+{%- set requestBody = operation.requestBody|deref %}
+{%- for content_key, content in requestBody.content|items %}
+			body:
 {%- if "json" in content_key %}match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(axum::http::StatusCode::BAD_REQUEST, v)}
 {%- elif "multipart" in content_key %}{
 	let r=axum::http::Request::from_parts(parts.clone(), body);
@@ -440,18 +493,19 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 {%- break %}
 {%- endfor %},
 {%- endif %}
-				request: axum::http::Request::from_parts(parts.clone(), Default::default()),
+			request: axum::http::Request::from_parts(parts.clone(), Default::default()),
 {%- if operation.security %}
-				security: match i.as_ref().authorize(axum::http::Request::from_parts(parts.clone(), Default::default())).await {
-					Ok(v)=>v,
-					Err(e)=>return text_response(axum::http::StatusCode::UNAUTHORIZED, e)
-				},
+			security: match i.as_ref().authorize(axum::http::Request::from_parts(parts.clone(), Default::default())).await {
+				Ok(v)=>v,
+				Err(e)=>return text_response(axum::http::StatusCode::UNAUTHORIZED, e)
+			},
 {%- endif %}
-			}).await;
-			match ret{
-{%- for response_key, response in operation.responses|items %}
+		}).await;
+		match ret{
+{%- for response_key, response_ref in operation.responses|items %}
+{%- set response = response_ref|deref %}
 {%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
-				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response_type -%}(v){%- endif -%} => axum::response::Response::builder().status(axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap())
+			{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response_type -%}(v){%- endif -%} => axum::response::Response::builder().status(axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap())
 {%- if response_type %}.header(axum::http::header::CONTENT_TYPE, "{{response_type|lines|first}}")
 {%- if "application/json" in response_type %}.body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json")))
 {%- else %}.body(axum::body::Body::from(v))
@@ -462,9 +516,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 .unwrap(),
 {%- endwith %}
 {%- endfor %}
-				{{OPERATION_RESPONSE_NAME(pointer,operation)}}::Raw(v)=>v,
-			}
-		}));
+			{{OPERATION_RESPONSE_NAME(pointer,operation)}}::Raw(v)=>v,
+		}
+	}));
 {%- endif %}
 {%- endfor %}
 {%- endfor %}

@@ -252,6 +252,7 @@
         },
         "discriminator": {
           "propertyName": "op",
+          "x-default": "step",
           "mapping": {
             "step": "#/components/schemas/StepNode",
             "union": "#/components/schemas/UnionShapeNode",

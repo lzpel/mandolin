@@ -2,11 +2,10 @@
 //!
 //! # 設計方針
 //! - Rustは「データの準備」のみ行い、「コードの組み立て」は全てテンプレートに任せる
-//! - $refは事前解決し、テンプレートは解決済みオブジェクトを直接操作する
+//! - $refは解決せずそのままテンプレートに渡す（2段階生成で対処）
 //! - Rustのフィルタはケース変換・正規表現などJinjaでは困難な処理のみ提供する
 
 mod filter;
-mod resolve;
 mod schema_cache;
 /// ビルド時に生成されるテンプレート定数
 pub mod templates {
@@ -17,24 +16,31 @@ use openapiv3::OpenAPI;
 
 /// OpenAPI仕様からテンプレート環境を構築する
 ///
-/// 1. openapiv3を拡張して$refを事前解決
-/// 2. 解決済みスペックをグローバル変数`spec`としてテンプレートに渡す
+/// 1. デフォルトサーバを補完
+/// 2. $ref展開なし、そのままJSON Valueとしてテンプレートに渡す
 /// 3. 最小限のフィルタ・関数を登録
 ///
-/// テンプレートは`spec.paths`等を直接走査してコードを生成する。
-pub fn environment(spec: OpenAPI) -> Result<minijinja::Environment<'static>, minijinja::Error> {
-    // $refを事前解決し、テンプレート用のJSON Valueを得る
-    let resolved = resolve::ResolvedOpenAPI::new(spec);
-    let value = resolved.resolved_value();
+/// テンプレートは2段階生成（Phase 1: components/schemas → Phase 2: paths）で
+/// $refを型名として直接参照する。
+pub fn environment(mut spec: OpenAPI) -> Result<minijinja::Environment<'static>, minijinja::Error> {
+    // デフォルトサーバを補完
+    if spec.servers.is_empty() {
+        spec.servers.push(openapiv3::Server {
+            url: "/api".to_string(),
+            description: Some("Default server added by mandolin".to_string()),
+            ..Default::default()
+        });
+    }
 
-    // テンプレート環境を構築
+    // $ref展開なし、そのままシリアライズ
+    let value = serde_json::to_value(&spec).unwrap();
+
     let mut env = minijinja::Environment::new();
     for [k, v] in templates::TEMPLATES {
         env.add_template(k, v)?;
     }
 
-    // 解決済みスペックをグローバル変数として設定
-    // テンプレートからは`spec.paths`, `spec.components`等でアクセスできる
+    // $ref展開なしのスペックをグローバル変数として設定
     env.add_global("spec", minijinja::Value::from_serialize(&value));
 
     // フィルタ登録（Jinjaでは困難な言語機能のみ）
@@ -44,9 +50,11 @@ pub fn environment(spec: OpenAPI) -> Result<minijinja::Environment<'static>, min
     env.add_filter("re_replace", filter::re_replace);
     env.add_filter("encode", filter::encode);
     env.add_filter("decode", filter::decode);
+    // $refパスから型名を取り出すフィルタ: "#/components/schemas/Foo" → "Foo"
+    env.add_filter("ref_name", filter::ref_name);
 
-    // include_pointerフィルタ: JSON Pointerで解決済みspecから値を取得する
-    // SCHEMA_NAMEマクロがポインタからスキーマオブジェクトを参照するために必要
+    // include_pointerフィルタ: JSON Pointerで未解決specから値を取得する
+    // SCHEMA_NAMEマクロがインライン匿名スキーマの内容を参照するために必要
     {
         let spec_value = value.clone();
         env.add_filter(
@@ -73,7 +81,37 @@ pub fn environment(spec: OpenAPI) -> Result<minijinja::Environment<'static>, min
         );
     }
 
-    // スキーマキャッシュ（インラインスキーマの重複排除用）
+    // derefフィルタ: $refオブジェクトを実体に解決する
+    // parameters/requestBody/responsesなど構造的な$refに使用
+    // $refでない値はそのまま返す
+    {
+        let spec_value = value.clone();
+        env.add_filter(
+            "deref",
+            move |v: minijinja::Value| -> Result<minijinja::Value, minijinja::Error> {
+                if let Ok(ref_val) = v.get_item(&minijinja::Value::from("$ref")) {
+                    if let Some(ref_path) = ref_val.as_str() {
+                        let path = ref_path.strip_prefix("#/").unwrap_or(ref_path);
+                        let mut cur = &spec_value;
+                        for seg in path.split('/') {
+                            let decoded = seg.replace("~1", "/").replace("~0", "~");
+                            cur = cur.get(&decoded).ok_or_else(|| {
+                                minijinja::Error::new(
+                                    minijinja::ErrorKind::InvalidOperation,
+                                    format!("deref: not found: {ref_path}"),
+                                )
+                            })?;
+                        }
+                        return Ok(minijinja::Value::from_serialize(cur));
+                    }
+                }
+                Ok(v)
+            },
+        );
+    }
+
+    // スキーマキャッシュ（インライン匿名スキーマの重複排除用）
+    // named schemasはPhase 1で直接出力するためキャッシュ不要
     let cache = schema_cache::SchemaCache::new();
     {
         let c = cache.clone();
@@ -103,7 +141,7 @@ mod tests {
             .filter_map(|entry| {
                 let path = entry.path();
                 let ext = path.extension()?.to_str()?;
-                let name = entry.file_name().to_str()?.to_string();
+                let name = path.file_stem()?.to_str()?.to_string();
                 match ext {
                     "yaml" | "yml" => {
                         let reader = std::io::BufReader::new(fs::File::open(&path).ok()?);
