@@ -141,7 +141,7 @@ mod tests {
             .filter_map(|entry| {
                 let path = entry.path();
                 let ext = path.extension()?.to_str()?;
-                let name = entry.file_name().to_str()?.to_string();
+                let name = path.file_stem()?.to_str()?.to_string();
                 match ext {
                     "yaml" | "yml" => {
                         let reader = std::io::BufReader::new(fs::File::open(&path).ok()?);

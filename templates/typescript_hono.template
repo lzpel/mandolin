@@ -37,15 +37,22 @@
 {%- elif schema.type == "boolean" %}boolean
 {%- else -%}
 {%- endif %}
+{%- elif schema.allOf -%}{{SCHEMA(pointer+"/allOf/0", schema.allOf[0])}}
+{%- elif schema.anyOf -%}{%- for item in schema.anyOf -%}{{SCHEMA(pointer+"/anyOf/"+loop.index0|string, item)}}{%- if not loop.last %} | {%- endif %}{%- endfor %}
 {%- else -%}
-number
+unknown
 {%- endif %}
 {%- endmacro -%}
 
 {# 名前付きスキーマ定義を生成するマクロ #}
 {# objectの場合はtype定義、それ以外はtype aliasを生成する #}
 {%- macro IDENTIFIED_SCHEMA(pointer, schema) %}
-{%- if schema.type == "object" %}
+{%- if schema.type == "object" and schema.discriminator %}
+type {{SCHEMA_NAME(pointer)}} =
+{%- for disc_key, disc_ref in schema.discriminator.mapping|items %}
+	| {{disc_ref|ref_name}}
+{%- endfor %};
+{%- elif schema.type == "object" %}
 type {{SCHEMA_NAME(pointer)}} = {
 {%- for property_key, property in schema.properties|default({})|items %}
 {%- with inner=SCHEMA(pointer+"/properties/"+property_key, property) %}
@@ -53,6 +60,8 @@ type {{SCHEMA_NAME(pointer)}} = {
 {%- endwith %}
 {%- endfor %}
 }
+{%- elif schema.anyOf %}
+type {{SCHEMA_NAME(pointer)}} = {%- for item in schema.anyOf -%}{{SCHEMA(pointer+"/anyOf/"+loop.index0|string, item)}}{%- if not loop.last %} | {%- endif %}{%- endfor %};
 {%- else %}
 type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endif %}

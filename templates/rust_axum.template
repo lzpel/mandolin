@@ -24,7 +24,7 @@
 {# object → struct名（インライン匿名はSCHEMA_NAMEキャッシュ経由）#}
 {# array → Vec<T>、integer → i32等、string → String等 #}
 {%- macro SCHEMA(pointer,schema) -%}
-{%- if schema["$ref"] %}{{schema["$ref"]|ref_name}}
+{%- if schema["$ref"] %}{%- if (schema["$ref"]|include_pointer).discriminator %}Box<{{schema["$ref"]|ref_name}}>{%- else %}{{schema["$ref"]|ref_name}}{%- endif %}
 {%- elif schema.type -%}
 {%- if schema.type == "object" -%}
 {%- if schema.additionalProperties %}HashMap<String,{{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}}>
@@ -44,14 +44,50 @@
 {%- elif schema.type == "boolean" %}bool
 {%- else %}
 {%- endif %}
-{%- else %}u8
+{%- elif schema.allOf %}{{SCHEMA(pointer+"/allOf/0", schema.allOf[0])}}
+{%- elif schema.anyOf %}serde_json::Value
+{%- else %}serde_json::Value
 {%- endif %}
 {%- endmacro -%}
 
 {# 名前付きスキーマ定義を生成するマクロ #}
 {# objectはstruct定義、それ以外はtype aliasを生成する #}
 {%- macro IDENTIFIED_SCHEMA(pointer, schema) %}
-{%- if schema.type == "object" %}
+{%- if schema.type == "object" and schema.discriminator %}
+#[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
+#[serde(tag="{{schema.discriminator.propertyName}}")]
+pub enum {{SCHEMA_NAME(pointer)}}{
+{%- for disc_key, disc_ref in schema.discriminator.mapping|items %}
+{%- set child = disc_ref|include_pointer %}
+	#[serde(rename="{{disc_key}}")]
+	{{disc_key|to_pascal_case}}{
+{%- for prop_key, prop in child.properties|default({})|items %}
+{%- if prop_key != schema.discriminator.propertyName %}
+{%- with inner=SCHEMA(disc_ref+"/properties/"+prop_key, prop) %}
+		r#{{prop_key}}:{%- if child.required and prop_key in child.required %}{{inner}}{%- else %}Option<{{inner}}>{%- endif %},
+{%- endwith %}
+{%- endif %}
+{%- endfor %}
+	},
+{%- endfor %}
+}
+impl Default for {{SCHEMA_NAME(pointer)}}{fn default()->Self{
+{%- if schema.discriminator["x-default"] %}
+{%- set default_key = schema.discriminator["x-default"] %}
+{%- set default_ref = schema.discriminator.mapping[default_key] %}
+{%- set child = default_ref|include_pointer %}
+	Self::{{default_key|to_pascal_case}}{
+{%- for prop_key, prop in child.properties|default({})|items %}
+{%- if prop_key != schema.discriminator.propertyName %}
+		r#{{prop_key}}:Default::default(),
+{%- endif %}
+{%- endfor %}
+	}
+{%- else %}
+	compile_error!("'x-default' is required on discriminator '{{SCHEMA_NAME(pointer)}}': e.g. \"x-default\": \"step\"")
+{%- endif %}
+}}
+{%- elif schema.type == "object" %}
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct {{SCHEMA_NAME(pointer)}}{{'{'}}
 {%- for property_key, property in schema.properties|default({})|items %}
@@ -60,6 +96,15 @@ pub struct {{SCHEMA_NAME(pointer)}}{{'{'}}
 {%- endwith %}
 {%- endfor %}
 }
+{%- elif schema.anyOf %}
+#[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
+#[serde(untagged)]
+pub enum {{SCHEMA_NAME(pointer)}}{
+{%- for item in schema.anyOf %}
+	Variant{{loop.index0}}({{SCHEMA(pointer+"/anyOf/"+loop.index0|string, item)}}),
+{%- endfor %}
+}
+impl Default for {{SCHEMA_NAME(pointer)}}{fn default()->Self{Self::Variant0(Default::default())}}
 {%- else %}
 pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endif %}
