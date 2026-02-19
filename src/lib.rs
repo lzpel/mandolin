@@ -164,7 +164,7 @@ mod tests {
             let env = environment(api).unwrap();
             let tmpl = env.get_template(template).unwrap();
             let output = tmpl.render(0).unwrap();
-            let out_path = format!("out/{name}.{extension}");
+            let out_path = format!("examples/{name}.{extension}");
             if let Some(parent) = Path::new(&out_path).parent() {
                 fs::create_dir_all(parent).unwrap();
             }
