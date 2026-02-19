@@ -28,3 +28,4 @@ axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1.49", features = ["rt", "rt-multi-thread", "macros", "signal"] }
 uuid = { version = "1.20", features = ["serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+serde_jcs = "*"

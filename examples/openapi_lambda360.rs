@@ -108,7 +108,7 @@ impl Default for HelloSayHelloResponse{
 // Request type for shape_compute
 #[derive(Debug)]
 pub struct ShapeComputeRequest{
-	pub body: ShapeNode,
+	pub body: Box<ShapeNode>,
 	pub request: axum::http::Request<axum::body::Body>,
 }
 impl AsRef<axum::http::Request<axum::body::Body>> for ShapeComputeRequest{
@@ -170,6 +170,13 @@ impl Default for ViewerViewResponse{
 
 
 
+
+
+
+
+
+
+
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct FileExists{
 	pub r#exists:bool,
@@ -179,9 +186,8 @@ pub struct FileExists{
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct IntersectNode{
-	pub r#a:ShapeNode,
-	pub r#b:ShapeNode,
-	pub r#op:String,
+	pub r#a:Box<ShapeNode>,
+	pub r#b:Box<ShapeNode>,
 }
 
 #[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
@@ -196,30 +202,36 @@ impl Default for NumberOrExpr{fn default()->Self{Self::Variant0(Default::default
 pub struct RotateNode{
 	pub r#axis:Vec<NumberOrExpr>,
 	pub r#deg:NumberOrExpr,
-	pub r#op:String,
-	pub r#shape:ShapeNode,
+	pub r#shape:Box<ShapeNode>,
 }
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct ScaleNode{
 	pub r#factor:NumberOrExpr,
-	pub r#op:String,
-	pub r#shape:ShapeNode,
+	pub r#shape:Box<ShapeNode>,
 }
 
 #[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
-#[serde(untagged)]
+#[serde(tag="op")]
 pub enum ShapeNode{
-	Variant0(StepNode),
-	Variant1(UnionShapeNode),
-	Variant2(IntersectNode),
-	Variant3(SubtractNode),
-	Variant4(ScaleNode),
-	Variant5(TranslateNode),
-	Variant6(RotateNode),
-	Variant7(StretchNode),
+	#[serde(rename="step")]
+	Step(StepNode),
+	#[serde(rename="union")]
+	Union(UnionShapeNode),
+	#[serde(rename="intersect")]
+	Intersect(IntersectNode),
+	#[serde(rename="subtract")]
+	Subtract(SubtractNode),
+	#[serde(rename="scale")]
+	Scale(ScaleNode),
+	#[serde(rename="translate")]
+	Translate(TranslateNode),
+	#[serde(rename="rotate")]
+	Rotate(RotateNode),
+	#[serde(rename="stretch")]
+	Stretch(StretchNode),
 }
-impl Default for ShapeNode{fn default()->Self{Self::Variant0(Default::default())}}
+impl Default for ShapeNode{fn default()->Self{Self::Step(Default::default())}}
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct ShapeNodeBase{
@@ -229,7 +241,6 @@ pub struct ShapeNodeBase{
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct StepNode{
 	pub r#content_hash:Option<String>,
-	pub r#op:String,
 	pub r#path:String,
 }
 
@@ -237,29 +248,25 @@ pub struct StepNode{
 pub struct StretchNode{
 	pub r#cut:Vec<NumberOrExpr>,
 	pub r#delta:Vec<NumberOrExpr>,
-	pub r#op:String,
-	pub r#shape:ShapeNode,
+	pub r#shape:Box<ShapeNode>,
 }
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct SubtractNode{
-	pub r#a:ShapeNode,
-	pub r#b:ShapeNode,
-	pub r#op:String,
+	pub r#a:Box<ShapeNode>,
+	pub r#b:Box<ShapeNode>,
 }
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct TranslateNode{
-	pub r#op:String,
-	pub r#shape:ShapeNode,
+	pub r#shape:Box<ShapeNode>,
 	pub r#xyz:Vec<NumberOrExpr>,
 }
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct UnionShapeNode{
-	pub r#a:ShapeNode,
-	pub r#b:ShapeNode,
-	pub r#op:String,
+	pub r#a:Box<ShapeNode>,
+	pub r#b:Box<ShapeNode>,
 }
 
 
@@ -512,15 +519,101 @@ pub fn origin_from_request<B>(req: &axum::http::Request<B>) -> Option<String> {
 	Some(format!("{}://{}", guess_scheme(&host), host))
 }
 
-#[tokio::main]
-async fn main() {
-	let port:u16 = std::env::var("PORT").unwrap_or("8080".to_string()).parse().expect("PORT should be integer");
-	print_axum_router(port);
-	let api = TestServer{};
-	let app = axum_router(api).layer(axum::extract::DefaultBodyLimit::disable());
-	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await.unwrap();
-	axum::serve(listener, app)
-		.with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
-		.await
-		.unwrap();
+fn canonicalize_jcs_from_str(json: &str) -> Result<String, String> {
+    // 1) まず JSON として解釈できることを保証（ここで構文エラーは落とす）
+    // 2) RFC8785(JCS)で canonical 文字列へ
+    let v: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
+    serde_jcs::to_string(&v).map_err(|e| format!("{e:?}"))
+}
+
+fn canonicalize_jcs_from_shape(shape: &ShapeNode) -> Result<String, String> {
+    serde_jcs::to_string(shape).map_err(|e| format!("{e:?}"))
+}
+
+fn main() {
+    // 1) StepNode
+    let j1 = r#"
+    {
+      "op": "step",
+      "path": "s3://lambda360/parts/PA-001-DF7.STEP",
+      "content_hash": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+    "#;
+
+    // 2) TranslateNode
+    let j2 = r#"
+    {
+      "op": "translate",
+      "shape": {
+        "op": "step",
+        "path": "s3://lambda360/parts/PA-001-DF7.STEP",
+        "content_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "xyz": [10, 0, -5]
+    }
+    "#;
+
+    // 3) SubtractNode（NumberOrExpr に文字列式も混ぜる）
+    let j3 = r#"
+    {
+      "op": "subtract",
+      "a": {
+        "op": "union",
+        "a": {
+          "op": "step",
+          "path": "s3://lambda360/parts/base.STEP",
+          "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "b": {
+          "op": "translate",
+          "shape": {
+            "op": "step",
+            "path": "s3://lambda360/parts/boss.STEP",
+            "content_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "xyz": ["$dx", 0, 0]
+        }
+      },
+      "b": {
+        "op": "rotate",
+        "shape": {
+          "op": "step",
+          "path": "s3://lambda360/parts/hole.STEP",
+          "content_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        },
+        "axis": [0, 0, 1],
+        "deg": "$angleDeg"
+      }
+    }
+    "#;
+
+    let cases = [("case1_step", j1), ("case2_translate", j2), ("case3_subtract", j3)];
+
+    for (name, old_json) in cases {
+        println!("=== {name} ===");
+
+        // before: 入力JSONをRFC8785(JCS)で正規化
+        let old_canon = canonicalize_jcs_from_str(old_json)
+            .unwrap_or_else(|e| panic!("canonicalize(before) failed: {e}"));
+
+        // parse: ShapeNodeへデシリアライズ（ここで「パースが正しい」ことを検証）
+        let shape: ShapeNode = serde_json::from_str(old_json)
+            .unwrap_or_else(|e| panic!("parse ShapeNode failed: {e}"));
+
+        // after: ShapeNodeをRFC8785(JCS)で正規化シリアライズ
+        let new_canon = canonicalize_jcs_from_shape(&shape)
+            .unwrap_or_else(|e| panic!("canonicalize(after) failed: {e}"));
+
+        // “情報が変化していない”ことを canonical JSON 文字列で保証
+        assert_eq!(
+            old_canon, new_canon,
+            "JCS mismatch: before != after\n--- before(JCS) ---\n{old_canon}\n--- after(JCS) ---\n{new_canon}\n"
+        );
+
+        println!("OK: JCS(before)==JCS(after)");
+        // 必要ならダンプ
+        // println!("{old_canon}");
+    }
+
+    println!("All cases passed.");
 }

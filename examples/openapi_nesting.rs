@@ -220,6 +220,13 @@ impl Default for WidgetServiceUpdateResponse{
 
 
 
+
+
+
+
+
+
+
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct Error{
 	pub r#code:i32,

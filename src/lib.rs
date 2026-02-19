@@ -13,6 +13,7 @@ pub mod templates {
 }
 
 use openapiv3::OpenAPI;
+use std::sync::{Arc, Mutex};
 
 /// OpenAPI仕様からテンプレート環境を構築する
 ///
@@ -123,6 +124,90 @@ pub fn environment(mut spec: OpenAPI) -> Result<minijinja::Environment<'static>,
         env.add_function("schema_drain", move || c.drain());
     }
 
+    // anyof_tag: anyOfスキーマの暗黙的discriminatorを検出する
+    // 全variantが共通の単一値enumプロパティを持つ場合、そのプロパティ名を返す
+    // 例: ShapeNodeの各variantが op: {enum: ["step"]} 等を持つ場合 → "op"
+    {
+        let spec_value = value.clone();
+        env.add_function("anyof_tag", move |schema: minijinja::Value| -> String {
+            let any_of = match schema.get_item(&minijinja::Value::from("anyOf")) {
+                Ok(v) if !v.is_undefined() && !v.is_none() => v,
+                _ => return String::new(),
+            };
+            let mut disc_prop: Option<String> = None;
+            for i in 0.. {
+                let item = match any_of.get_item(&minijinja::Value::from(i)) {
+                    Ok(v) if !v.is_undefined() => v,
+                    _ => break,
+                };
+                // $refでなければスキップ（inline型はdiscriminatorを持たない）
+                let ref_path = match item.get_item(&minijinja::Value::from("$ref")) {
+                    Ok(v) => match v.as_str() {
+                        Some(s) => s.to_string(),
+                        None => return String::new(),
+                    },
+                    _ => return String::new(),
+                };
+                // $refを解決
+                let path = match ref_path.strip_prefix("#/") {
+                    Some(p) => p,
+                    None => return String::new(),
+                };
+                let mut current = &spec_value;
+                for segment in path.split('/') {
+                    let decoded = segment.replace("~1", "/").replace("~0", "~");
+                    current = match current.get(&decoded) {
+                        Some(v) => v,
+                        None => return String::new(),
+                    };
+                }
+                // 単一値enumプロパティを探す
+                let properties = match current.get("properties") {
+                    Some(serde_json::Value::Object(m)) => m,
+                    _ => return String::new(),
+                };
+                let mut found = None;
+                for (k, v) in properties {
+                    if let Some(arr) = v.get("enum").and_then(|e| e.as_array()) {
+                        if arr.len() == 1 {
+                            found = Some(k.clone());
+                            break;
+                        }
+                    }
+                }
+                match (&disc_prop, found) {
+                    (None, Some(prop)) => disc_prop = Some(prop),
+                    (Some(existing), Some(ref prop)) if existing == prop => {}
+                    _ => return String::new(),
+                }
+            }
+            disc_prop.unwrap_or_default()
+        });
+    }
+
+    // tag_skip: tagged anyOf のvariant structからdiscriminatorプロパティを除外するための記録
+    // anyof_tagで検出されたtagged enumのvariant $refパスとプロパティ名を記録し、
+    // struct生成時にそのプロパティだけをスキップする
+    {
+        let skip_set: Arc<Mutex<std::collections::HashSet<(String, String)>>> =
+            Arc::new(Mutex::new(std::collections::HashSet::new()));
+        let s = skip_set.clone();
+        env.add_function(
+            "tag_skip_push",
+            move |ref_path: &str, prop_name: &str| -> bool {
+                s.lock().unwrap().insert((ref_path.to_string(), prop_name.to_string()));
+                true
+            },
+        );
+        let s = skip_set.clone();
+        env.add_function(
+            "tag_skip_get",
+            move |pointer: &str, prop_name: &str| -> bool {
+                s.lock().unwrap().contains(&(pointer.to_string(), prop_name.to_string()))
+            },
+        );
+    }
+
     Ok(env)
 }
 
@@ -157,7 +242,7 @@ mod tests {
             .collect()
     }
 
-    /// 指定テンプレートで全OpenAPIファイルをレンダリングし、out/に出力する
+    /// 指定テンプレートで全OpenAPIファイルをレンダリングし、examples/に出力する
     fn render_target(template: &str, extension: &str) {
         for (name, api) in api_map() {
             println!("render start: {name}");
