@@ -1,6 +1,6 @@
 [package]
 name = "mandolin"
-version = "0.4.0-alpha.3"
+version = "0.4.0-alpha.5"
 edition = "2024"
 license = "MIT"
 authors = ["lzpel"]
@@ -24,8 +24,8 @@ clap = { version = "4.5", features = ["derive"] }
 heck = "0.5"
 
 [dev-dependencies]
-axum = { version = "0.8", features = ["multipart"] }
-tokio = { version = "1.49", features = ["rt", "rt-multi-thread", "macros", "signal"] }
-uuid = { version = "1.20", features = ["serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-serde_jcs = "*"
+axum = { version = "^0.8", features = ["multipart"] }
+tokio = { version = "^1.49", features = ["rt", "rt-multi-thread", "macros", "signal"] }
+uuid = { version = "^1.20", features = ["serde"] }
+chrono = { version = "^0.4", features = ["serde"] }
+serde_jcs = { version = "^0.1" }

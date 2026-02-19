@@ -377,10 +377,6 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthEmailPostRequestBodyContentApplicationJsonSchema{
-	pub r#email:String,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
 	pub r#user:User,
 }
@@ -389,6 +385,10 @@ pub struct PathsPagePostRequestBodyContentApplicationJsonSchema{
 	pub r#path_image:Vec<String>,
 	pub r#script:String,
 	pub r#view_image:Vec<String>,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthEmailPostRequestBodyContentApplicationJsonSchema{
+	pub r#email:String,
 }
 
 use axum;
