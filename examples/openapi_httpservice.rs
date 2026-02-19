@@ -221,6 +221,13 @@ impl Default for WidgetsAnalyzeResponse{
 
 
 
+
+
+
+
+
+
+
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct Error{
 	pub r#code:i32,

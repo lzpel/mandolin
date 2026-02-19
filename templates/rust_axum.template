@@ -91,7 +91,7 @@ impl Default for {{SCHEMA_NAME(pointer)}}{fn default()->Self{
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct {{SCHEMA_NAME(pointer)}}{{'{'}}
 {%- for property_key, property in schema.properties|default({})|items %}
-{%- if not (property.enum and property.enum|length == 1) %}
+{%- if not tag_skip_get(pointer, property_key) %}
 {%- with inner=SCHEMA(pointer+"/properties/"+property_key, property) %}
 	pub r#{{property_key}}:{%- if schema.required and property_key in schema.required %}{{inner}}{%- else %}Option<{{inner}}>{%- endif %},
 {%- endwith %}
@@ -444,13 +444,32 @@ pub struct AuthContext{
 {%- endfor %}
 {%- endfor %}
 
-{# ===== Phase 1: 名前付きスキーマ定義 ===== #}
-{# components/schemasの全エントリを先行登録してから直接出力する #}
+{# ===== Phase 1: 名前付きスキーマの先行登録 ===== #}
+{# components/schemasの全エントリを先行登録する #}
 {# これによりpaths内の$ref参照がこれらの正規名に解決されることを保証する #}
 {%- if spec.components and spec.components.schemas %}
 {%- for schema_name, schema in spec.components.schemas|items %}
 {%- do schema_push("#/components/schemas/"+schema_name, none) %}
 {%- endfor %}
+
+{# ===== Phase 2: tagged anyOf の検出とdiscriminatorプロパティの記録 ===== #}
+{# anyof_tagで暗黙的discriminatorを持つanyOfスキーマを検出し、 #}
+{# 各variantの$refとdiscriminatorプロパティ名をtag_skip_pushで記録する #}
+{# Phase 3のstruct生成時にtag_skip_getで参照し、該当プロパティだけを除外する #}
+{%- for schema_name, schema in spec.components.schemas|items %}
+{%- if schema.anyOf %}
+{%- set tag_prop = anyof_tag(schema) %}
+{%- if tag_prop %}
+{%- for item in schema.anyOf %}
+{%- if item["$ref"] %}
+{%- do tag_skip_push(item["$ref"], tag_prop) %}
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+{%- endif %}
+{%- endfor %}
+
+{# ===== Phase 3: 名前付きスキーマ定義の生成 ===== #}
 {%- for schema_name, schema in spec.components.schemas|items %}
 {{IDENTIFIED_SCHEMA("#/components/schemas/"+schema_name, schema)}}
 {%- endfor %}

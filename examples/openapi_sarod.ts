@@ -161,10 +161,6 @@ type UserApiUserPopResponse =
 
 
 
-type PathsAuthEmailPostRequestBodyContentApplicationJsonSchema = {
-	email:string,
-}
-
 type PathsPagePostRequestBodyContentApplicationJsonSchema = {
 	path_image:string[],
 	script:string,
@@ -173,6 +169,10 @@ type PathsPagePostRequestBodyContentApplicationJsonSchema = {
 
 type PathsUserPostRequestBodyContentApplicationJsonSchema = {
 	user:User,
+}
+
+type PathsAuthEmailPostRequestBodyContentApplicationJsonSchema = {
+	email:string,
 }
 
 /// API Interface: Define handlers for each operation

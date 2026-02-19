@@ -319,6 +319,13 @@ impl Default for UserApiUserPopResponse{
 
 
 
+
+
+
+
+
+
+
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct NotFoundResponse{
 	pub r#body:,
@@ -370,18 +377,18 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsPagePostRequestBodyContentApplicationJsonSchema{
-	pub r#path_image:Vec<String>,
-	pub r#script:String,
-	pub r#view_image:Vec<String>,
+pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
+	pub r#user:User,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthEmailPostRequestBodyContentApplicationJsonSchema{
 	pub r#email:String,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
-	pub r#user:User,
+pub struct PathsPagePostRequestBodyContentApplicationJsonSchema{
+	pub r#path_image:Vec<String>,
+	pub r#script:String,
+	pub r#view_image:Vec<String>,
 }
 
 use axum;

@@ -705,6 +705,13 @@ impl Default for UserDeleteResponse{
 
 
 
+
+
+
+
+
+
+
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct Apikey{
 	pub r#expiration:u64,

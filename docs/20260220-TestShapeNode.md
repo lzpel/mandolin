@@ -324,22 +324,87 @@ pub enum NumberOrExpr {
 
 ### 変更内容
 
-#### `src/lib.rs` — `anyof_tag` 関数を追加
+#### `src/lib.rs` — `anyof_tag` 関数 + `tag_skip_push`/`tag_skip_get` を追加
 
-`anyOf` スキーマの暗黙的 discriminator を検出するテンプレート関数。全 variant が `$ref` で、かつ共通の単一値 `enum` プロパティ（例：`op: {enum: ["step"]}`）を持つかを判定し、持っていればそのプロパティ名（`"op"`）を返す。
+- **`anyof_tag`**: `anyOf` スキーマの暗黙的 discriminator を検出。全 variant が `$ref` で、かつ共通の単一値 `enum` プロパティ（例：`op: {enum: ["step"]}`）を持つかを判定し、持っていればそのプロパティ名（`"op"`）を返す。
+- **`tag_skip_push` / `tag_skip_get`**: tagged anyOf の variant `$ref` パスと discriminator プロパティ名を記録し、struct 生成時に**対象の struct の対象プロパティだけ**を除外する。tagged anyOf と無関係な standalone struct のプロパティは影響を受けない。
 
-#### `templates/rust_axum.template` — 3 箇所修正
+#### `templates/rust_axum.template` — 3 パス構成に変更
 
-| 箇所 | 変更内容 |
+| パス / 箇所 | 変更内容 |
 |------|----------|
-| SCHEMA マクロ（`$ref` の型生成） | tagged `anyOf` への参照を `Box<>` で囲み、再帰型の無限サイズを解消 |
-| object の struct 生成 | 単一値 `enum` プロパティ（discriminator フィールド）を struct から除外。タグで処理されるため不要 |
-| `anyOf` の enum 生成 | discriminator 検出時に `#[serde(tag="op")]` の tagged enum を生成。未検出時は従来の `#[serde(untagged)]` にフォールバック |
+| Phase 1（既存） | 名前付きスキーマの先行登録 |
+| Phase 2（新規） | `anyof_tag` で tagged anyOf を検出し、`tag_skip_push` で variant の discriminator プロパティを記録 |
+| Phase 3（既存を改修） | struct 生成時に `tag_skip_get` で確認し、記録されたプロパティだけを除外。SCHEMA マクロで anyOf 参照を `Box<>` 化。anyOf enum で tagged / untagged を分岐 |
+
+### 生成コードの Before / After
+
+```rust
+// Before
+#[serde(untagged)]
+pub enum ShapeNode {
+    Variant0(StepNode),
+    Variant1(UnionShapeNode),
+    ...
+}
+pub struct StepNode {
+    pub op: String,          // 冗長
+    pub path: String,
+    pub content_hash: Option<String>,
+}
+pub struct UnionShapeNode {
+    pub a: ShapeNode,        // Box なし → コンパイルエラー
+    pub b: ShapeNode,
+    pub op: String,
+}
+```
+
+```rust
+// After
+#[serde(tag="op")]
+pub enum ShapeNode {
+    #[serde(rename="step")]       Step(StepNode),
+    #[serde(rename="union")]      Union(UnionShapeNode),
+    #[serde(rename="intersect")]  Intersect(IntersectNode),
+    #[serde(rename="subtract")]   Subtract(SubtractNode),
+    #[serde(rename="scale")]      Scale(ScaleNode),
+    #[serde(rename="translate")]  Translate(TranslateNode),
+    #[serde(rename="rotate")]     Rotate(RotateNode),
+    #[serde(rename="stretch")]    Stretch(StretchNode),
+}
+pub struct StepNode {
+    pub path: String,
+    pub content_hash: Option<String>,
+}
+pub struct UnionShapeNode {
+    pub a: Box<ShapeNode>,
+    pub b: Box<ShapeNode>,
+}
+```
 
 ### テスト結果
 
 `make test-shapenode` が正常終了（exit code 0）。3 つの JSON テストケースが全てパースされ、JCS (RFC 8785) 正規化による往復一致（`JCS(before) == JCS(after)`）も確認済み。
 
-### 既知の制限
+```
+=== case1_step ===
+OK: JCS(before)==JCS(after)
+=== case2_translate ===
+OK: JCS(before)==JCS(after)
+=== case3_subtract ===
+OK: JCS(before)==JCS(after)
+All cases passed.
+```
 
-この初版では struct の単一値 enum プロパティを全 struct から一律除外するヒューリスティックを使用している。tagged anyOf と無関係な standalone struct に単一値 enum プロパティがある場合、意図せず除外される可能性がある。次のコミットで改善予定。
+### 汎用性
+
+| anyOf パターン | 検出結果 | 生成 |
+|---|---|---|
+| 全 variant が `$ref`、共通の単一値 enum プロパティあり | `anyof_tag` → `"op"` 等 | `#[serde(tag="op")]` tagged enum、variant struct から discriminator 除外 |
+| inline 型の anyOf（NumberOrExpr 等） | `anyof_tag` → `""` | `#[serde(untagged)]` enum（従来通り） |
+| `$ref` だが共通 discriminator なし | `anyof_tag` → `""` | `#[serde(untagged)]` enum（従来通り） |
+| 混在（一部 `$ref`、一部 inline） | `anyof_tag` → `""` | `#[serde(untagged)]` enum（従来通り） |
+| tagged anyOf と無関係な standalone struct に単一値 enum | `tag_skip_get` → `false` | プロパティは消えない |
+
+- 未対応のケースが来ても `#[serde(untagged)]` にフォールバックするので壊れることはない。
+- `anyof_tag` や `tag_skip_push`/`tag_skip_get` を拡張する形で自然に対応できる。

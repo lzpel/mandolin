@@ -534,6 +534,13 @@ impl Default for DeleteUserResponse{
 
 
 
+
+
+
+
+
+
+
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct Address{
 	pub r#city:Option<String>,

@@ -13,6 +13,7 @@ pub mod templates {
 }
 
 use openapiv3::OpenAPI;
+use std::sync::{Arc, Mutex};
 
 /// OpenAPI仕様からテンプレート環境を構築する
 ///
@@ -182,6 +183,29 @@ pub fn environment(mut spec: OpenAPI) -> Result<minijinja::Environment<'static>,
             }
             disc_prop.unwrap_or_default()
         });
+    }
+
+    // tag_skip: tagged anyOf のvariant structからdiscriminatorプロパティを除外するための記録
+    // anyof_tagで検出されたtagged enumのvariant $refパスとプロパティ名を記録し、
+    // struct生成時にそのプロパティだけをスキップする
+    {
+        let skip_set: Arc<Mutex<std::collections::HashSet<(String, String)>>> =
+            Arc::new(Mutex::new(std::collections::HashSet::new()));
+        let s = skip_set.clone();
+        env.add_function(
+            "tag_skip_push",
+            move |ref_path: &str, prop_name: &str| -> bool {
+                s.lock().unwrap().insert((ref_path.to_string(), prop_name.to_string()));
+                true
+            },
+        );
+        let s = skip_set.clone();
+        env.add_function(
+            "tag_skip_get",
+            move |pointer: &str, prop_name: &str| -> bool {
+                s.lock().unwrap().contains(&(pointer.to_string(), prop_name.to_string()))
+            },
+        );
     }
 
     Ok(env)
