@@ -167,12 +167,12 @@ type PathsPagePostRequestBodyContentApplicationJsonSchema = {
 	view_image:string[],
 }
 
-type PathsUserPostRequestBodyContentApplicationJsonSchema = {
-	user:User,
-}
-
 type PathsAuthEmailPostRequestBodyContentApplicationJsonSchema = {
 	email:string,
+}
+
+type PathsUserPostRequestBodyContentApplicationJsonSchema = {
+	user:User,
 }
 
 /// API Interface: Define handlers for each operation

@@ -162,16 +162,16 @@ paths:
       summary: Finds Pets by tags
       description: Multiple tags can be provided with comma separated strings. Use tag1, tag2, tag3 for testing.
       operationId: findPetsByTags
-      parameters:
-        - name: tags
-          in: query
-          description: Tags to filter by
-          required: false
-          explode: true
-          schema:
-            type: array
-            items:
-              type: string
+      parameters: []
+#        - name: tags
+#          in: query
+#          description: Tags to filter by
+#          required: false
+#          explode: true
+#          schema:
+#            type: array
+#            items:
+#              type: string
       responses:
         '200':
           description: successful operation

@@ -121,7 +121,6 @@ type FindPetsByStatusResponse =
 	| { code: 400;}
 // Request type for findPetsByTags
 type FindPetsByTagsRequest = {
-	tags:string[]|undefined,
 }
 // Response type for findPetsByTags
 type FindPetsByTagsResponse =
@@ -350,8 +349,6 @@ export function addHonoOperations(app: Hono, implement: ApiInterface){
 		if (implement.findPetsByTags===undefined)return c.text("not yet implemented", 500)
 		const request: Partial<FindPetsByTagsRequest> = {}
 		{
-			let tags = c.req.query("tags")
-			request.tags = tags;
 		}
 		const response = await implement.findPetsByTags(request as FindPetsByTagsRequest)
 		switch (response.code){

@@ -132,13 +132,13 @@ impl AsRef<axum::http::Request<axum::body::Body>> for AuthApiEmailRequest{
 // Response type for auth_api_email
 #[derive(Debug)]
 pub enum AuthApiEmailResponse{
-	Status204,
+	Status204(()),
 	Status400(String),
 	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiEmailResponse{
 	fn default() -> Self{
-		Self::Status204
+		Self::Status204(Default::default())
 	}
 }
 // Request type for auth_api_google
@@ -171,12 +171,12 @@ impl AsRef<axum::http::Request<axum::body::Body>> for AuthApiOutRequest{
 // Response type for auth_api_out
 #[derive(Debug)]
 pub enum AuthApiOutResponse{
-	Status204,
+	Status204(()),
 	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiOutResponse{
 	fn default() -> Self{
-		Self::Status204
+		Self::Status204(Default::default())
 	}
 }
 // Request type for page_api_get
@@ -193,7 +193,7 @@ impl AsRef<axum::http::Request<axum::body::Body>> for PageApiGetRequest{
 pub enum PageApiGetResponse{
 	Status200(Vec<Page>),
 	Status400(String),
-	Status403,
+	Status403(()),
 	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for PageApiGetResponse{
@@ -216,7 +216,7 @@ impl AsRef<axum::http::Request<axum::body::Body>> for PageApiPushRequest{
 pub enum PageApiPushResponse{
 	Status200(Page),
 	Status400(String),
-	Status403,
+	Status403(()),
 	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for PageApiPushResponse{
@@ -261,7 +261,7 @@ impl AsRef<axum::http::Request<axum::body::Body>> for UserApiUserGetRequest{
 pub enum UserApiUserGetResponse{
 	Status200(User),
 	Status400(String),
-	Status403,
+	Status403(()),
 	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for UserApiUserGetResponse{
@@ -284,7 +284,7 @@ impl AsRef<axum::http::Request<axum::body::Body>> for UserApiUserSetRequest{
 pub enum UserApiUserSetResponse{
 	Status200(User),
 	Status400(String),
-	Status403,
+	Status403(()),
 	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for UserApiUserSetResponse{
@@ -304,14 +304,14 @@ impl AsRef<axum::http::Request<axum::body::Body>> for UserApiUserPopRequest{
 // Response type for user_api_user_pop
 #[derive(Debug)]
 pub enum UserApiUserPopResponse{
-	Status204,
+	Status204(()),
 	Status400(String),
-	Status403,
+	Status403(()),
 	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for UserApiUserPopResponse{
 	fn default() -> Self{
-		Self::Status204
+		Self::Status204(Default::default())
 	}
 }
 
@@ -328,7 +328,7 @@ impl Default for UserApiUserPopResponse{
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct NotFoundResponse{
-	pub r#body:,
+	pub r#body:(),
 }
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
@@ -377,12 +377,12 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
-	pub r#user:User,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthEmailPostRequestBodyContentApplicationJsonSchema{
 	pub r#email:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
+	pub r#user:User,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsPagePostRequestBodyContentApplicationJsonSchema{
@@ -438,7 +438,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: axum::http::Request::from_parts(parts.clone(), Default::default()),
 		}).await;
 		match ret{
-			AuthApiEmailResponse::Status204=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(204).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			AuthApiEmailResponse::Status204(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(204).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			AuthApiEmailResponse::Status400(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(400).unwrap()).header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			AuthApiEmailResponse::Raw(v)=>v,
 		}
@@ -471,7 +471,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: axum::http::Request::from_parts(parts.clone(), Default::default()),
 		}).await;
 		match ret{
-			AuthApiOutResponse::Status204=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(204).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			AuthApiOutResponse::Status204(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(204).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			AuthApiOutResponse::Raw(v)=>v,
 		}
 	}));
@@ -493,7 +493,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 		match ret{
 			PageApiGetResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			PageApiGetResponse::Status400(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(400).unwrap()).header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			PageApiGetResponse::Status403=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			PageApiGetResponse::Status403(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(403).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			PageApiGetResponse::Raw(v)=>v,
 		}
 	}));
@@ -516,7 +516,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 		match ret{
 			PageApiPushResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			PageApiPushResponse::Status400(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(400).unwrap()).header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			PageApiPushResponse::Status403=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			PageApiPushResponse::Status403(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(403).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			PageApiPushResponse::Raw(v)=>v,
 		}
 	}));
@@ -561,7 +561,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 		match ret{
 			UserApiUserGetResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			UserApiUserGetResponse::Status400(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(400).unwrap()).header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			UserApiUserGetResponse::Status403=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			UserApiUserGetResponse::Status403(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(403).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			UserApiUserGetResponse::Raw(v)=>v,
 		}
 	}));
@@ -584,7 +584,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 		match ret{
 			UserApiUserSetResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			UserApiUserSetResponse::Status400(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(400).unwrap()).header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			UserApiUserSetResponse::Status403=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			UserApiUserSetResponse::Status403(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(403).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			UserApiUserSetResponse::Raw(v)=>v,
 		}
 	}));
@@ -604,9 +604,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			},
 		}).await;
 		match ret{
-			UserApiUserPopResponse::Status204=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(204).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			UserApiUserPopResponse::Status204(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(204).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			UserApiUserPopResponse::Status400(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(400).unwrap()).header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			UserApiUserPopResponse::Status403=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			UserApiUserPopResponse::Status403(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(403).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			UserApiUserPopResponse::Raw(v)=>v,
 		}
 	}));

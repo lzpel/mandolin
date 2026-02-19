@@ -42,6 +42,7 @@
 {%- endif %}
 {%- elif schema.type == "number" %}f64
 {%- elif schema.type == "boolean" %}bool
+{%- elif schema.type == "null" %}()
 {%- else %}
 {%- endif %}
 {%- elif schema.allOf %}{{SCHEMA(pointer+"/allOf/0", schema.allOf[0])}}
