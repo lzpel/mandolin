@@ -154,7 +154,7 @@
         },
         "allOf": [
           {
-            "$ref": "#/components/schemas/ShapeNode"
+            "$ref": "#/components/schemas/ShapeNodeBase"
           }
         ],
         "description": "ブーリアン共通部分 (BRepAlgoAPI_Common)"
@@ -207,7 +207,7 @@
         },
         "allOf": [
           {
-            "$ref": "#/components/schemas/ShapeNode"
+            "$ref": "#/components/schemas/ShapeNodeBase"
           }
         ],
         "description": "回転"
@@ -235,12 +235,41 @@
         },
         "allOf": [
           {
-            "$ref": "#/components/schemas/ShapeNode"
+            "$ref": "#/components/schemas/ShapeNodeBase"
           }
         ],
         "description": "一様拡大縮小"
       },
       "ShapeNode": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/StepNode"
+          },
+          {
+            "$ref": "#/components/schemas/UnionShapeNode"
+          },
+          {
+            "$ref": "#/components/schemas/IntersectNode"
+          },
+          {
+            "$ref": "#/components/schemas/SubtractNode"
+          },
+          {
+            "$ref": "#/components/schemas/ScaleNode"
+          },
+          {
+            "$ref": "#/components/schemas/TranslateNode"
+          },
+          {
+            "$ref": "#/components/schemas/RotateNode"
+          },
+          {
+            "$ref": "#/components/schemas/StretchNode"
+          }
+        ],
+        "description": "★ここが主役：discriminated union を “ShapeNode” として定義\nこれが OpenAPI で oneOf + discriminator になりやすい"
+      },
+      "ShapeNodeBase": {
         "type": "object",
         "required": [
           "op"
@@ -250,21 +279,7 @@
             "type": "string"
           }
         },
-        "discriminator": {
-          "propertyName": "op",
-          "x-default": "step",
-          "mapping": {
-            "step": "#/components/schemas/StepNode",
-            "union": "#/components/schemas/UnionShapeNode",
-            "intersect": "#/components/schemas/IntersectNode",
-            "subtract": "#/components/schemas/SubtractNode",
-            "scale": "#/components/schemas/ScaleNode",
-            "translate": "#/components/schemas/TranslateNode",
-            "rotate": "#/components/schemas/RotateNode",
-            "stretch": "#/components/schemas/StretchNode"
-          }
-        },
-        "description": "形状演算ノードの基底モデル。`op` フィールドで種別を識別する。\n\nop の取り得る値:\nstep, union, intersect, subtract, scale, translate, rotate, stretch"
+        "description": "形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利"
       },
       "StepNode": {
         "type": "object",
@@ -290,7 +305,7 @@
         },
         "allOf": [
           {
-            "$ref": "#/components/schemas/ShapeNode"
+            "$ref": "#/components/schemas/ShapeNodeBase"
           }
         ],
         "description": "STEPファイルの読み込み"
@@ -330,7 +345,7 @@
         },
         "allOf": [
           {
-            "$ref": "#/components/schemas/ShapeNode"
+            "$ref": "#/components/schemas/ShapeNodeBase"
           }
         ],
         "description": "伸縮: 切断面で形状を分割して指定方向に伸ばす"
@@ -358,7 +373,7 @@
         },
         "allOf": [
           {
-            "$ref": "#/components/schemas/ShapeNode"
+            "$ref": "#/components/schemas/ShapeNodeBase"
           }
         ],
         "description": "ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)"
@@ -390,7 +405,7 @@
         },
         "allOf": [
           {
-            "$ref": "#/components/schemas/ShapeNode"
+            "$ref": "#/components/schemas/ShapeNodeBase"
           }
         ],
         "description": "平行移動"
@@ -418,7 +433,7 @@
         },
         "allOf": [
           {
-            "$ref": "#/components/schemas/ShapeNode"
+            "$ref": "#/components/schemas/ShapeNodeBase"
           }
         ],
         "description": "ブーリアン合体 (BRepAlgoAPI_Fuse)"
