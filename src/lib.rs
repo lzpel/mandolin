@@ -157,7 +157,7 @@ mod tests {
             .collect()
     }
 
-    /// 指定テンプレートで全OpenAPIファイルをレンダリングし、out/に出力する
+    /// 指定テンプレートで全OpenAPIファイルをレンダリングし、examples/に出力する
     fn render_target(template: &str, extension: &str) {
         for (name, api) in api_map() {
             println!("render start: {name}");

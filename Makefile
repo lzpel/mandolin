@@ -1,11 +1,5 @@
 .PHONY: test clean build
 
-
-# OpenAPIファイルからRustサーバコードを生成し、全テストを実行する
-test:
-	cargo test -- --nocapture
-	bash -c "$${MAKE_RECURSIVE}"
-
 # OpenAPIファイルから各言語のコードを生成してout/に出力する
 generate:
 	cargo test
@@ -16,6 +10,21 @@ run:
 
 deploy: generate
 	bash -c "$${MAKE_RECURSIVE}"
+
+# OpenAPIファイルからRustサーバコードを生成し、全テストを実行する
+test:
+	cargo test -- --nocapture
+	bash -c "$${MAKE_RECURSIVE}"
+
+test-shapenode:
+	cargo test render
+
+	# shapenodeパーステスト用 main を末尾に追記
+	sed -i '/^#\[tokio::main\]/,$$d' "examples/openapi_lambda360.rs"
+	cat "examples/TestShapeNodeMain.txt" >> "examples/openapi_lambda360.rs"
+
+	# shapenodeパーステスト実行
+	cargo run --example openapi_lambda360
 
 clean:
 	rm -rf out/
