@@ -215,5 +215,97 @@ fn main() {
 
 必要なら、**mandolin 側の生成方針**として「`op` を enum で固定」するパターン（破壊的変更少なめ）も提案できます。
 
-```
 
+## 自動生成されるコードはどのような書き方になるだろうか
+
+serdeでパース出来れば何でもよいのでClaude codeに自動生成にふさわしい自然な書き方以外を要求しないが
+
+おおよそこんなかんじになるのではと人間は予想している
+
+```
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum ShapeNode {
+    #[serde(rename = "step")]
+    Step(StepNode),
+
+    #[serde(rename = "union")]
+    Union(UnionNode),
+
+    #[serde(rename = "intersect")]
+    Intersect(IntersectNode),
+
+    #[serde(rename = "subtract")]
+    Subtract(SubtractNode),
+
+    #[serde(rename = "scale")]
+    Scale(ScaleNode),
+
+    #[serde(rename = "translate")]
+    Translate(TranslateNode),
+
+    #[serde(rename = "rotate")]
+    Rotate(RotateNode),
+
+    #[serde(rename = "stretch")]
+    Stretch(StretchNode),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StepNode {
+    pub path: String,
+    #[serde(default)]
+    pub content_hash: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UnionNode {
+    pub a: Box<ShapeNode>,
+    pub b: Box<ShapeNode>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct IntersectNode {
+    pub a: Box<ShapeNode>,
+    pub b: Box<ShapeNode>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SubtractNode {
+    pub a: Box<ShapeNode>,
+    pub b: Box<ShapeNode>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ScaleNode {
+    pub shape: Box<ShapeNode>,
+    pub factor: NumberOrExpr,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TranslateNode {
+    pub shape: Box<ShapeNode>,
+    pub xyz: Vec<NumberOrExpr>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RotateNode {
+    pub shape: Box<ShapeNode>,
+    pub axis: Vec<NumberOrExpr>,
+    pub deg: NumberOrExpr,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StretchNode {
+    pub shape: Box<ShapeNode>,
+    pub cut: Vec<NumberOrExpr>,
+    pub delta: Vec<NumberOrExpr>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum NumberOrExpr {
+    Num(f64),
+    Expr(String),
+}
+```
