@@ -309,3 +309,37 @@ pub enum NumberOrExpr {
     Expr(String),
 }
 ```
+
+---
+
+## Claude Code によるリファクタリング実施報告（2026-02-20）
+
+> 以下は Claude Code (claude-opus-4-6) が上記の要件に基づいて実施したリファクタリングの記録です。
+
+### リファクタリング前の問題
+
+1. **再帰型が無限サイズ** — `ShapeNode` を含む struct（`UnionShapeNode` 等）に `Box<>` がなく、`cargo test` でコンパイルエラー（`recursive types have infinite size`）
+2. **Variant の誤マッチ** — `#[serde(untagged)]` では `op` の値を見ずに構造の一致だけで判定するため、`UnionShapeNode`・`IntersectNode`・`SubtractNode`（全て `a`, `b` を持つ）が区別できず、常に最初の Variant にマッチしてしまう
+3. **Variant 名が不明瞭** — `Variant0`, `Variant1` ... では何の型か読めない
+
+### 変更内容
+
+#### `src/lib.rs` — `anyof_tag` 関数を追加
+
+`anyOf` スキーマの暗黙的 discriminator を検出するテンプレート関数。全 variant が `$ref` で、かつ共通の単一値 `enum` プロパティ（例：`op: {enum: ["step"]}`）を持つかを判定し、持っていればそのプロパティ名（`"op"`）を返す。
+
+#### `templates/rust_axum.template` — 3 箇所修正
+
+| 箇所 | 変更内容 |
+|------|----------|
+| SCHEMA マクロ（`$ref` の型生成） | tagged `anyOf` への参照を `Box<>` で囲み、再帰型の無限サイズを解消 |
+| object の struct 生成 | 単一値 `enum` プロパティ（discriminator フィールド）を struct から除外。タグで処理されるため不要 |
+| `anyOf` の enum 生成 | discriminator 検出時に `#[serde(tag="op")]` の tagged enum を生成。未検出時は従来の `#[serde(untagged)]` にフォールバック |
+
+### テスト結果
+
+`make test-shapenode` が正常終了（exit code 0）。3 つの JSON テストケースが全てパースされ、JCS (RFC 8785) 正規化による往復一致（`JCS(before) == JCS(after)`）も確認済み。
+
+### 既知の制限
+
+この初版では struct の単一値 enum プロパティを全 struct から一律除外するヒューリスティックを使用している。tagged anyOf と無関係な standalone struct に単一値 enum プロパティがある場合、意図せず除外される可能性がある。次のコミットで改善予定。

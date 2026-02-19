@@ -24,7 +24,7 @@
 {# object → struct名（インライン匿名はSCHEMA_NAMEキャッシュ経由）#}
 {# array → Vec<T>、integer → i32等、string → String等 #}
 {%- macro SCHEMA(pointer,schema) -%}
-{%- if schema["$ref"] %}{%- if (schema["$ref"]|include_pointer).discriminator %}Box<{{schema["$ref"]|ref_name}}>{%- else %}{{schema["$ref"]|ref_name}}{%- endif %}
+{%- if schema["$ref"] %}{%- if (schema["$ref"]|include_pointer).discriminator or anyof_tag(schema["$ref"]|include_pointer) %}Box<{{schema["$ref"]|ref_name}}>{%- else %}{{schema["$ref"]|ref_name}}{%- endif %}
 {%- elif schema.type -%}
 {%- if schema.type == "object" -%}
 {%- if schema.additionalProperties %}HashMap<String,{{SCHEMA(pointer+"/additionalProperties", schema.additionalProperties)}}>
@@ -91,12 +91,30 @@ impl Default for {{SCHEMA_NAME(pointer)}}{fn default()->Self{
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct {{SCHEMA_NAME(pointer)}}{{'{'}}
 {%- for property_key, property in schema.properties|default({})|items %}
+{%- if not (property.enum and property.enum|length == 1) %}
 {%- with inner=SCHEMA(pointer+"/properties/"+property_key, property) %}
 	pub r#{{property_key}}:{%- if schema.required and property_key in schema.required %}{{inner}}{%- else %}Option<{{inner}}>{%- endif %},
 {%- endwith %}
+{%- endif %}
 {%- endfor %}
 }
 {%- elif schema.anyOf %}
+{%- set tag_prop = anyof_tag(schema) %}
+{%- if tag_prop %}
+#[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
+#[serde(tag="{{tag_prop}}")]
+pub enum {{SCHEMA_NAME(pointer)}}{
+{%- for item in schema.anyOf %}
+{%- set child = item["$ref"]|include_pointer %}
+{%- set tag_value = child.properties[tag_prop]["enum"][0] %}
+	#[serde(rename="{{tag_value}}")]
+	{{tag_value|to_pascal_case}}({{item["$ref"]|ref_name}}),
+{%- endfor %}
+}
+{%- set first_child = schema.anyOf[0]["$ref"]|include_pointer %}
+{%- set first_tag = first_child.properties[tag_prop]["enum"][0] %}
+impl Default for {{SCHEMA_NAME(pointer)}}{fn default()->Self{Self::{{first_tag|to_pascal_case}}(Default::default())}}
+{%- else %}
 #[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
 #[serde(untagged)]
 pub enum {{SCHEMA_NAME(pointer)}}{
@@ -105,6 +123,7 @@ pub enum {{SCHEMA_NAME(pointer)}}{
 {%- endfor %}
 }
 impl Default for {{SCHEMA_NAME(pointer)}}{fn default()->Self{Self::Variant0(Default::default())}}
+{%- endif %}
 {%- else %}
 pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {%- endif %}
