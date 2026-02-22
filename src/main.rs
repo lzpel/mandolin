@@ -32,9 +32,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// 入力ファイルまたは標準入力をパースする
 	// yaml feature の有無による分岐は openapi_loader に閉じ込めている
 	let api = if args.input == "-" {
-		mandolin::openapi_loader::load(std::io::stdin())
+		mandolin::openapi_loader::openapi_load(std::io::stdin())
 	} else {
-		mandolin::openapi_loader::load(std::fs::File::open(&args.input)?)
+		mandolin::openapi_loader::openapi_load(std::fs::File::open(&args.input)?)
 	}?;
 
 	// テンプレート環境を構築してレンダリング
