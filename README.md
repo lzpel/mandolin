@@ -3,13 +3,33 @@
 [![GitHub License](https://img.shields.io/github/license/lzpel/cloudmama)](https://github.com/lzpel/mandolin/blob/main/LICENSE)
 [![Crates.io](https://img.shields.io/crates/v/mandolin.svg?logo=rust)](https://crates.io/crates/mandolin)
 
-Mandolin is a tool to generate server-side code from OpenAPI specifications (YAML/JSON).
+Mandolin is a tool to generate server-side code from OpenAPI specifications (JSON, and optionally YAML).
 It currently supports:
 
 - **Rust**: [axum](https://github.com/tokio-rs/axum)
 - **TypeScript**: [Hono](https://github.com/honojs/hono)
 
 Mandolin adopts a "Logic in Templates" design philosophy, where Rust handles data preparation and `$ref` resolution, while templates handle the code assembly.
+
+## Features
+
+| Feature | Default | Description |
+|---------|---------|-------------|
+| `yaml`  | **off** | Enable YAML input support via `serde_yaml`. When disabled, all input (regardless of file extension) is parsed as JSON. |
+
+Enable YAML support:
+
+```toml
+# Cargo.toml
+[dependencies]
+mandolin = { version = "...", features = ["yaml"] }
+```
+
+Or when installing the CLI:
+
+```bash
+$ cargo install mandolin --features yaml
+```
 
 ## Getting started
 
@@ -40,11 +60,11 @@ use mandolin;
 use openapiv3::OpenAPI;
 
 fn main() {
-    // 1. Read OpenAPI file
-    let input = std::fs::read_to_string("./openapi/openapi_plant.yaml").unwrap();
-    let api: OpenAPI = serde_yaml::from_str(&input).unwrap();
+    // 1. Read OpenAPI file (use openapi_loader to handle JSON / YAML transparently)
+    let f = std::fs::File::open("./openapi/openapi_petstore.json").unwrap();
+    let api: OpenAPI = mandolin::openapi_loader::load(f, "openapi_petstore.json").unwrap();
 
-    // 2. Create environment (References are auto-resolved here)
+    // 2. Create environment
     let env = mandolin::environment(api).unwrap();
 
     // 3. Render
@@ -53,6 +73,8 @@ fn main() {
     std::fs::write("examples/generated_server.rs", output).unwrap();
 }
 ```
+
+> **Note**: To load YAML files, enable the `yaml` feature. Without it, `openapi_loader::load` falls back to JSON parsing regardless of the file extension.
 
 ## Example of generated code
 
@@ -129,13 +151,12 @@ use openapiv3::OpenAPI;
 use std::fs;
 
 fn main() {
-    let input = fs::read_to_string("./openapi/openapi.yaml").unwrap();
-    let api: OpenAPI = serde_yaml::from_str(&input).unwrap();
+    let f = fs::File::open("./openapi/openapi.json").unwrap();
+    let api: OpenAPI = mandolin::openapi_loader::load(f, "openapi.json").unwrap();
     
     let mut env = mandolin::environment(api).unwrap();
     
     // Add your custom template
-    // Note: Templates are now single-file and self-contained
     let content = fs::read_to_string("./my_templates/custom_rust.template").unwrap();
     env.add_template("CUSTOM_RUST", &content).unwrap();
 
@@ -145,6 +166,11 @@ fn main() {
 ```
 
 ## Version History
+
+- **0.4.0-alpha.6**
+  - Added `yaml` optional feature (disabled by default). YAML input support via `serde_yaml` is now opt-in.
+  - Added `openapi_loader` module: `mandolin::openapi_load(reader)` and `mandolin::openapi_parse_str(s)` as top-level helpers.
+  - When the `yaml` feature is enabled, YAML parsing is attempted first and falls back to JSON on failure.
 
 - **0.4.0-alpha.1**
   - **Major Re-architecture**: "Logic in Templates".

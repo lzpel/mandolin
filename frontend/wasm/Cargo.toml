@@ -8,7 +8,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-mandolin = { path = "../.." }
+mandolin = { path = "../..", features = ["yaml"] }
 wasm-bindgen = "*"
 console_error_panic_hook = "*"
 serde_yaml = "*"
