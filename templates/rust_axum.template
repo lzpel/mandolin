@@ -35,6 +35,7 @@
 {%- if "u" in schema.format -%}u{%- else -%}i{%- endif -%}{%- if "int128" in schema.format -%}128{%- elif "int64" in schema.format -%}64{%- elif "int32" in schema.format -%}32{%- else -%}8{%- endif -%}
 {%- elif schema.type == "string" %}
 {%- if schema.format == "binary" %}Vec<u8>
+{%- elif schema.format == "byte" %}Vec<u8>
 {%- elif schema.format == "uuid" %}uuid::Uuid
 {%- elif schema.format == "date" %}chrono::NaiveDate
 {%- elif schema.format == "date-time" %}chrono::DateTime<chrono::Utc>
