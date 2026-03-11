@@ -191,10 +191,11 @@ type StatusInterfaceStatusResponse =
 
 
 
-type PathsAuthSignupPostRequestBodyContentApplicationJsonSchema = {
-	email:string,
-	name:string,
-	password:string,
+type PathsJobPostRequestBodyContentMultipartFormDataSchema = {
+	config:string|undefined,
+	files:ArrayBuffer[],
+	image:string,
+	paths:string[],
 }
 
 type PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema = {
@@ -203,11 +204,10 @@ type PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema = {
 	password_new:string,
 }
 
-type PathsJobPostRequestBodyContentMultipartFormDataSchema = {
-	config:string|undefined,
-	files:ArrayBuffer[],
-	image:string,
-	paths:string[],
+type PathsAuthSignupPostRequestBodyContentApplicationJsonSchema = {
+	email:string,
+	name:string,
+	password:string,
 }
 
 type PathsAuthSigninPostRequestBodyContentApplicationJsonSchema = {

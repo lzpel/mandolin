@@ -233,6 +233,29 @@ impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 		Self::{{("status_"+ns.response_default_key)|to_pascal_case}}{%-if ns.response_default_type-%}(Default::default()){%-endif%}
 	}
 }
+impl axum::response::IntoResponse for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
+	fn into_response(self) -> axum::response::Response{
+		match self{
+{%- for response_key, response_ref in operation.responses|items %}
+{%- set response = response_ref|deref %}
+{%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
+			Self::{{("status_"+response_key)|to_pascal_case}}{%- if response_type -%}(v){%- endif -%} => axum::response::Response::builder().status(http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap())
+{%- if response_type %}.header(http::header::CONTENT_TYPE, "{{response_type|lines|first}}")
+{%- if "application/json" in response_type %}.body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json")))
+{%- else %}.body(axum::body::Body::from(v))
+{%- endif %}
+{%- else -%}
+.body(axum::body::Body::empty())
+{%- endif -%}
+.unwrap(),
+{%- endwith %}
+{%- endfor %}
+{%- if raw_response_type %}
+			Self::Raw(v)=>v,
+{%- endif %}
+		}
+	}
+}
 {%- endmacro -%}
 
 {# ===== Axum固有ヘルパーマクロ ===== #}
@@ -283,7 +306,7 @@ match async |mut x: axum::extract::Multipart| -> std::result::Result<{{SCHEMA_NA
 {%- macro UTILITY() -%}
 /// Estimates the origin URL (scheme://host) from an HTTP request
 /// Priority: Forwarded > X-Forwarded-* > Host
-pub fn origin_from_request<B>(req: &axum::http::Request<B>) -> Option<String> {
+pub fn origin_from_request<B>(req: &http::Request<B>) -> Option<String> {
 	fn first_csv(s: &str) -> &str {
 		s.split(',').next().unwrap_or(s).trim()
 	}
@@ -324,7 +347,7 @@ pub fn origin_from_request<B>(req: &axum::http::Request<B>) -> Option<String> {
 
 	// 1) Forwarded (RFC 7239)
 	if let Some(raw) = headers
-		.get(axum::http::header::FORWARDED)
+		.get(http::header::FORWARDED)
 		.and_then(|v| v.to_str().ok())
 	{
 		let first = first_csv(raw);
@@ -379,7 +402,7 @@ pub fn origin_from_request<B>(req: &axum::http::Request<B>) -> Option<String> {
 
 	// 3) Fallback to Host header
 	let host = headers
-		.get(axum::http::header::HOST)
+		.get(http::header::HOST)
 		.and_then(|h| h.to_str().ok())
 		.map(str::trim)
 		.filter(|s| !s.is_empty())?
@@ -412,7 +435,7 @@ use std::future::Future;
 /// Define server logic by implementing methods corresponding to each operation
 pub trait ApiInterface{
 	/// Authentication process: Generate AuthContext from request
-	fn authorize(&self, _req: axum::http::Request<axum::body::Body>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
+	fn authorize(&self, _req: http::Request<()>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
 {%- for path_key, path_item in spec.paths|items %}
 {%- for method in methods %}
 {%- if path_item[method] is defined %}
@@ -440,7 +463,7 @@ pub struct AuthContext{
 {%- if path_item[method] is defined %}
 {%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
 {%- set operation = path_item[method] %}
-{{OPERATION_REQUEST(pointer, operation, "axum::http::Request<axum::body::Body>", "AuthContext")}}
+{{OPERATION_REQUEST(pointer, operation, "http::Request<()>", "AuthContext")}}
 {{OPERATION_RESPONSE(pointer, operation, "axum::response::Response")}}
 {%- endif %}
 {%- endfor %}
@@ -480,14 +503,17 @@ pub struct AuthContext{
 {# 生成中に発見されたインライン匿名スキーマを出力する #}
 {{ IDENTIFIED_SCHEMA_DRAIN() }}
 
+// following part is only for server
+
 use axum;
+use axum::http;
 use axum::extract::FromRequest;
 
 /// Helper function to generate text responses
-fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Response{
+fn text_response(code: http::StatusCode, body: String)->axum::response::Response{
 	axum::response::Response::builder()
 		.status(code)
-		.header(axum::http::header::CONTENT_TYPE, "text/plain")
+		.header(http::header::CONTENT_TYPE, "text/plain")
 		.body(axum::body::Body::from(body))
 		.unwrap()
 }
@@ -504,8 +530,8 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 	let router = router.route("{{path_key|re_replace('(\\{\\s*)path', '$1*path')}}", axum::routing::{{method}}(|
 			path: axum::extract::Path<HashMap<String,String>>,
 			query: axum::extract::Query<HashMap<String,String>>,
-			header: axum::http::HeaderMap,
-			request: axum::http::Request<axum::body::Body>,
+			header: http::HeaderMap,
+			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
 			let ret=S::{{OPERATION_NAME(pointer,operation)}}(i.as_ref(), {{OPERATION_REQUEST_NAME(pointer,operation)}}{
@@ -514,7 +540,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			r#{{parameter.name}}:{let v={{parameter.in}}.get("{{parameter.name}}")
 {%- if parameter.in == "header" %}.map(|v| v.to_str().unwrap_or_default())
 {%- endif %}.and_then(|v| v.parse().ok());
-{%- if parameter.required -%}match v {Some(v)=>v, None=>return text_response(axum::http::StatusCode::from_u16(400).unwrap(), format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}))}
+{%- if parameter.required -%}match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: {{parameter.name}} in {{parameter.in}}={:?}", {{parameter.in}}))}
 {%- else %}v
 {%- endif %}},
 {%- endfor %}
@@ -522,42 +548,26 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 {%- set requestBody = operation.requestBody|deref %}
 {%- for content_key, content in requestBody.content|items %}
 			body:
-{%- if "json" in content_key %}match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(axum::http::StatusCode::BAD_REQUEST, v)}
+{%- if "json" in content_key %}match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(http::StatusCode::BAD_REQUEST, v)}
 {%- elif "multipart" in content_key %}{
-	let r=axum::http::Request::from_parts(parts.clone(), body);
-	let v=match axum::extract::Multipart::from_request(r, &()).await{Ok(v)=>v,Err(e)=>return text_response(axum::http::StatusCode::BAD_REQUEST, e.body_text())};
-	{{EXPRESSION_MULTIPART(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema,"v","return text_response(axum::http::StatusCode::BAD_REQUEST,e)")}}
+	let r=http::Request::from_parts(parts.clone(), body);
+	let v=match axum::extract::Multipart::from_request(r, &()).await{Ok(v)=>v,Err(e)=>return text_response(http::StatusCode::BAD_REQUEST, e.body_text())};
+	{{EXPRESSION_MULTIPART(pointer+"/requestBody/content/"+content_key|encode+"/schema",content.schema,"v","return text_response(http::StatusCode::BAD_REQUEST,e)")}}
 }
-{%- else %}match axum::body::to_bytes(body, usize::MAX).await{Ok(v)=>v.into(),Err(v)=>return text_response(axum::http::StatusCode::BAD_REQUEST,format!("{v:?}"))}
+{%- else %}match axum::body::to_bytes(body, usize::MAX).await{Ok(v)=>v.into(),Err(v)=>return text_response(http::StatusCode::BAD_REQUEST,format!("{v:?}"))}
 {%- endif %}
 {%- break %}
 {%- endfor %},
 {%- endif %}
-			request: axum::http::Request::from_parts(parts.clone(), Default::default()),
+			request: http::Request::from_parts(parts.clone(), ()),
 {%- if operation.security %}
-			security: match i.as_ref().authorize(axum::http::Request::from_parts(parts.clone(), Default::default())).await {
+			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
-				Err(e)=>return text_response(axum::http::StatusCode::UNAUTHORIZED, e)
+				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 {%- endif %}
 		}).await;
-		match ret{
-{%- for response_key, response_ref in operation.responses|items %}
-{%- set response = response_ref|deref %}
-{%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
-			{{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}{%- if response_type -%}(v){%- endif -%} => axum::response::Response::builder().status(axum::http::StatusCode::from_u16({{response_key|replace("default","500")}}).unwrap())
-{%- if response_type %}.header(axum::http::header::CONTENT_TYPE, "{{response_type|lines|first}}")
-{%- if "application/json" in response_type %}.body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json")))
-{%- else %}.body(axum::body::Body::from(v))
-{%- endif %}
-{%- else -%}
-.body(axum::body::Body::empty())
-{%- endif -%}
-.unwrap(),
-{%- endwith %}
-{%- endfor %}
-			{{OPERATION_RESPONSE_NAME(pointer,operation)}}::Raw(v)=>v,
-		}
+		axum::response::IntoResponse::into_response(ret)
 	}));
 {%- endif %}
 {%- endfor %}
