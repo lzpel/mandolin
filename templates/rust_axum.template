@@ -142,6 +142,19 @@ pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {# ===== オペレーションマクロ ===== #}
 {# OpenAPIのオペレーション定義からRustのリクエスト/レスポンス型を生成する #}
 
+{# 全オペレーションをループしてcaller(pointer, operation, method, path_key)を呼ぶマクロ #}
+{%- macro FOREACH_OPERATION() %}
+{%- for path_key, path_item in spec.paths|items %}
+{%- for method in methods %}
+{%- if path_item[method] is defined %}
+{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
+{%- set operation = path_item[method] %}
+{{ caller(pointer, operation, method, path_key) }}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+{%- endmacro %}
+
 {# オペレーション名をスネークケースで返すマクロ #}
 {# operationIdがあればそれを使用し、なければpointerから導出する #}
 {%- macro OPERATION_NAME(pointer,operation) -%}
@@ -180,7 +193,7 @@ pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {# リクエストstructを生成するマクロ #}
 {# パラメータ（path/query/header）とリクエストボディを含む #}
 {# $ref要素を処理するためparametersとrequestBodyにderefフィルタを適用する #}
-{%- macro OPERATION_REQUEST(pointer, operation, type_security) -%}
+{%- macro OPERATION_REQUEST(pointer, operation) -%}
 // Request type for {{OPERATION_NAME(pointer, operation)}}
 #[derive(Debug)]
 pub struct {{OPERATION_REQUEST_NAME(pointer, operation)}}{
@@ -196,7 +209,7 @@ pub struct {{OPERATION_REQUEST_NAME(pointer, operation)}}{
 {%- endfor %}
 {%- endif %}
 {%- if operation.security %}
-	pub security: {{type_security}}, /*{{operation.security}}*/
+	pub security: AuthContext, /*{{operation.security}}*/
 {%- endif %}
 }
 {%- endmacro -%}
@@ -220,6 +233,7 @@ pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 {%- endif %}
 {%- endwith %}
 {%- endfor %}
+	Error(String),
 }
 impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 	fn default() -> Self{
@@ -243,6 +257,7 @@ impl axum::response::IntoResponse for {{OPERATION_RESPONSE_NAME(pointer,operatio
 .unwrap(),
 {%- endwith %}
 {%- endfor %}
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
@@ -407,11 +422,15 @@ pub fn origin_from_request<B>(req: &http::Request<B>) -> Option<String> {
 
 /* Cargo.toml to build this server
 
+[features]
+mandolin_client = ["dep:reqwest"]
+
 [dependencies]
 serde= { version="*", features = ["derive"] }
 serde_json= "*"
 axum = { version = "*", features = ["multipart"] }
 tokio = { version = "*", features = ["rt", "rt-multi-thread", "macros", "signal"] }
+reqwest = { version = "*", features = ["json"], optional = true }
 # optional
 uuid = { version = "*", features = ["serde"] }
 chrono = { version = "*", features = ["serde"] }
@@ -424,18 +443,10 @@ use std::future::Future;
 /// API Interface Trait
 /// Define server logic by implementing methods corresponding to each operation
 pub trait ApiInterface{
-	/// Authentication process: Generate AuthContext from request
-	fn authorize(&self, _req: http::Request<()>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
-{%- for path_key, path_item in spec.paths|items %}
-{%- for method in methods %}
-{%- if path_item[method] is defined %}
-{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
-{%- set operation = path_item[method] %}
+{%- call(pointer, operation, method, path_key) FOREACH_OPERATION() %}
 	// {{method|upper}} {{path_key}}
 	fn {{OPERATION_NAME(pointer,operation)}}(&self, _req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> impl Future<Output = {{OPERATION_RESPONSE_NAME(pointer,operation)}}> + Send{async{Default::default()}}
-{%- endif %}
-{%- endfor %}
-{%- endfor %}
+{%- endcall %}
 }
 
 
@@ -448,16 +459,10 @@ pub struct AuthContext{
 }
 
 {# リクエスト/レスポンス型の生成 #}
-{%- for path_key, path_item in spec.paths|items %}
-{%- for method in methods %}
-{%- if path_item[method] is defined %}
-{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
-{%- set operation = path_item[method] %}
-{{OPERATION_REQUEST(pointer, operation, "AuthContext")}}
+{%- call(pointer, operation, method, path_key) FOREACH_OPERATION() %}
+{{OPERATION_REQUEST(pointer, operation)}}
 {{OPERATION_RESPONSE(pointer, operation)}}
-{%- endif %}
-{%- endfor %}
-{%- endfor %}
+{%- endcall %}
 
 {# ===== Phase 1: 名前付きスキーマの先行登録 ===== #}
 {# components/schemasの全エントリを先行登録する #}
@@ -493,6 +498,79 @@ pub struct AuthContext{
 {# 生成中に発見されたインライン匿名スキーマを出力する #}
 {{ IDENTIFIED_SCHEMA_DRAIN() }}
 
+// following part is only for client
+
+#[cfg(feature = "mandolin_client")]
+pub struct ApiClient {
+    base_url: String,
+    client: reqwest::Client,
+}
+
+#[cfg(feature = "mandolin_client")]
+impl ApiClient {
+    pub fn new(base_url: impl Into<String>) -> Self {
+        Self { base_url: base_url.into(), client: reqwest::Client::new() }
+    }
+}
+
+#[cfg(feature = "mandolin_client")]
+impl ApiInterface for ApiClient {
+{%- call(pointer, operation, method, path_key) FOREACH_OPERATION() %}
+    // {{method|upper}} {{path_key}}
+    fn {{OPERATION_NAME(pointer,operation)}}(&self, req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> impl Future<Output = {{OPERATION_RESPONSE_NAME(pointer,operation)}}> + Send {
+        let url = format!("{}{}", self.base_url, "{{path_key}}"
+{%- for parameter_ref in operation.parameters %}
+{%- set parameter = parameter_ref|deref %}
+{%- if parameter.in == "path" %}
+            .replace("{{"{"}}{{parameter.name}}{{"}"}}", &req.r#{{parameter.name}}.to_string())
+{%- endif %}
+{%- endfor %}
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.{{method}}(&url)
+{%- for parameter_ref in operation.parameters %}
+{%- set parameter = parameter_ref|deref %}
+{%- if parameter.in == "query" %}
+{%- if parameter.required %}
+                .query(&[("{{parameter.name}}", req.r#{{parameter.name}}.to_string())])
+{%- else %}
+                .query(&req.r#{{parameter.name}}.as_ref().map(|v| [("{{parameter.name}}", v.to_string())]))
+{%- endif %}
+{%- elif parameter.in == "header" %}
+{%- if parameter.required %}
+                .header("{{parameter.name}}", req.r#{{parameter.name}}.to_string())
+{%- else %}
+                .header("{{parameter.name}}", req.r#{{parameter.name}}.clone().unwrap_or_default().to_string())
+{%- endif %}
+{%- endif %}
+{%- endfor %}
+{%- if operation.requestBody %}
+                .json(&req.body)
+{%- endif %}
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return {{OPERATION_RESPONSE_NAME(pointer,operation)}}::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+{%- for response_key, response_ref in operation.responses|items %}
+{%- set response = response_ref|deref %}
+{%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
+                {{response_key|replace("default","500")}} =>
+{%- if response_type %}
+                    match r.json().await { Ok(v) => {{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}(v), Err(e) => {{OPERATION_RESPONSE_NAME(pointer,operation)}}::Error(e.to_string()) },
+{%- else %}
+                    {{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}},
+{%- endif %}
+{%- endwith %}
+{%- endfor %}
+                code => {{OPERATION_RESPONSE_NAME(pointer,operation)}}::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+{%- endcall %}
+}
+
 // following part is only for server
 
 use axum;
@@ -503,19 +581,15 @@ use axum::extract::FromRequest;
 /// All ApiInterface implementors automatically satisfy this via blanket impl.
 /// Override methods here for axum-specific behavior (streaming, custom headers, etc.)
 pub trait ApiInterfaceAxum: ApiInterface + Sync{
-{%- for path_key, path_item in spec.paths|items %}
-{%- for method in methods %}
-{%- if path_item[method] is defined %}
-{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
-{%- set operation = path_item[method] %}
+	/// Authentication process: Generate AuthContext from request
+	fn authorize(&self, _req: http::Request<()>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
+{%- call(pointer, operation, method, path_key) FOREACH_OPERATION() %}
 	// {{method|upper}} {{path_key}}
 	fn {{OPERATION_NAME(pointer,operation)}}(&self, _raw: http::Request<()>, req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::{{OPERATION_NAME(pointer,operation)}}(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
-{%- endif %}
-{%- endfor %}
-{%- endfor %}
+{%- endcall %}
 }
 impl<T: ApiInterface + Sync> ApiInterfaceAxum for T{}
 
@@ -531,11 +605,7 @@ fn text_response(code: http::StatusCode, body: String)->axum::response::Response
 /// Returns axum::Router with root handlers for all operations registered
 pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
-{%- for path_key, path_item in spec.paths|items %}
-{%- for method in methods %}
-{%- if path_item[method] is defined %}
-{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
-{%- set operation = path_item[method] %}
+{%- call(pointer, operation, method, path_key) FOREACH_OPERATION() %}
 	let i = instance.clone();
 	let router = router.route("{{path_key|re_replace('(\\{\\s*)path', '$1*path')}}", axum::routing::{{method}}(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -578,9 +648,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
-{%- endif %}
-{%- endfor %}
-{%- endfor %}
+{%- endcall %}
 	let router = router.route("/openapi.json", axum::routing::get(|| async move{
 			r###"{{spec|tojson}}"###
 		}))
@@ -651,16 +719,10 @@ pub fn print_axum_router(port:u16){
 pub struct TestServer{}
 impl ApiInterface for TestServer{
 	// Implement required methods here
-{%- for path_key, path_item in spec.paths|items %}
-{%- for method in methods %}
-{%- if path_item[method] is defined %}
-{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
-{%- set operation = path_item[method] %}
+{%- call(pointer, operation, method, path_key) FOREACH_OPERATION() %}
 	// {{method|upper}} {{path_key}}
 	// async fn {{OPERATION_NAME(pointer,operation)}}(&self, _req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> {{OPERATION_RESPONSE_NAME(pointer,operation)}}{Default::default()}
-{%- endif %}
-{%- endfor %}
-{%- endfor %}
+{%- endcall %}
 }
 
 {{ UTILITY() }}

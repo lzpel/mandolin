@@ -43,15 +43,21 @@
 
 
 
+
+
 // This file was automatically generated from OpenAPI specification by mandolin https://github.com/lzpel/mandolin
 
 /* Cargo.toml to build this server
+
+[features]
+mandolin_client = ["dep:reqwest"]
 
 [dependencies]
 serde= { version="*", features = ["derive"] }
 serde_json= "*"
 axum = { version = "*", features = ["multipart"] }
 tokio = { version = "*", features = ["rt", "rt-multi-thread", "macros", "signal"] }
+reqwest = { version = "*", features = ["json"], optional = true }
 # optional
 uuid = { version = "*", features = ["serde"] }
 chrono = { version = "*", features = ["serde"] }
@@ -64,34 +70,46 @@ use std::future::Future;
 /// API Interface Trait
 /// Define server logic by implementing methods corresponding to each operation
 pub trait ApiInterface{
-	/// Authentication process: Generate AuthContext from request
-	fn authorize(&self, _req: http::Request<()>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
+
 	// GET /auth
 	fn auth_api_user_get(&self, _req: AuthApiUserGetRequest) -> impl Future<Output = AuthApiUserGetResponse> + Send{async{Default::default()}}
+
 	// GET /auth/out
 	fn auth_api_out(&self, _req: AuthApiOutRequest) -> impl Future<Output = AuthApiOutResponse> + Send{async{Default::default()}}
+
 	// POST /auth/signin
 	fn auth_api_signin(&self, _req: AuthApiSigninRequest) -> impl Future<Output = AuthApiSigninResponse> + Send{async{Default::default()}}
+
 	// POST /auth/signup
 	fn auth_api_signup(&self, _req: AuthApiSignupRequest) -> impl Future<Output = AuthApiSignupResponse> + Send{async{Default::default()}}
+
 	// POST /auth/update
 	fn auth_api_update(&self, _req: AuthApiUpdateRequest) -> impl Future<Output = AuthApiUpdateResponse> + Send{async{Default::default()}}
+
 	// GET /cron
 	fn background_cron(&self, _req: BackgroundCronRequest) -> impl Future<Output = BackgroundCronResponse> + Send{async{Default::default()}}
+
 	// GET /image
 	fn images_list(&self, _req: ImagesListRequest) -> impl Future<Output = ImagesListResponse> + Send{async{Default::default()}}
+
 	// GET /job
 	fn jobs_list(&self, _req: JobsListRequest) -> impl Future<Output = JobsListResponse> + Send{async{Default::default()}}
+
 	// POST /job
 	fn jobs_push(&self, _req: JobsPushRequest) -> impl Future<Output = JobsPushResponse> + Send{async{Default::default()}}
+
 	// DELETE /job/{id}
 	fn jobs_delete(&self, _req: JobsDeleteRequest) -> impl Future<Output = JobsDeleteResponse> + Send{async{Default::default()}}
+
 	// GET /job/{id}/cat
 	fn jobs_file_cat(&self, _req: JobsFileCatRequest) -> impl Future<Output = JobsFileCatResponse> + Send{async{Default::default()}}
+
 	// GET /job/{id}/ls
 	fn jobs_file_ls(&self, _req: JobsFileLsRequest) -> impl Future<Output = JobsFileLsResponse> + Send{async{Default::default()}}
+
 	// GET /job/{id}/task
 	fn jobs_tasklist(&self, _req: JobsTasklistRequest) -> impl Future<Output = JobsTasklistResponse> + Send{async{Default::default()}}
+
 	// GET /status
 	fn status_interface_status(&self, _req: StatusInterfaceStatusRequest) -> impl Future<Output = StatusInterfaceStatusResponse> + Send{async{Default::default()}}
 }
@@ -106,6 +124,7 @@ pub struct AuthContext{
 }
 
 
+
 // Request type for auth_api_user_get
 #[derive(Debug)]
 pub struct AuthApiUserGetRequest{
@@ -118,6 +137,7 @@ pub enum AuthApiUserGetResponse{
 	Status400(String),
 	Status403,
 	Status404,
+	Error(String),
 }
 impl Default for AuthApiUserGetResponse{
 	fn default() -> Self{
@@ -131,9 +151,11 @@ impl axum::response::IntoResponse for AuthApiUserGetResponse{
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for auth_api_out
 #[derive(Debug)]
 pub struct AuthApiOutRequest{
@@ -142,6 +164,7 @@ pub struct AuthApiOutRequest{
 #[derive(Debug)]
 pub enum AuthApiOutResponse{
 	Status204,
+	Error(String),
 }
 impl Default for AuthApiOutResponse{
 	fn default() -> Self{
@@ -152,9 +175,11 @@ impl axum::response::IntoResponse for AuthApiOutResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status204=> axum::response::Response::builder().status(http::StatusCode::from_u16(204).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for auth_api_signin
 #[derive(Debug)]
 pub struct AuthApiSigninRequest{
@@ -166,6 +191,7 @@ pub enum AuthApiSigninResponse{
 	Status200(User),
 	Status400(String),
 	Status404,
+	Error(String),
 }
 impl Default for AuthApiSigninResponse{
 	fn default() -> Self{
@@ -178,9 +204,11 @@ impl axum::response::IntoResponse for AuthApiSigninResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for auth_api_signup
 #[derive(Debug)]
 pub struct AuthApiSignupRequest{
@@ -192,6 +220,7 @@ pub enum AuthApiSignupResponse{
 	Status200(User),
 	Status400(String),
 	Status403,
+	Error(String),
 }
 impl Default for AuthApiSignupResponse{
 	fn default() -> Self{
@@ -204,9 +233,11 @@ impl axum::response::IntoResponse for AuthApiSignupResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for auth_api_update
 #[derive(Debug)]
 pub struct AuthApiUpdateRequest{
@@ -219,6 +250,7 @@ pub enum AuthApiUpdateResponse{
 	Status200(User),
 	Status400(String),
 	Status403,
+	Error(String),
 }
 impl Default for AuthApiUpdateResponse{
 	fn default() -> Self{
@@ -231,9 +263,11 @@ impl axum::response::IntoResponse for AuthApiUpdateResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for background_cron
 #[derive(Debug)]
 pub struct BackgroundCronRequest{
@@ -242,6 +276,7 @@ pub struct BackgroundCronRequest{
 #[derive(Debug)]
 pub enum BackgroundCronResponse{
 	Status204,
+	Error(String),
 }
 impl Default for BackgroundCronResponse{
 	fn default() -> Self{
@@ -252,9 +287,11 @@ impl axum::response::IntoResponse for BackgroundCronResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status204=> axum::response::Response::builder().status(http::StatusCode::from_u16(204).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for images_list
 #[derive(Debug)]
 pub struct ImagesListRequest{
@@ -264,6 +301,7 @@ pub struct ImagesListRequest{
 pub enum ImagesListResponse{
 	Status200(Vec<String>),
 	Status400(String),
+	Error(String),
 }
 impl Default for ImagesListResponse{
 	fn default() -> Self{
@@ -275,9 +313,11 @@ impl axum::response::IntoResponse for ImagesListResponse{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for jobs_list
 #[derive(Debug)]
 pub struct JobsListRequest{
@@ -288,6 +328,7 @@ pub struct JobsListRequest{
 pub enum JobsListResponse{
 	Status200(Vec<Job>),
 	Status400(String),
+	Error(String),
 }
 impl Default for JobsListResponse{
 	fn default() -> Self{
@@ -299,9 +340,11 @@ impl axum::response::IntoResponse for JobsListResponse{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for jobs_push
 #[derive(Debug)]
 pub struct JobsPushRequest{
@@ -313,6 +356,7 @@ pub struct JobsPushRequest{
 pub enum JobsPushResponse{
 	Status200(Job),
 	Status400(String),
+	Error(String),
 }
 impl Default for JobsPushResponse{
 	fn default() -> Self{
@@ -324,9 +368,11 @@ impl axum::response::IntoResponse for JobsPushResponse{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for jobs_delete
 #[derive(Debug)]
 pub struct JobsDeleteRequest{
@@ -339,6 +385,7 @@ pub enum JobsDeleteResponse{
 	Status204,
 	Status400(String),
 	Status404,
+	Error(String),
 }
 impl Default for JobsDeleteResponse{
 	fn default() -> Self{
@@ -351,9 +398,11 @@ impl axum::response::IntoResponse for JobsDeleteResponse{
 			Self::Status204=> axum::response::Response::builder().status(http::StatusCode::from_u16(204).unwrap()).body(axum::body::Body::empty()).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for jobs_file_cat
 #[derive(Debug)]
 pub struct JobsFileCatRequest{
@@ -368,6 +417,7 @@ pub enum JobsFileCatResponse{
 	Status200(Vec<u8>),
 	Status400(String),
 	Status404,
+	Error(String),
 }
 impl Default for JobsFileCatResponse{
 	fn default() -> Self{
@@ -380,9 +430,11 @@ impl axum::response::IntoResponse for JobsFileCatResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/octet-stream").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for jobs_file_ls
 #[derive(Debug)]
 pub struct JobsFileLsRequest{
@@ -396,6 +448,7 @@ pub enum JobsFileLsResponse{
 	Status200(Vec<String>),
 	Status400(String),
 	Status404,
+	Error(String),
 }
 impl Default for JobsFileLsResponse{
 	fn default() -> Self{
@@ -408,9 +461,11 @@ impl axum::response::IntoResponse for JobsFileLsResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for jobs_tasklist
 #[derive(Debug)]
 pub struct JobsTasklistRequest{
@@ -423,6 +478,7 @@ pub enum JobsTasklistResponse{
 	Status200(Vec<Task>),
 	Status400(String),
 	Status404,
+	Error(String),
 }
 impl Default for JobsTasklistResponse{
 	fn default() -> Self{
@@ -435,9 +491,11 @@ impl axum::response::IntoResponse for JobsTasklistResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for status_interface_status
 #[derive(Debug)]
 pub struct StatusInterfaceStatusRequest{
@@ -447,6 +505,7 @@ pub struct StatusInterfaceStatusRequest{
 pub enum StatusInterfaceStatusResponse{
 	Status200(Vec<Device>),
 	Status400(String),
+	Error(String),
 }
 impl Default for StatusInterfaceStatusResponse{
 	fn default() -> Self{
@@ -458,6 +517,7 @@ impl axum::response::IntoResponse for StatusInterfaceStatusResponse{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
@@ -518,6 +578,17 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
+	pub r#name:String,
+	pub r#password:String,
+	pub r#password_new:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
+	pub r#email:String,
+	pub r#password:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
 	pub r#config:Option<String>,
 	pub r#files:Vec<Vec<u8>>,
@@ -525,21 +596,348 @@ pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
 	pub r#paths:Vec<String>,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
-	pub r#name:String,
-	pub r#password:String,
-	pub r#password_new:String,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthSignupPostRequestBodyContentApplicationJsonSchema{
 	pub r#email:String,
 	pub r#name:String,
 	pub r#password:String,
 }
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
-	pub r#email:String,
-	pub r#password:String,
+
+// following part is only for client
+
+#[cfg(feature = "mandolin_client")]
+pub struct ApiClient {
+    base_url: String,
+    client: reqwest::Client,
+}
+
+#[cfg(feature = "mandolin_client")]
+impl ApiClient {
+    pub fn new(base_url: impl Into<String>) -> Self {
+        Self { base_url: base_url.into(), client: reqwest::Client::new() }
+    }
+}
+
+#[cfg(feature = "mandolin_client")]
+impl ApiInterface for ApiClient {
+
+    // GET /auth
+    fn auth_api_user_get(&self, req: AuthApiUserGetRequest) -> impl Future<Output = AuthApiUserGetResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/auth"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return AuthApiUserGetResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => AuthApiUserGetResponse::Status200(v), Err(e) => AuthApiUserGetResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => AuthApiUserGetResponse::Status400(v), Err(e) => AuthApiUserGetResponse::Error(e.to_string()) },
+                403 =>
+                    AuthApiUserGetResponse::Status403,
+                404 =>
+                    AuthApiUserGetResponse::Status404,
+                code => AuthApiUserGetResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // GET /auth/out
+    fn auth_api_out(&self, req: AuthApiOutRequest) -> impl Future<Output = AuthApiOutResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/auth/out"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return AuthApiOutResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                204 =>
+                    AuthApiOutResponse::Status204,
+                code => AuthApiOutResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // POST /auth/signin
+    fn auth_api_signin(&self, req: AuthApiSigninRequest) -> impl Future<Output = AuthApiSigninResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/auth/signin"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.post(&url)
+                .json(&req.body)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return AuthApiSigninResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => AuthApiSigninResponse::Status200(v), Err(e) => AuthApiSigninResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => AuthApiSigninResponse::Status400(v), Err(e) => AuthApiSigninResponse::Error(e.to_string()) },
+                404 =>
+                    AuthApiSigninResponse::Status404,
+                code => AuthApiSigninResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // POST /auth/signup
+    fn auth_api_signup(&self, req: AuthApiSignupRequest) -> impl Future<Output = AuthApiSignupResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/auth/signup"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.post(&url)
+                .json(&req.body)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return AuthApiSignupResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => AuthApiSignupResponse::Status200(v), Err(e) => AuthApiSignupResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => AuthApiSignupResponse::Status400(v), Err(e) => AuthApiSignupResponse::Error(e.to_string()) },
+                403 =>
+                    AuthApiSignupResponse::Status403,
+                code => AuthApiSignupResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // POST /auth/update
+    fn auth_api_update(&self, req: AuthApiUpdateRequest) -> impl Future<Output = AuthApiUpdateResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/auth/update"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.post(&url)
+                .json(&req.body)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return AuthApiUpdateResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => AuthApiUpdateResponse::Status200(v), Err(e) => AuthApiUpdateResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => AuthApiUpdateResponse::Status400(v), Err(e) => AuthApiUpdateResponse::Error(e.to_string()) },
+                403 =>
+                    AuthApiUpdateResponse::Status403,
+                code => AuthApiUpdateResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // GET /cron
+    fn background_cron(&self, req: BackgroundCronRequest) -> impl Future<Output = BackgroundCronResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/cron"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return BackgroundCronResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                204 =>
+                    BackgroundCronResponse::Status204,
+                code => BackgroundCronResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // GET /image
+    fn images_list(&self, req: ImagesListRequest) -> impl Future<Output = ImagesListResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/image"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return ImagesListResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => ImagesListResponse::Status200(v), Err(e) => ImagesListResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => ImagesListResponse::Status400(v), Err(e) => ImagesListResponse::Error(e.to_string()) },
+                code => ImagesListResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // GET /job
+    fn jobs_list(&self, req: JobsListRequest) -> impl Future<Output = JobsListResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/job"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return JobsListResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => JobsListResponse::Status200(v), Err(e) => JobsListResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => JobsListResponse::Status400(v), Err(e) => JobsListResponse::Error(e.to_string()) },
+                code => JobsListResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // POST /job
+    fn jobs_push(&self, req: JobsPushRequest) -> impl Future<Output = JobsPushResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/job"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.post(&url)
+                .json(&req.body)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return JobsPushResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => JobsPushResponse::Status200(v), Err(e) => JobsPushResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => JobsPushResponse::Status400(v), Err(e) => JobsPushResponse::Error(e.to_string()) },
+                code => JobsPushResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // DELETE /job/{id}
+    fn jobs_delete(&self, req: JobsDeleteRequest) -> impl Future<Output = JobsDeleteResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/job/{id}"
+            .replace("{id}", &req.r#id.to_string())
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.delete(&url)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return JobsDeleteResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                204 =>
+                    JobsDeleteResponse::Status204,
+                400 =>
+                    match r.json().await { Ok(v) => JobsDeleteResponse::Status400(v), Err(e) => JobsDeleteResponse::Error(e.to_string()) },
+                404 =>
+                    JobsDeleteResponse::Status404,
+                code => JobsDeleteResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // GET /job/{id}/cat
+    fn jobs_file_cat(&self, req: JobsFileCatRequest) -> impl Future<Output = JobsFileCatResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/job/{id}/cat"
+            .replace("{id}", &req.r#id.to_string())
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .query(&[("path", req.r#path.to_string())])
+                .query(&req.r#limit.as_ref().map(|v| [("limit", v.to_string())]))
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return JobsFileCatResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => JobsFileCatResponse::Status200(v), Err(e) => JobsFileCatResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => JobsFileCatResponse::Status400(v), Err(e) => JobsFileCatResponse::Error(e.to_string()) },
+                404 =>
+                    JobsFileCatResponse::Status404,
+                code => JobsFileCatResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // GET /job/{id}/ls
+    fn jobs_file_ls(&self, req: JobsFileLsRequest) -> impl Future<Output = JobsFileLsResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/job/{id}/ls"
+            .replace("{id}", &req.r#id.to_string())
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .query(&req.r#path.as_ref().map(|v| [("path", v.to_string())]))
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return JobsFileLsResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => JobsFileLsResponse::Status200(v), Err(e) => JobsFileLsResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => JobsFileLsResponse::Status400(v), Err(e) => JobsFileLsResponse::Error(e.to_string()) },
+                404 =>
+                    JobsFileLsResponse::Status404,
+                code => JobsFileLsResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // GET /job/{id}/task
+    fn jobs_tasklist(&self, req: JobsTasklistRequest) -> impl Future<Output = JobsTasklistResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/job/{id}/task"
+            .replace("{id}", &req.r#id.to_string())
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return JobsTasklistResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => JobsTasklistResponse::Status200(v), Err(e) => JobsTasklistResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => JobsTasklistResponse::Status400(v), Err(e) => JobsTasklistResponse::Error(e.to_string()) },
+                404 =>
+                    JobsTasklistResponse::Status404,
+                code => JobsTasklistResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // GET /status
+    fn status_interface_status(&self, req: StatusInterfaceStatusRequest) -> impl Future<Output = StatusInterfaceStatusResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/status"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return StatusInterfaceStatusResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => StatusInterfaceStatusResponse::Status200(v), Err(e) => StatusInterfaceStatusResponse::Error(e.to_string()) },
+                400 =>
+                    match r.json().await { Ok(v) => StatusInterfaceStatusResponse::Status400(v), Err(e) => StatusInterfaceStatusResponse::Error(e.to_string()) },
+                code => StatusInterfaceStatusResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
 }
 
 // following part is only for server
@@ -552,71 +950,87 @@ use axum::extract::FromRequest;
 /// All ApiInterface implementors automatically satisfy this via blanket impl.
 /// Override methods here for axum-specific behavior (streaming, custom headers, etc.)
 pub trait ApiInterfaceAxum: ApiInterface + Sync{
+	/// Authentication process: Generate AuthContext from request
+	fn authorize(&self, _req: http::Request<()>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
+
 	// GET /auth
 	fn auth_api_user_get(&self, _raw: http::Request<()>, req: AuthApiUserGetRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::auth_api_user_get(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// GET /auth/out
 	fn auth_api_out(&self, _raw: http::Request<()>, req: AuthApiOutRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::auth_api_out(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// POST /auth/signin
 	fn auth_api_signin(&self, _raw: http::Request<()>, req: AuthApiSigninRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::auth_api_signin(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// POST /auth/signup
 	fn auth_api_signup(&self, _raw: http::Request<()>, req: AuthApiSignupRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::auth_api_signup(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// POST /auth/update
 	fn auth_api_update(&self, _raw: http::Request<()>, req: AuthApiUpdateRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::auth_api_update(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// GET /cron
 	fn background_cron(&self, _raw: http::Request<()>, req: BackgroundCronRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::background_cron(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// GET /image
 	fn images_list(&self, _raw: http::Request<()>, req: ImagesListRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::images_list(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// GET /job
 	fn jobs_list(&self, _raw: http::Request<()>, req: JobsListRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::jobs_list(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// POST /job
 	fn jobs_push(&self, _raw: http::Request<()>, req: JobsPushRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::jobs_push(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// DELETE /job/{id}
 	fn jobs_delete(&self, _raw: http::Request<()>, req: JobsDeleteRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::jobs_delete(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// GET /job/{id}/cat
 	fn jobs_file_cat(&self, _raw: http::Request<()>, req: JobsFileCatRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::jobs_file_cat(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// GET /job/{id}/ls
 	fn jobs_file_ls(&self, _raw: http::Request<()>, req: JobsFileLsRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::jobs_file_ls(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// GET /job/{id}/task
 	fn jobs_tasklist(&self, _raw: http::Request<()>, req: JobsTasklistRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::jobs_tasklist(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// GET /status
 	fn status_interface_status(&self, _raw: http::Request<()>, req: StatusInterfaceStatusRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::status_interface_status(self, req);
@@ -637,6 +1051,7 @@ fn text_response(code: http::StatusCode, body: String)->axum::response::Response
 /// Returns axum::Router with root handlers for all operations registered
 pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
+
 	let i = instance.clone();
 	let router = router.route("/auth", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -653,6 +1068,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/auth/out", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -665,6 +1081,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/auth/signin", axum::routing::post(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -678,6 +1095,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/auth/signup", axum::routing::post(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -691,6 +1109,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/auth/update", axum::routing::post(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -708,6 +1127,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/cron", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -720,6 +1140,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/image", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -732,6 +1153,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/job", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -748,6 +1170,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/job", axum::routing::post(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -784,6 +1207,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/job/{id}", axum::routing::delete(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -801,6 +1225,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/job/{id}/cat", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -820,6 +1245,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/job/{id}/ls", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -838,6 +1264,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/job/{id}/task", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -855,6 +1282,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/status", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -915,32 +1343,46 @@ pub fn print_axum_router(port:u16){
 pub struct TestServer{}
 impl ApiInterface for TestServer{
 	// Implement required methods here
+
 	// GET /auth
 	// async fn auth_api_user_get(&self, _req: AuthApiUserGetRequest) -> AuthApiUserGetResponse{Default::default()}
+
 	// GET /auth/out
 	// async fn auth_api_out(&self, _req: AuthApiOutRequest) -> AuthApiOutResponse{Default::default()}
+
 	// POST /auth/signin
 	// async fn auth_api_signin(&self, _req: AuthApiSigninRequest) -> AuthApiSigninResponse{Default::default()}
+
 	// POST /auth/signup
 	// async fn auth_api_signup(&self, _req: AuthApiSignupRequest) -> AuthApiSignupResponse{Default::default()}
+
 	// POST /auth/update
 	// async fn auth_api_update(&self, _req: AuthApiUpdateRequest) -> AuthApiUpdateResponse{Default::default()}
+
 	// GET /cron
 	// async fn background_cron(&self, _req: BackgroundCronRequest) -> BackgroundCronResponse{Default::default()}
+
 	// GET /image
 	// async fn images_list(&self, _req: ImagesListRequest) -> ImagesListResponse{Default::default()}
+
 	// GET /job
 	// async fn jobs_list(&self, _req: JobsListRequest) -> JobsListResponse{Default::default()}
+
 	// POST /job
 	// async fn jobs_push(&self, _req: JobsPushRequest) -> JobsPushResponse{Default::default()}
+
 	// DELETE /job/{id}
 	// async fn jobs_delete(&self, _req: JobsDeleteRequest) -> JobsDeleteResponse{Default::default()}
+
 	// GET /job/{id}/cat
 	// async fn jobs_file_cat(&self, _req: JobsFileCatRequest) -> JobsFileCatResponse{Default::default()}
+
 	// GET /job/{id}/ls
 	// async fn jobs_file_ls(&self, _req: JobsFileLsRequest) -> JobsFileLsResponse{Default::default()}
+
 	// GET /job/{id}/task
 	// async fn jobs_tasklist(&self, _req: JobsTasklistRequest) -> JobsTasklistResponse{Default::default()}
+
 	// GET /status
 	// async fn status_interface_status(&self, _req: StatusInterfaceStatusRequest) -> StatusInterfaceStatusResponse{Default::default()}
 }

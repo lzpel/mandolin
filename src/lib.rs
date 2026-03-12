@@ -263,4 +263,21 @@ mod tests {
 		render_target("RUST_AXUM", "rs");
 		render_target("TYPESCRIPT_HONO", "ts");
 	}
+
+	#[test]
+	fn call_block_supported() {
+		let mut env = minijinja::Environment::new();
+		env.add_template("test", r#"
+{%- macro foreach(items) %}
+{%- for item in items %}
+{{ caller(item) }}
+{%- endfor %}
+{%- endmacro %}
+{%- call(item) foreach(["a","b","c"]) %}[{{item}}]{%- endcall %}
+"#).unwrap();
+		let result = env.get_template("test").unwrap().render(0).unwrap();
+		assert!(result.contains("[a]"), "call block not working: {result}");
+		assert!(result.contains("[b]"), "call block not working: {result}");
+		assert!(result.contains("[c]"), "call block not working: {result}");
+	}
 }

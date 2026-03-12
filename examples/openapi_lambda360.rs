@@ -43,15 +43,21 @@
 
 
 
+
+
 // This file was automatically generated from OpenAPI specification by mandolin https://github.com/lzpel/mandolin
 
 /* Cargo.toml to build this server
+
+[features]
+mandolin_client = ["dep:reqwest"]
 
 [dependencies]
 serde= { version="*", features = ["derive"] }
 serde_json= "*"
 axum = { version = "*", features = ["multipart"] }
 tokio = { version = "*", features = ["rt", "rt-multi-thread", "macros", "signal"] }
+reqwest = { version = "*", features = ["json"], optional = true }
 # optional
 uuid = { version = "*", features = ["serde"] }
 chrono = { version = "*", features = ["serde"] }
@@ -64,14 +70,16 @@ use std::future::Future;
 /// API Interface Trait
 /// Define server logic by implementing methods corresponding to each operation
 pub trait ApiInterface{
-	/// Authentication process: Generate AuthContext from request
-	fn authorize(&self, _req: http::Request<()>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
+
 	// GET /hello
 	fn hello_say_hello(&self, _req: HelloSayHelloRequest) -> impl Future<Output = HelloSayHelloResponse> + Send{async{Default::default()}}
+
 	// POST /shape
 	fn shape_compute(&self, _req: ShapeComputeRequest) -> impl Future<Output = ShapeComputeResponse> + Send{async{Default::default()}}
+
 	// GET /step/{sha256}
 	fn step_exists(&self, _req: StepExistsRequest) -> impl Future<Output = StepExistsResponse> + Send{async{Default::default()}}
+
 	// GET /view
 	fn viewer_view(&self, _req: ViewerViewRequest) -> impl Future<Output = ViewerViewResponse> + Send{async{Default::default()}}
 }
@@ -86,6 +94,7 @@ pub struct AuthContext{
 }
 
 
+
 // Request type for hello_say_hello
 #[derive(Debug)]
 pub struct HelloSayHelloRequest{
@@ -94,6 +103,7 @@ pub struct HelloSayHelloRequest{
 #[derive(Debug)]
 pub enum HelloSayHelloResponse{
 	Status200(String),
+	Error(String),
 }
 impl Default for HelloSayHelloResponse{
 	fn default() -> Self{
@@ -104,9 +114,11 @@ impl axum::response::IntoResponse for HelloSayHelloResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for shape_compute
 #[derive(Debug)]
 pub struct ShapeComputeRequest{
@@ -116,6 +128,7 @@ pub struct ShapeComputeRequest{
 #[derive(Debug)]
 pub enum ShapeComputeResponse{
 	Status200(Vec<u8>),
+	Error(String),
 }
 impl Default for ShapeComputeResponse{
 	fn default() -> Self{
@@ -126,9 +139,11 @@ impl axum::response::IntoResponse for ShapeComputeResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "model/gltf-binary").body(axum::body::Body::from(v)).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for step_exists
 #[derive(Debug)]
 pub struct StepExistsRequest{
@@ -138,6 +153,7 @@ pub struct StepExistsRequest{
 #[derive(Debug)]
 pub enum StepExistsResponse{
 	Status200(FileExists),
+	Error(String),
 }
 impl Default for StepExistsResponse{
 	fn default() -> Self{
@@ -148,9 +164,11 @@ impl axum::response::IntoResponse for StepExistsResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
+
 // Request type for viewer_view
 #[derive(Debug)]
 pub struct ViewerViewRequest{
@@ -160,6 +178,7 @@ pub struct ViewerViewRequest{
 #[derive(Debug)]
 pub enum ViewerViewResponse{
 	Status200(Vec<u8>),
+	Error(String),
 }
 impl Default for ViewerViewResponse{
 	fn default() -> Self{
@@ -170,6 +189,7 @@ impl axum::response::IntoResponse for ViewerViewResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "model/gltf-binary").body(axum::body::Body::from(v)).unwrap(),
+			Self::Error(msg) => axum::response::Response::builder().status(500).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(msg)).unwrap(),
 		}
 	}
 }
@@ -280,6 +300,104 @@ pub struct UnionShapeNode{
 
 
 
+// following part is only for client
+
+#[cfg(feature = "mandolin_client")]
+pub struct ApiClient {
+    base_url: String,
+    client: reqwest::Client,
+}
+
+#[cfg(feature = "mandolin_client")]
+impl ApiClient {
+    pub fn new(base_url: impl Into<String>) -> Self {
+        Self { base_url: base_url.into(), client: reqwest::Client::new() }
+    }
+}
+
+#[cfg(feature = "mandolin_client")]
+impl ApiInterface for ApiClient {
+
+    // GET /hello
+    fn hello_say_hello(&self, req: HelloSayHelloRequest) -> impl Future<Output = HelloSayHelloResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/hello"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return HelloSayHelloResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => HelloSayHelloResponse::Status200(v), Err(e) => HelloSayHelloResponse::Error(e.to_string()) },
+                code => HelloSayHelloResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // POST /shape
+    fn shape_compute(&self, req: ShapeComputeRequest) -> impl Future<Output = ShapeComputeResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/shape"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.post(&url)
+                .json(&req.body)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return ShapeComputeResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => ShapeComputeResponse::Status200(v), Err(e) => ShapeComputeResponse::Error(e.to_string()) },
+                code => ShapeComputeResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // GET /step/{sha256}
+    fn step_exists(&self, req: StepExistsRequest) -> impl Future<Output = StepExistsResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/step/{sha256}"
+            .replace("{sha256}", &req.r#sha256.to_string())
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return StepExistsResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => StepExistsResponse::Status200(v), Err(e) => StepExistsResponse::Error(e.to_string()) },
+                code => StepExistsResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+
+    // GET /view
+    fn viewer_view(&self, req: ViewerViewRequest) -> impl Future<Output = ViewerViewResponse> + Send {
+        let url = format!("{}{}", self.base_url, "/view"
+        );
+        let client = self.client.clone();
+        async move {
+            let r = match client.get(&url)
+                .query(&[("sha256", req.r#sha256.to_string())])
+                .send().await {
+                Ok(r) => r,
+                Err(e) => return ViewerViewResponse::Error(e.to_string()),
+            };
+            match r.status().as_u16() {
+                200 =>
+                    match r.json().await { Ok(v) => ViewerViewResponse::Status200(v), Err(e) => ViewerViewResponse::Error(e.to_string()) },
+                code => ViewerViewResponse::Error(format!("unexpected status: {code}")),
+            }
+        }
+    }
+}
+
 // following part is only for server
 
 use axum;
@@ -290,21 +408,27 @@ use axum::extract::FromRequest;
 /// All ApiInterface implementors automatically satisfy this via blanket impl.
 /// Override methods here for axum-specific behavior (streaming, custom headers, etc.)
 pub trait ApiInterfaceAxum: ApiInterface + Sync{
+	/// Authentication process: Generate AuthContext from request
+	fn authorize(&self, _req: http::Request<()>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
+
 	// GET /hello
 	fn hello_say_hello(&self, _raw: http::Request<()>, req: HelloSayHelloRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::hello_say_hello(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// POST /shape
 	fn shape_compute(&self, _raw: http::Request<()>, req: ShapeComputeRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::shape_compute(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// GET /step/{sha256}
 	fn step_exists(&self, _raw: http::Request<()>, req: StepExistsRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::step_exists(self, req);
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
+
 	// GET /view
 	fn viewer_view(&self, _raw: http::Request<()>, req: ViewerViewRequest) -> impl Future<Output = axum::response::Response> + Send{
 		let fut = <Self as ApiInterface>::viewer_view(self, req);
@@ -325,6 +449,7 @@ fn text_response(code: http::StatusCode, body: String)->axum::response::Response
 /// Returns axum::Router with root handlers for all operations registered
 pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
+
 	let i = instance.clone();
 	let router = router.route("/hello", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -337,6 +462,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/shape", axum::routing::post(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -350,6 +476,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/step/{sha256}", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -363,6 +490,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		}).await;
 		ret
 	}));
+
 	let i = instance.clone();
 	let router = router.route("/view", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -424,12 +552,16 @@ pub fn print_axum_router(port:u16){
 pub struct TestServer{}
 impl ApiInterface for TestServer{
 	// Implement required methods here
+
 	// GET /hello
 	// async fn hello_say_hello(&self, _req: HelloSayHelloRequest) -> HelloSayHelloResponse{Default::default()}
+
 	// POST /shape
 	// async fn shape_compute(&self, _req: ShapeComputeRequest) -> ShapeComputeResponse{Default::default()}
+
 	// GET /step/{sha256}
 	// async fn step_exists(&self, _req: StepExistsRequest) -> StepExistsResponse{Default::default()}
+
 	// GET /view
 	// async fn viewer_view(&self, _req: ViewerViewRequest) -> ViewerViewResponse{Default::default()}
 }
