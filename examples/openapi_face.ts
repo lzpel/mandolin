@@ -50,6 +50,7 @@ type JobRequest = {
 	archive:string,
 	image:string,
 	json:string,
+	name:string|undefined,
 }
 
 type Task = {
@@ -135,7 +136,7 @@ type JobsListResponse =
 	| { code: 400; body:string}
 // Request type for jobsPush
 type JobsPushRequest = {
-	body:PathsJobPostRequestBodyContentMultipartFormDataSchema,
+	body:JobRequest,
 }
 // Response type for jobsPush
 type JobsPushResponse =
@@ -191,6 +192,12 @@ type StatusInterfaceStatusResponse =
 
 
 
+type PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema = {
+	name:string,
+	password:string,
+	password_new:string,
+}
+
 type PathsAuthSignupPostRequestBodyContentApplicationJsonSchema = {
 	email:string,
 	name:string,
@@ -200,19 +207,6 @@ type PathsAuthSignupPostRequestBodyContentApplicationJsonSchema = {
 type PathsAuthSigninPostRequestBodyContentApplicationJsonSchema = {
 	email:string,
 	password:string,
-}
-
-type PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema = {
-	name:string,
-	password:string,
-	password_new:string,
-}
-
-type PathsJobPostRequestBodyContentMultipartFormDataSchema = {
-	config:string|undefined,
-	files:ArrayBuffer[],
-	image:string,
-	paths:string[],
 }
 
 /// API Interface: Define handlers for each operation
@@ -367,7 +361,7 @@ export function addHonoOperations(app: Hono, implement: ApiInterface){
 		const request: Partial<JobsPushRequest> = {}
 		{
 		}
-		request.body =c.req.arrayBuffer()
+		request.body =(await c.req.json()) as JobRequest
 		const response = await implement.jobsPush(request as JobsPushRequest)
 		switch (response.code){
 			case 200:

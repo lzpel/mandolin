@@ -680,6 +680,43 @@ pub fn origin_from_request<B>(req: &http::Request<B>) -> Option<String> {
 
 	Some(format!("{}://{}", guess_scheme(&host), host))
 }
+mod base64_serde {
+	use serde::{Deserialize,Deserializer,Serializer};
+	fn enc(b: &[u8]) -> String {
+		const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		b.chunks(3).flat_map(|c| {
+			let n = c.iter().fold(0u32, |a,&b| a<<8|b as u32) << (8*(3-c.len()));
+			[T[(n>>18&63)as usize], T[(n>>12&63)as usize],
+			 if c.len()>1 {T[(n>>6&63)as usize]} else {b'='},
+			 if c.len()>2 {T[(n&63)as usize]}    else {b'='}]
+		}).map(|b| b as char).collect()
+	}
+	fn dec(s: &str) -> Result<Vec<u8>, String> {
+		const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		let v: Result<Vec<u8>,_> = s.bytes().filter(|&b| b!=b'=')
+			.map(|b| T.iter().position(|&c|c==b).map(|i|i as u8).ok_or(format!("invalid base64 char: {b}")))
+			.collect();
+		Ok(v?.chunks(4).flat_map(|c| {
+			let n = c.iter().fold(0u32, |a,&b| a<<6|b as u32) << (4-c.len())*6;
+			(0..c.len()-1).map(move |i| (n>>(16-8*i)) as u8)
+		}).collect())
+	}
+	pub fn serialize<S:Serializer>(b: &Vec<u8>, s: S) -> Result<S::Ok,S::Error> {
+		s.serialize_str(&enc(b))
+	}
+	pub fn deserialize<'de,D:Deserializer<'de>>(d: D) -> Result<Vec<u8>,D::Error> {
+		dec(&String::deserialize(d)?).map_err(serde::de::Error::custom)
+	}
+	pub mod opt {
+		use serde::{Deserialize,Deserializer,Serializer};
+		pub fn serialize<S:Serializer>(b: &Option<Vec<u8>>, s: S) -> Result<S::Ok,S::Error> {
+			match b { Some(b) => s.serialize_some(&super::enc(b)), None => s.serialize_none() }
+		}
+		pub fn deserialize<'de,D:Deserializer<'de>>(d: D) -> Result<Option<Vec<u8>>,D::Error> {
+			Option::<String>::deserialize(d)?.map(|s| super::dec(&s).map_err(serde::de::Error::custom)).transpose()
+		}
+	}
+}
 
 #[tokio::main]
 async fn main() {

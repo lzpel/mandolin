@@ -95,6 +95,13 @@ pub struct {{SCHEMA_NAME(pointer)}}{{'{'}}
 {%- for property_key, property in schema.properties|default({})|items %}
 {%- if not tag_skip_get(pointer, property_key) %}
 {%- with inner=SCHEMA(pointer+"/properties/"+property_key, property) %}
+{%- if property.type == "string" and property.format == "byte" %}
+{%- if schema.required and property_key in schema.required %}
+	#[serde(with = "base64_serde")]
+{%- else %}
+	#[serde(default, with = "base64_serde::opt")]
+{%- endif %}
+{%- endif %}
 	pub r#{{property_key}}:{%- if schema.required and property_key in schema.required %}{{inner}}{%- else %}Option<{{inner}}>{%- endif %},
 {%- endwith %}
 {%- endif %}
@@ -297,7 +304,7 @@ match async |mut x: axum::extract::Multipart| -> std::result::Result<{{SCHEMA_NA
 {{value}}.push({{EXPRESSION_MULTIPART_ITEM(pointer+"/items",schema.items)}})
 {%- elif schema.type == "string" %}
 {%- if value is defined %}{{value}}={%- if not value_is_required %}Some({%- endif %}{%- endif %}
-{%- if schema.format == "binary" %}field.bytes().await.map(|v| v.to_vec()).map_err(|e| e.body_text())?
+{%- if schema.format == "binary" or schema.format == "byte" %}field.bytes().await.map(|v| v.to_vec()).map_err(|e| e.body_text())?
 {%- else %}field.text().await.map_err(|e| e.body_text())?
 {%- endif %}
 {%- if value is defined %}{%- if not value_is_required %}){%- endif %}{%- endif %}
@@ -414,6 +421,43 @@ pub fn origin_from_request<B>(req: &http::Request<B>) -> Option<String> {
 		.to_string();
 
 	Some(format!("{}://{}", guess_scheme(&host), host))
+}
+mod base64_serde {
+	use serde::{Deserialize,Deserializer,Serializer};
+	fn enc(b: &[u8]) -> String {
+		const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		b.chunks(3).flat_map(|c| {
+			let n = c.iter().fold(0u32, |a,&b| a<<8|b as u32) << (8*(3-c.len()));
+			[T[(n>>18&63)as usize], T[(n>>12&63)as usize],
+			 if c.len()>1 {T[(n>>6&63)as usize]} else {b'='},
+			 if c.len()>2 {T[(n&63)as usize]}    else {b'='}]
+		}).map(|b| b as char).collect()
+	}
+	fn dec(s: &str) -> Result<Vec<u8>, String> {
+		const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		let v: Result<Vec<u8>,_> = s.bytes().filter(|&b| b!=b'=')
+			.map(|b| T.iter().position(|&c|c==b).map(|i|i as u8).ok_or(format!("invalid base64 char: {b}")))
+			.collect();
+		Ok(v?.chunks(4).flat_map(|c| {
+			let n = c.iter().fold(0u32, |a,&b| a<<6|b as u32) << (4-c.len())*6;
+			(0..c.len()-1).map(move |i| (n>>(16-8*i)) as u8)
+		}).collect())
+	}
+	pub fn serialize<S:Serializer>(b: &Vec<u8>, s: S) -> Result<S::Ok,S::Error> {
+		s.serialize_str(&enc(b))
+	}
+	pub fn deserialize<'de,D:Deserializer<'de>>(d: D) -> Result<Vec<u8>,D::Error> {
+		dec(&String::deserialize(d)?).map_err(serde::de::Error::custom)
+	}
+	pub mod opt {
+		use serde::{Deserialize,Deserializer,Serializer};
+		pub fn serialize<S:Serializer>(b: &Option<Vec<u8>>, s: S) -> Result<S::Ok,S::Error> {
+			match b { Some(b) => s.serialize_some(&super::enc(b)), None => s.serialize_none() }
+		}
+		pub fn deserialize<'de,D:Deserializer<'de>>(d: D) -> Result<Option<Vec<u8>>,D::Error> {
+			Option::<String>::deserialize(d)?.map(|s| super::dec(&s).map_err(serde::de::Error::custom)).transpose()
+		}
+	}
 }
 {%- endmacro -%}
 

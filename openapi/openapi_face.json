@@ -315,7 +315,7 @@
 			},
 			"post": {
 				"operationId": "Jobs_push",
-				"description": "\t新規にジョブを開始します。\n\t- files(required): 実行に必要なファイル一覧、アップロードされます。不要なら0件も可能。\n\t- paths(required): filesと1対1対応するパス一覧。\n\t- image(required): ジョブを実行するdocker image。\n\t- config: config用jsonファイル。指定しなければfileから推測されます（トップレベルかつ.json拡張子が付いたファイル）。",
+				"description": "\t新規にジョブを開始します。\n\t- json(required): ジョブの設定JSON文字列。\n\t- image(required): ジョブを実行するdocker image。\n\t- archive(required): 実行に必要なファイルをまとめたアーカイブ（バイナリ）。",
 				"parameters": [],
 				"responses": {
 					"200": {
@@ -342,43 +342,9 @@
 				"requestBody": {
 					"required": true,
 					"content": {
-						"multipart/form-data": {
+						"application/json": {
 							"schema": {
-								"type": "object",
-								"properties": {
-									"files": {
-										"type": "array",
-										"items": {
-											"type": "string",
-											"format": "binary"
-										}
-									},
-									"paths": {
-										"type": "array",
-										"items": {
-											"type": "string"
-										}
-									},
-									"image": {
-										"type": "string"
-									},
-									"config": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"files",
-									"paths",
-									"image"
-								]
-							},
-							"encoding": {
-								"files": {
-									"contentType": "*/*"
-								},
-								"paths": {
-									"contentType": "text/plain"
-								}
+								"$ref": "#/components/schemas/JobRequest"
 							}
 						}
 					}
@@ -693,14 +659,21 @@
 				],
 				"properties": {
 					"json": {
-						"type": "string"
+						"type": "string",
+						"description": "configファイルのファイル名（パスではなくファイル名のみ）。コンテナ内で `/print_makefile --config <json>` として渡される。例: \"test_config.json\""
 					},
 					"image": {
-						"type": "string"
+						"type": "string",
+						"description": "ジョブを実行するDockerイメージ名。例: \"face_sim_webmake\""
 					},
 					"archive": {
 						"type": "string",
-						"format": "byte"
+						"format": "byte",
+						"description": "jsonが含まれるディレクトリ全体をtar.gz圧縮したバイナリ。サーバー側でコンテナの/outにマウントされるホストディレクトリに展開される"
+					},
+					"name": {
+						"type": "string",
+						"description": "ディレクトリ名・コンテナ名に使用する任意のラベル。[a-zA-Z0-9_]以外は除去される。省略時はjsonファイル名を使用"
 					}
 				}
 			},

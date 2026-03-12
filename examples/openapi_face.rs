@@ -348,7 +348,7 @@ impl axum::response::IntoResponse for JobsListResponse{
 // Request type for jobs_push
 #[derive(Debug)]
 pub struct JobsPushRequest{
-	pub body: PathsJobPostRequestBodyContentMultipartFormDataSchema,
+	pub body: JobRequest,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
 }
 // Response type for jobs_push
@@ -550,9 +550,11 @@ pub struct Job{
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct JobRequest{
+	#[serde(with = "base64_serde")]
 	pub r#archive:Vec<u8>,
 	pub r#image:String,
 	pub r#json:String,
+	pub r#name:Option<String>,
 }
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
@@ -578,11 +580,9 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
-	pub r#config:Option<String>,
-	pub r#files:Vec<Vec<u8>>,
-	pub r#image:String,
-	pub r#paths:Vec<String>,
+pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
+	pub r#email:String,
+	pub r#password:String,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthSignupPostRequestBodyContentApplicationJsonSchema{
@@ -595,11 +595,6 @@ pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
 	pub r#name:String,
 	pub r#password:String,
 	pub r#password_new:String,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
-	pub r#email:String,
-	pub r#password:String,
 }
 
 // following part is only for client
@@ -797,7 +792,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
         let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
-                .body(req.body)
+                .json(&req.body)
                 .send().await {
                 Ok(r) => r,
                 Err(e) => return JobsPushResponse::Error(e.to_string()),
@@ -1172,26 +1167,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		| async move{
 			let (parts, body) = request.into_parts();
 			let ret=<S as ApiInterfaceAxum>::jobs_push(i.as_ref(), http::Request::from_parts(parts.clone(), ()), JobsPushRequest{
-			body:{
-	let r=http::Request::from_parts(parts.clone(), body);
-	let v=match axum::extract::Multipart::from_request(r, &()).await{Ok(v)=>v,Err(e)=>return text_response(http::StatusCode::BAD_REQUEST, e.body_text())};
-	match async |mut x: axum::extract::Multipart| -> std::result::Result<PathsJobPostRequestBodyContentMultipartFormDataSchema,String>{
-	let mut o:PathsJobPostRequestBodyContentMultipartFormDataSchema=Default::default();
-	while let Some(field) = x.next_field().await.map_err(|e| e.body_text())? {
-		match field.name().unwrap_or_default() {
-			"config" =>o.config=Some(field.text().await.map_err(|e| e.body_text())?),
-			"files" =>o.files.push(field.bytes().await.map(|v| v.to_vec()).map_err(|e| e.body_text())?),
-			"image" =>o.image=field.text().await.map_err(|e| e.body_text())?,
-			"paths" =>o.paths.push(field.text().await.map_err(|e| e.body_text())?),
-			other => return Err(format!("unknown field {other} in multipart-formdata"))
-		}
-	}
-	Ok(o)
-}(v).await {
-	Ok(v)=>v,
-	Err(e)=>return text_response(http::StatusCode::BAD_REQUEST,e)
-}
-},
+			body:match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(http::StatusCode::BAD_REQUEST, v)},
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
@@ -1288,7 +1264,7 @@ pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(insta
 		ret
 	}));
 	let router = router.route("/openapi.json", axum::routing::get(|| async move{
-			r###"{"components":{"schemas":{"Device":{"properties":{"memory_size_megabytes":{"format":"int32","type":"integer"},"memory_used_megabytes":{"format":"int32","type":"integer"},"name":{"type":"string"}},"required":["name","memory_used_megabytes","memory_size_megabytes"],"type":"object"},"Job":{"properties":{"id":{"$ref":"#/components/schemas/UUID"},"id_root":{"$ref":"#/components/schemas/UUID"},"name":{"type":"string"},"status":{"items":{"$ref":"#/components/schemas/Task"},"type":"array"}},"required":["id","id_root","name","status"],"type":"object"},"JobRequest":{"properties":{"archive":{"format":"byte","type":"string"},"image":{"type":"string"},"json":{"type":"string"}},"required":["json","image","archive"],"type":"object"},"Task":{"properties":{"code":{"format":"int32","type":"integer"},"path":{"items":{"type":"string"},"type":"array"},"target":{"type":"string"},"time_end":{"format":"int32","type":"integer"},"time_run":{"format":"int32","type":"integer"}},"required":["target","code","time_run","time_end","path"],"type":"object"},"UUID":{"format":"uuid","type":"string"},"User":{"properties":{"auth_email":{"type":"string"},"auth_email_password":{"type":"string"},"id":{"$ref":"#/components/schemas/UUID"},"name":{"type":"string"},"picture":{"type":"string"}},"required":["id","name","picture","auth_email","auth_email_password"],"type":"object"}},"securitySchemes":{"BearerAuth":{"scheme":"Bearer","type":"http"}}},"info":{"title":"API overview","version":"0.0.0"},"openapi":"3.0.0","paths":{"/auth":{"get":{"description":"\tユーザー情報を取得します、認証が必要","operationId":"AuthApi_user_get","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"description":"Access is forbidden."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/auth/out":{"get":{"description":"\tログアウト","operationId":"AuthApi_out","responses":{"204":{"description":"There is no content to send for this request, but the headers may be useful. "}}}},"/auth/signin":{"post":{"description":"\tログイン","operationId":"AuthApi_signin","requestBody":{"content":{"application/json":{"schema":{"properties":{"email":{"type":"string"},"password":{"type":"string"}},"required":["email","password"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}}}},"/auth/signup":{"post":{"description":"\tユーザー登録","operationId":"AuthApi_signup","requestBody":{"content":{"application/json":{"schema":{"properties":{"email":{"type":"string"},"name":{"type":"string"},"password":{"type":"string"}},"required":["name","email","password"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"description":"Access is forbidden."}}}},"/auth/update":{"post":{"description":"\tユーザー情報更新","operationId":"AuthApi_update","requestBody":{"content":{"application/json":{"schema":{"properties":{"name":{"type":"string"},"password":{"type":"string"},"password_new":{"type":"string"}},"required":["name","password","password_new"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"description":"Access is forbidden."}},"security":[{"BearerAuth":[]}]}},"/cron":{"get":{"description":"\tタスクキューを進めます。実行可能なプロセスが存在すれば実行し、状態を更新します。1分毎など定期的に呼び出してください。","operationId":"Background_cron","responses":{"204":{"description":"There is no content to send for this request, but the headers may be useful. "}}}},"/image":{"get":{"description":"\tジョブのランナーとして指定可能なdocker image一覧です。FaceSimulatorはその一つです。","operationId":"Images_list","responses":{"200":{"content":{"application/json":{"schema":{"items":{"type":"string"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}}}},"/job":{"get":{"description":"\tジョブ一覧を返します、認証が必要","operationId":"Jobs_list","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/Job"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}},"security":[{"BearerAuth":[]}]},"post":{"description":"\t新規にジョブを開始します。\n\t- files(required): 実行に必要なファイル一覧、アップロードされます。不要なら0件も可能。\n\t- paths(required): filesと1対1対応するパス一覧。\n\t- image(required): ジョブを実行するdocker image。\n\t- config: config用jsonファイル。指定しなければfileから推測されます（トップレベルかつ.json拡張子が付いたファイル）。","operationId":"Jobs_push","requestBody":{"content":{"multipart/form-data":{"encoding":{"files":{"contentType":"*/*"},"paths":{"contentType":"text/plain"}},"schema":{"properties":{"config":{"type":"string"},"files":{"items":{"format":"binary","type":"string"},"type":"array"},"image":{"type":"string"},"paths":{"items":{"type":"string"},"type":"array"}},"required":["files","paths","image"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Job"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}},"security":[{"BearerAuth":[]}]}},"/job/{id}":{"delete":{"description":"\tジョブを削除します、認証が必要","operationId":"Jobs_delete","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"}],"responses":{"204":{"description":"There is no content to send for this request, but the headers may be useful. "},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/job/{id}/cat":{"get":{"description":"\tジョブのファイルを配信します。path_fileは/（スラッシュ）を含めて良いです。","operationId":"Jobs_file_cat","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"},{"explode":false,"in":"query","name":"path","required":true,"schema":{"type":"string"},"style":"form"},{"explode":false,"in":"query","name":"limit","schema":{"format":"int32","type":"integer"},"style":"form"}],"responses":{"200":{"content":{"application/octet-stream":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/job/{id}/ls":{"get":{"description":"\tジョブのファイル一覧を返します、認証が必要","operationId":"Jobs_file_ls","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"},{"explode":false,"in":"query","name":"path","schema":{"type":"string"},"style":"form"}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"type":"string"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/job/{id}/task":{"get":{"description":"\tジョブのタスク一覧を返します、認証が必要","operationId":"Jobs_tasklist","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/Task"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/status":{"get":{"description":"\tシステム情報（GPUの使用状態）と稼働中のタスクを取得","operationId":"StatusInterface_status","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/Device"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}}}}},"servers":[{"description":"開発用","url":"/api","variables":{}}]}"###
+			r###"{"components":{"schemas":{"Device":{"properties":{"memory_size_megabytes":{"format":"int32","type":"integer"},"memory_used_megabytes":{"format":"int32","type":"integer"},"name":{"type":"string"}},"required":["name","memory_used_megabytes","memory_size_megabytes"],"type":"object"},"Job":{"properties":{"id":{"$ref":"#/components/schemas/UUID"},"id_root":{"$ref":"#/components/schemas/UUID"},"name":{"type":"string"},"status":{"items":{"$ref":"#/components/schemas/Task"},"type":"array"}},"required":["id","id_root","name","status"],"type":"object"},"JobRequest":{"properties":{"archive":{"description":"jsonが含まれるディレクトリ全体をtar.gz圧縮したバイナリ。サーバー側でコンテナの/outにマウントされるホストディレクトリに展開される","format":"byte","type":"string"},"image":{"description":"ジョブを実行するDockerイメージ名。例: \"face_sim_webmake\"","type":"string"},"json":{"description":"configファイルのファイル名（パスではなくファイル名のみ）。コンテナ内で `/print_makefile --config \u003cjson\u003e` として渡される。例: \"test_config.json\"","type":"string"},"name":{"description":"ディレクトリ名・コンテナ名に使用する任意のラベル。[a-zA-Z0-9_]以外は除去される。省略時はjsonファイル名を使用","type":"string"}},"required":["json","image","archive"],"type":"object"},"Task":{"properties":{"code":{"format":"int32","type":"integer"},"path":{"items":{"type":"string"},"type":"array"},"target":{"type":"string"},"time_end":{"format":"int32","type":"integer"},"time_run":{"format":"int32","type":"integer"}},"required":["target","code","time_run","time_end","path"],"type":"object"},"UUID":{"format":"uuid","type":"string"},"User":{"properties":{"auth_email":{"type":"string"},"auth_email_password":{"type":"string"},"id":{"$ref":"#/components/schemas/UUID"},"name":{"type":"string"},"picture":{"type":"string"}},"required":["id","name","picture","auth_email","auth_email_password"],"type":"object"}},"securitySchemes":{"BearerAuth":{"scheme":"Bearer","type":"http"}}},"info":{"title":"API overview","version":"0.0.0"},"openapi":"3.0.0","paths":{"/auth":{"get":{"description":"\tユーザー情報を取得します、認証が必要","operationId":"AuthApi_user_get","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"description":"Access is forbidden."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/auth/out":{"get":{"description":"\tログアウト","operationId":"AuthApi_out","responses":{"204":{"description":"There is no content to send for this request, but the headers may be useful. "}}}},"/auth/signin":{"post":{"description":"\tログイン","operationId":"AuthApi_signin","requestBody":{"content":{"application/json":{"schema":{"properties":{"email":{"type":"string"},"password":{"type":"string"}},"required":["email","password"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}}}},"/auth/signup":{"post":{"description":"\tユーザー登録","operationId":"AuthApi_signup","requestBody":{"content":{"application/json":{"schema":{"properties":{"email":{"type":"string"},"name":{"type":"string"},"password":{"type":"string"}},"required":["name","email","password"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"description":"Access is forbidden."}}}},"/auth/update":{"post":{"description":"\tユーザー情報更新","operationId":"AuthApi_update","requestBody":{"content":{"application/json":{"schema":{"properties":{"name":{"type":"string"},"password":{"type":"string"},"password_new":{"type":"string"}},"required":["name","password","password_new"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"description":"Access is forbidden."}},"security":[{"BearerAuth":[]}]}},"/cron":{"get":{"description":"\tタスクキューを進めます。実行可能なプロセスが存在すれば実行し、状態を更新します。1分毎など定期的に呼び出してください。","operationId":"Background_cron","responses":{"204":{"description":"There is no content to send for this request, but the headers may be useful. "}}}},"/image":{"get":{"description":"\tジョブのランナーとして指定可能なdocker image一覧です。FaceSimulatorはその一つです。","operationId":"Images_list","responses":{"200":{"content":{"application/json":{"schema":{"items":{"type":"string"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}}}},"/job":{"get":{"description":"\tジョブ一覧を返します、認証が必要","operationId":"Jobs_list","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/Job"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}},"security":[{"BearerAuth":[]}]},"post":{"description":"\t新規にジョブを開始します。\n\t- json(required): ジョブの設定JSON文字列。\n\t- image(required): ジョブを実行するdocker image。\n\t- archive(required): 実行に必要なファイルをまとめたアーカイブ（バイナリ）。","operationId":"Jobs_push","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/JobRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Job"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}},"security":[{"BearerAuth":[]}]}},"/job/{id}":{"delete":{"description":"\tジョブを削除します、認証が必要","operationId":"Jobs_delete","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"}],"responses":{"204":{"description":"There is no content to send for this request, but the headers may be useful. "},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/job/{id}/cat":{"get":{"description":"\tジョブのファイルを配信します。path_fileは/（スラッシュ）を含めて良いです。","operationId":"Jobs_file_cat","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"},{"explode":false,"in":"query","name":"path","required":true,"schema":{"type":"string"},"style":"form"},{"explode":false,"in":"query","name":"limit","schema":{"format":"int32","type":"integer"},"style":"form"}],"responses":{"200":{"content":{"application/octet-stream":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/job/{id}/ls":{"get":{"description":"\tジョブのファイル一覧を返します、認証が必要","operationId":"Jobs_file_ls","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"},{"explode":false,"in":"query","name":"path","schema":{"type":"string"},"style":"form"}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"type":"string"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/job/{id}/task":{"get":{"description":"\tジョブのタスク一覧を返します、認証が必要","operationId":"Jobs_tasklist","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/Task"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/status":{"get":{"description":"\tシステム情報（GPUの使用状態）と稼働中のタスクを取得","operationId":"StatusInterface_status","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/Device"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}}}}},"servers":[{"description":"開発用","url":"/api","variables":{}}]}"###
 		}))
 		.route("/ui", axum::routing::get(|| async move{
 			axum::response::Html(r###"
@@ -1530,6 +1506,43 @@ pub fn origin_from_request<B>(req: &http::Request<B>) -> Option<String> {
 		.to_string();
 
 	Some(format!("{}://{}", guess_scheme(&host), host))
+}
+mod base64_serde {
+	use serde::{Deserialize,Deserializer,Serializer};
+	fn enc(b: &[u8]) -> String {
+		const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		b.chunks(3).flat_map(|c| {
+			let n = c.iter().fold(0u32, |a,&b| a<<8|b as u32) << (8*(3-c.len()));
+			[T[(n>>18&63)as usize], T[(n>>12&63)as usize],
+			 if c.len()>1 {T[(n>>6&63)as usize]} else {b'='},
+			 if c.len()>2 {T[(n&63)as usize]}    else {b'='}]
+		}).map(|b| b as char).collect()
+	}
+	fn dec(s: &str) -> Result<Vec<u8>, String> {
+		const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		let v: Result<Vec<u8>,_> = s.bytes().filter(|&b| b!=b'=')
+			.map(|b| T.iter().position(|&c|c==b).map(|i|i as u8).ok_or(format!("invalid base64 char: {b}")))
+			.collect();
+		Ok(v?.chunks(4).flat_map(|c| {
+			let n = c.iter().fold(0u32, |a,&b| a<<6|b as u32) << (4-c.len())*6;
+			(0..c.len()-1).map(move |i| (n>>(16-8*i)) as u8)
+		}).collect())
+	}
+	pub fn serialize<S:Serializer>(b: &Vec<u8>, s: S) -> Result<S::Ok,S::Error> {
+		s.serialize_str(&enc(b))
+	}
+	pub fn deserialize<'de,D:Deserializer<'de>>(d: D) -> Result<Vec<u8>,D::Error> {
+		dec(&String::deserialize(d)?).map_err(serde::de::Error::custom)
+	}
+	pub mod opt {
+		use serde::{Deserialize,Deserializer,Serializer};
+		pub fn serialize<S:Serializer>(b: &Option<Vec<u8>>, s: S) -> Result<S::Ok,S::Error> {
+			match b { Some(b) => s.serialize_some(&super::enc(b)), None => s.serialize_none() }
+		}
+		pub fn deserialize<'de,D:Deserializer<'de>>(d: D) -> Result<Option<Vec<u8>>,D::Error> {
+			Option::<String>::deserialize(d)?.map(|s| super::dec(&s).map_err(serde::de::Error::custom)).transpose()
+		}
+	}
 }
 
 #[tokio::main]
