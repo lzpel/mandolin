@@ -324,7 +324,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
             };
             match r.status().as_u16() {
                 200 =>
-                    match r.json().await { Ok(v) => HelloSayHelloResponse::Status200(v), Err(e) => HelloSayHelloResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => HelloSayHelloResponse::Status200(v), Err(e) => HelloSayHelloResponse::Error(e.to_string()) },
                 code => HelloSayHelloResponse::Error(format!("unexpected status: {code}")),
             }
         }
@@ -344,7 +344,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
             };
             match r.status().as_u16() {
                 200 =>
-                    match r.json().await { Ok(v) => ShapeComputeResponse::Status200(v), Err(e) => ShapeComputeResponse::Error(e.to_string()) },
+                    match r.bytes().await { Ok(v) => ShapeComputeResponse::Status200(v.to_vec()), Err(e) => ShapeComputeResponse::Error(e.to_string()) },
                 code => ShapeComputeResponse::Error(format!("unexpected status: {code}")),
             }
         }
@@ -384,7 +384,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
             };
             match r.status().as_u16() {
                 200 =>
-                    match r.json().await { Ok(v) => ViewerViewResponse::Status200(v), Err(e) => ViewerViewResponse::Error(e.to_string()) },
+                    match r.bytes().await { Ok(v) => ViewerViewResponse::Status200(v.to_vec()), Err(e) => ViewerViewResponse::Error(e.to_string()) },
                 code => ViewerViewResponse::Error(format!("unexpected status: {code}")),
             }
         }

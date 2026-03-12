@@ -539,7 +539,15 @@ impl<T: ApiClient + Sync> ApiInterface for T {
 {%- endif %}
 {%- endfor %}
 {%- if operation.requestBody %}
+{%- set requestBody = operation.requestBody|deref %}
+{%- for content_key, content in requestBody.content|items %}
+{%- if "json" in content_key %}
                 .json(&req.body)
+{%- else %}
+                .body(req.body)
+{%- endif %}
+{%- break %}
+{%- endfor %}
 {%- endif %}
                 .send().await {
                 Ok(r) => r,
@@ -551,7 +559,13 @@ impl<T: ApiClient + Sync> ApiInterface for T {
 {%- with response_type = OPERATION_RESPONSE_TYPE(pointer+"/responses/"+response_key, response) %}
                 {{response_key|replace("default","500")}} =>
 {%- if response_type %}
+{%- if "application/json" in response_type %}
                     match r.json().await { Ok(v) => {{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}(v), Err(e) => {{OPERATION_RESPONSE_NAME(pointer,operation)}}::Error(e.to_string()) },
+{%- elif "Vec<u8>" in response_type %}
+                    match r.bytes().await { Ok(v) => {{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}(v.to_vec()), Err(e) => {{OPERATION_RESPONSE_NAME(pointer,operation)}}::Error(e.to_string()) },
+{%- else %}
+                    match r.text().await { Ok(v) => {{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}}(v), Err(e) => {{OPERATION_RESPONSE_NAME(pointer,operation)}}::Error(e.to_string()) },
+{%- endif %}
 {%- else %}
                     {{OPERATION_RESPONSE_NAME(pointer,operation)}}::{{("status_"+response_key)|to_pascal_case}},
 {%- endif %}

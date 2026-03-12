@@ -460,12 +460,12 @@ pub struct PathsPagePostRequestBodyContentApplicationJsonSchema{
 	pub r#view_image:Vec<String>,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthEmailPostRequestBodyContentApplicationJsonSchema{
-	pub r#email:String,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
 	pub r#user:User,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthEmailPostRequestBodyContentApplicationJsonSchema{
+	pub r#email:String,
 }
 
 // following part is only for client
@@ -494,9 +494,9 @@ impl<T: ApiClient + Sync> ApiInterface for T {
             };
             match r.status().as_u16() {
                 200 =>
-                    match r.json().await { Ok(v) => AuthApiCallbackOauthResponse::Status200(v), Err(e) => AuthApiCallbackOauthResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => AuthApiCallbackOauthResponse::Status200(v), Err(e) => AuthApiCallbackOauthResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => AuthApiCallbackOauthResponse::Status400(v), Err(e) => AuthApiCallbackOauthResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => AuthApiCallbackOauthResponse::Status400(v), Err(e) => AuthApiCallbackOauthResponse::Error(e.to_string()) },
                 code => AuthApiCallbackOauthResponse::Error(format!("unexpected status: {code}")),
             }
         }
@@ -518,7 +518,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 204 =>
                     match r.json().await { Ok(v) => AuthApiEmailResponse::Status204(v), Err(e) => AuthApiEmailResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => AuthApiEmailResponse::Status400(v), Err(e) => AuthApiEmailResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => AuthApiEmailResponse::Status400(v), Err(e) => AuthApiEmailResponse::Error(e.to_string()) },
                 code => AuthApiEmailResponse::Error(format!("unexpected status: {code}")),
             }
         }
@@ -537,7 +537,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
             };
             match r.status().as_u16() {
                 200 =>
-                    match r.json().await { Ok(v) => AuthApiGoogleResponse::Status200(v), Err(e) => AuthApiGoogleResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => AuthApiGoogleResponse::Status200(v), Err(e) => AuthApiGoogleResponse::Error(e.to_string()) },
                 code => AuthApiGoogleResponse::Error(format!("unexpected status: {code}")),
             }
         }
@@ -577,7 +577,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => PageApiGetResponse::Status200(v), Err(e) => PageApiGetResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => PageApiGetResponse::Status400(v), Err(e) => PageApiGetResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => PageApiGetResponse::Status400(v), Err(e) => PageApiGetResponse::Error(e.to_string()) },
                 403 =>
                     match r.json().await { Ok(v) => PageApiGetResponse::Status403(v), Err(e) => PageApiGetResponse::Error(e.to_string()) },
                 code => PageApiGetResponse::Error(format!("unexpected status: {code}")),
@@ -601,7 +601,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => PageApiPushResponse::Status200(v), Err(e) => PageApiPushResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => PageApiPushResponse::Status400(v), Err(e) => PageApiPushResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => PageApiPushResponse::Status400(v), Err(e) => PageApiPushResponse::Error(e.to_string()) },
                 403 =>
                     match r.json().await { Ok(v) => PageApiPushResponse::Status403(v), Err(e) => PageApiPushResponse::Error(e.to_string()) },
                 code => PageApiPushResponse::Error(format!("unexpected status: {code}")),
@@ -626,7 +626,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => PageApiUploadResponse::Status200(v), Err(e) => PageApiUploadResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => PageApiUploadResponse::Status400(v), Err(e) => PageApiUploadResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => PageApiUploadResponse::Status400(v), Err(e) => PageApiUploadResponse::Error(e.to_string()) },
                 code => PageApiUploadResponse::Error(format!("unexpected status: {code}")),
             }
         }
@@ -647,7 +647,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => UserApiUserGetResponse::Status200(v), Err(e) => UserApiUserGetResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => UserApiUserGetResponse::Status400(v), Err(e) => UserApiUserGetResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => UserApiUserGetResponse::Status400(v), Err(e) => UserApiUserGetResponse::Error(e.to_string()) },
                 403 =>
                     match r.json().await { Ok(v) => UserApiUserGetResponse::Status403(v), Err(e) => UserApiUserGetResponse::Error(e.to_string()) },
                 code => UserApiUserGetResponse::Error(format!("unexpected status: {code}")),
@@ -671,7 +671,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => UserApiUserSetResponse::Status200(v), Err(e) => UserApiUserSetResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => UserApiUserSetResponse::Status400(v), Err(e) => UserApiUserSetResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => UserApiUserSetResponse::Status400(v), Err(e) => UserApiUserSetResponse::Error(e.to_string()) },
                 403 =>
                     match r.json().await { Ok(v) => UserApiUserSetResponse::Status403(v), Err(e) => UserApiUserSetResponse::Error(e.to_string()) },
                 code => UserApiUserSetResponse::Error(format!("unexpected status: {code}")),
@@ -694,7 +694,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 204 =>
                     match r.json().await { Ok(v) => UserApiUserPopResponse::Status204(v), Err(e) => UserApiUserPopResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => UserApiUserPopResponse::Status400(v), Err(e) => UserApiUserPopResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => UserApiUserPopResponse::Status400(v), Err(e) => UserApiUserPopResponse::Error(e.to_string()) },
                 403 =>
                     match r.json().await { Ok(v) => UserApiUserPopResponse::Status403(v), Err(e) => UserApiUserPopResponse::Error(e.to_string()) },
                 code => UserApiUserPopResponse::Error(format!("unexpected status: {code}")),

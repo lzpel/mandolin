@@ -578,6 +578,19 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
+	pub r#config:Option<String>,
+	pub r#files:Vec<Vec<u8>>,
+	pub r#image:String,
+	pub r#paths:Vec<String>,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
+	pub r#name:String,
+	pub r#password:String,
+	pub r#password_new:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
 	pub r#email:String,
 	pub r#password:String,
@@ -587,19 +600,6 @@ pub struct PathsAuthSignupPostRequestBodyContentApplicationJsonSchema{
 	pub r#email:String,
 	pub r#name:String,
 	pub r#password:String,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
-	pub r#name:String,
-	pub r#password:String,
-	pub r#password_new:String,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
-	pub r#config:Option<String>,
-	pub r#files:Vec<Vec<u8>>,
-	pub r#image:String,
-	pub r#paths:Vec<String>,
 }
 
 // following part is only for client
@@ -628,7 +628,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => AuthApiUserGetResponse::Status200(v), Err(e) => AuthApiUserGetResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => AuthApiUserGetResponse::Status400(v), Err(e) => AuthApiUserGetResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => AuthApiUserGetResponse::Status400(v), Err(e) => AuthApiUserGetResponse::Error(e.to_string()) },
                 403 =>
                     AuthApiUserGetResponse::Status403,
                 404 =>
@@ -673,7 +673,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => AuthApiSigninResponse::Status200(v), Err(e) => AuthApiSigninResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => AuthApiSigninResponse::Status400(v), Err(e) => AuthApiSigninResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => AuthApiSigninResponse::Status400(v), Err(e) => AuthApiSigninResponse::Error(e.to_string()) },
                 404 =>
                     AuthApiSigninResponse::Status404,
                 code => AuthApiSigninResponse::Error(format!("unexpected status: {code}")),
@@ -697,7 +697,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => AuthApiSignupResponse::Status200(v), Err(e) => AuthApiSignupResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => AuthApiSignupResponse::Status400(v), Err(e) => AuthApiSignupResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => AuthApiSignupResponse::Status400(v), Err(e) => AuthApiSignupResponse::Error(e.to_string()) },
                 403 =>
                     AuthApiSignupResponse::Status403,
                 code => AuthApiSignupResponse::Error(format!("unexpected status: {code}")),
@@ -721,7 +721,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => AuthApiUpdateResponse::Status200(v), Err(e) => AuthApiUpdateResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => AuthApiUpdateResponse::Status400(v), Err(e) => AuthApiUpdateResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => AuthApiUpdateResponse::Status400(v), Err(e) => AuthApiUpdateResponse::Error(e.to_string()) },
                 403 =>
                     AuthApiUpdateResponse::Status403,
                 code => AuthApiUpdateResponse::Error(format!("unexpected status: {code}")),
@@ -763,7 +763,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => ImagesListResponse::Status200(v), Err(e) => ImagesListResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => ImagesListResponse::Status400(v), Err(e) => ImagesListResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => ImagesListResponse::Status400(v), Err(e) => ImagesListResponse::Error(e.to_string()) },
                 code => ImagesListResponse::Error(format!("unexpected status: {code}")),
             }
         }
@@ -784,7 +784,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => JobsListResponse::Status200(v), Err(e) => JobsListResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => JobsListResponse::Status400(v), Err(e) => JobsListResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => JobsListResponse::Status400(v), Err(e) => JobsListResponse::Error(e.to_string()) },
                 code => JobsListResponse::Error(format!("unexpected status: {code}")),
             }
         }
@@ -797,7 +797,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
         let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
-                .json(&req.body)
+                .body(req.body)
                 .send().await {
                 Ok(r) => r,
                 Err(e) => return JobsPushResponse::Error(e.to_string()),
@@ -806,7 +806,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => JobsPushResponse::Status200(v), Err(e) => JobsPushResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => JobsPushResponse::Status400(v), Err(e) => JobsPushResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => JobsPushResponse::Status400(v), Err(e) => JobsPushResponse::Error(e.to_string()) },
                 code => JobsPushResponse::Error(format!("unexpected status: {code}")),
             }
         }
@@ -828,7 +828,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 204 =>
                     JobsDeleteResponse::Status204,
                 400 =>
-                    match r.json().await { Ok(v) => JobsDeleteResponse::Status400(v), Err(e) => JobsDeleteResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => JobsDeleteResponse::Status400(v), Err(e) => JobsDeleteResponse::Error(e.to_string()) },
                 404 =>
                     JobsDeleteResponse::Status404,
                 code => JobsDeleteResponse::Error(format!("unexpected status: {code}")),
@@ -852,9 +852,9 @@ impl<T: ApiClient + Sync> ApiInterface for T {
             };
             match r.status().as_u16() {
                 200 =>
-                    match r.json().await { Ok(v) => JobsFileCatResponse::Status200(v), Err(e) => JobsFileCatResponse::Error(e.to_string()) },
+                    match r.bytes().await { Ok(v) => JobsFileCatResponse::Status200(v.to_vec()), Err(e) => JobsFileCatResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => JobsFileCatResponse::Status400(v), Err(e) => JobsFileCatResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => JobsFileCatResponse::Status400(v), Err(e) => JobsFileCatResponse::Error(e.to_string()) },
                 404 =>
                     JobsFileCatResponse::Status404,
                 code => JobsFileCatResponse::Error(format!("unexpected status: {code}")),
@@ -879,7 +879,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => JobsFileLsResponse::Status200(v), Err(e) => JobsFileLsResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => JobsFileLsResponse::Status400(v), Err(e) => JobsFileLsResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => JobsFileLsResponse::Status400(v), Err(e) => JobsFileLsResponse::Error(e.to_string()) },
                 404 =>
                     JobsFileLsResponse::Status404,
                 code => JobsFileLsResponse::Error(format!("unexpected status: {code}")),
@@ -903,7 +903,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => JobsTasklistResponse::Status200(v), Err(e) => JobsTasklistResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => JobsTasklistResponse::Status400(v), Err(e) => JobsTasklistResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => JobsTasklistResponse::Status400(v), Err(e) => JobsTasklistResponse::Error(e.to_string()) },
                 404 =>
                     JobsTasklistResponse::Status404,
                 code => JobsTasklistResponse::Error(format!("unexpected status: {code}")),
@@ -926,7 +926,7 @@ impl<T: ApiClient + Sync> ApiInterface for T {
                 200 =>
                     match r.json().await { Ok(v) => StatusInterfaceStatusResponse::Status200(v), Err(e) => StatusInterfaceStatusResponse::Error(e.to_string()) },
                 400 =>
-                    match r.json().await { Ok(v) => StatusInterfaceStatusResponse::Status400(v), Err(e) => StatusInterfaceStatusResponse::Error(e.to_string()) },
+                    match r.text().await { Ok(v) => StatusInterfaceStatusResponse::Status400(v), Err(e) => StatusInterfaceStatusResponse::Error(e.to_string()) },
                 code => StatusInterfaceStatusResponse::Error(format!("unexpected status: {code}")),
             }
         }
