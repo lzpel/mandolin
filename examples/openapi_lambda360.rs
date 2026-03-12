@@ -303,26 +303,19 @@ pub struct UnionShapeNode{
 // following part is only for client
 
 #[cfg(feature = "mandolin_client")]
-pub struct ApiClient {
-    base_url: String,
-    client: reqwest::Client,
+pub trait ApiClient {
+    fn get_client(&self) -> &reqwest::Client;
+    fn get_base_url(&self) -> &str;
 }
 
 #[cfg(feature = "mandolin_client")]
-impl ApiClient {
-    pub fn new(base_url: impl Into<String>) -> Self {
-        Self { base_url: base_url.into(), client: reqwest::Client::new() }
-    }
-}
-
-#[cfg(feature = "mandolin_client")]
-impl ApiInterface for ApiClient {
+impl<T: ApiClient + Sync> ApiInterface for T {
 
     // GET /hello
     fn hello_say_hello(&self, req: HelloSayHelloRequest) -> impl Future<Output = HelloSayHelloResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/hello"
+        let url = format!("{}{}", self.get_base_url(), "/hello"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -339,9 +332,9 @@ impl ApiInterface for ApiClient {
 
     // POST /shape
     fn shape_compute(&self, req: ShapeComputeRequest) -> impl Future<Output = ShapeComputeResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/shape"
+        let url = format!("{}{}", self.get_base_url(), "/shape"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
                 .json(&req.body)
@@ -359,10 +352,10 @@ impl ApiInterface for ApiClient {
 
     // GET /step/{sha256}
     fn step_exists(&self, req: StepExistsRequest) -> impl Future<Output = StepExistsResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/step/{sha256}"
+        let url = format!("{}{}", self.get_base_url(), "/step/{sha256}"
             .replace("{sha256}", &req.r#sha256.to_string())
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -379,9 +372,9 @@ impl ApiInterface for ApiClient {
 
     // GET /view
     fn viewer_view(&self, req: ViewerViewRequest) -> impl Future<Output = ViewerViewResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/view"
+        let url = format!("{}{}", self.get_base_url(), "/view"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .query(&[("sha256", req.r#sha256.to_string())])

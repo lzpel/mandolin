@@ -578,15 +578,21 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
+	pub r#email:String,
+	pub r#password:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthSignupPostRequestBodyContentApplicationJsonSchema{
+	pub r#email:String,
+	pub r#name:String,
+	pub r#password:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
 	pub r#name:String,
 	pub r#password:String,
 	pub r#password_new:String,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
-	pub r#email:String,
-	pub r#password:String,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
@@ -595,36 +601,23 @@ pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
 	pub r#image:String,
 	pub r#paths:Vec<String>,
 }
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthSignupPostRequestBodyContentApplicationJsonSchema{
-	pub r#email:String,
-	pub r#name:String,
-	pub r#password:String,
-}
 
 // following part is only for client
 
 #[cfg(feature = "mandolin_client")]
-pub struct ApiClient {
-    base_url: String,
-    client: reqwest::Client,
+pub trait ApiClient {
+    fn get_client(&self) -> &reqwest::Client;
+    fn get_base_url(&self) -> &str;
 }
 
 #[cfg(feature = "mandolin_client")]
-impl ApiClient {
-    pub fn new(base_url: impl Into<String>) -> Self {
-        Self { base_url: base_url.into(), client: reqwest::Client::new() }
-    }
-}
-
-#[cfg(feature = "mandolin_client")]
-impl ApiInterface for ApiClient {
+impl<T: ApiClient + Sync> ApiInterface for T {
 
     // GET /auth
     fn auth_api_user_get(&self, req: AuthApiUserGetRequest) -> impl Future<Output = AuthApiUserGetResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/auth"
+        let url = format!("{}{}", self.get_base_url(), "/auth"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -647,9 +640,9 @@ impl ApiInterface for ApiClient {
 
     // GET /auth/out
     fn auth_api_out(&self, req: AuthApiOutRequest) -> impl Future<Output = AuthApiOutResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/auth/out"
+        let url = format!("{}{}", self.get_base_url(), "/auth/out"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -666,9 +659,9 @@ impl ApiInterface for ApiClient {
 
     // POST /auth/signin
     fn auth_api_signin(&self, req: AuthApiSigninRequest) -> impl Future<Output = AuthApiSigninResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/auth/signin"
+        let url = format!("{}{}", self.get_base_url(), "/auth/signin"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
                 .json(&req.body)
@@ -690,9 +683,9 @@ impl ApiInterface for ApiClient {
 
     // POST /auth/signup
     fn auth_api_signup(&self, req: AuthApiSignupRequest) -> impl Future<Output = AuthApiSignupResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/auth/signup"
+        let url = format!("{}{}", self.get_base_url(), "/auth/signup"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
                 .json(&req.body)
@@ -714,9 +707,9 @@ impl ApiInterface for ApiClient {
 
     // POST /auth/update
     fn auth_api_update(&self, req: AuthApiUpdateRequest) -> impl Future<Output = AuthApiUpdateResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/auth/update"
+        let url = format!("{}{}", self.get_base_url(), "/auth/update"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
                 .json(&req.body)
@@ -738,9 +731,9 @@ impl ApiInterface for ApiClient {
 
     // GET /cron
     fn background_cron(&self, req: BackgroundCronRequest) -> impl Future<Output = BackgroundCronResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/cron"
+        let url = format!("{}{}", self.get_base_url(), "/cron"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -757,9 +750,9 @@ impl ApiInterface for ApiClient {
 
     // GET /image
     fn images_list(&self, req: ImagesListRequest) -> impl Future<Output = ImagesListResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/image"
+        let url = format!("{}{}", self.get_base_url(), "/image"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -778,9 +771,9 @@ impl ApiInterface for ApiClient {
 
     // GET /job
     fn jobs_list(&self, req: JobsListRequest) -> impl Future<Output = JobsListResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/job"
+        let url = format!("{}{}", self.get_base_url(), "/job"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -799,9 +792,9 @@ impl ApiInterface for ApiClient {
 
     // POST /job
     fn jobs_push(&self, req: JobsPushRequest) -> impl Future<Output = JobsPushResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/job"
+        let url = format!("{}{}", self.get_base_url(), "/job"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
                 .json(&req.body)
@@ -821,10 +814,10 @@ impl ApiInterface for ApiClient {
 
     // DELETE /job/{id}
     fn jobs_delete(&self, req: JobsDeleteRequest) -> impl Future<Output = JobsDeleteResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/job/{id}"
+        let url = format!("{}{}", self.get_base_url(), "/job/{id}"
             .replace("{id}", &req.r#id.to_string())
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.delete(&url)
                 .send().await {
@@ -845,10 +838,10 @@ impl ApiInterface for ApiClient {
 
     // GET /job/{id}/cat
     fn jobs_file_cat(&self, req: JobsFileCatRequest) -> impl Future<Output = JobsFileCatResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/job/{id}/cat"
+        let url = format!("{}{}", self.get_base_url(), "/job/{id}/cat"
             .replace("{id}", &req.r#id.to_string())
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .query(&[("path", req.r#path.to_string())])
@@ -871,10 +864,10 @@ impl ApiInterface for ApiClient {
 
     // GET /job/{id}/ls
     fn jobs_file_ls(&self, req: JobsFileLsRequest) -> impl Future<Output = JobsFileLsResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/job/{id}/ls"
+        let url = format!("{}{}", self.get_base_url(), "/job/{id}/ls"
             .replace("{id}", &req.r#id.to_string())
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .query(&req.r#path.as_ref().map(|v| [("path", v.to_string())]))
@@ -896,10 +889,10 @@ impl ApiInterface for ApiClient {
 
     // GET /job/{id}/task
     fn jobs_tasklist(&self, req: JobsTasklistRequest) -> impl Future<Output = JobsTasklistResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/job/{id}/task"
+        let url = format!("{}{}", self.get_base_url(), "/job/{id}/task"
             .replace("{id}", &req.r#id.to_string())
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -920,9 +913,9 @@ impl ApiInterface for ApiClient {
 
     // GET /status
     fn status_interface_status(&self, req: StatusInterfaceStatusRequest) -> impl Future<Output = StatusInterfaceStatusResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/status"
+        let url = format!("{}{}", self.get_base_url(), "/status"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {

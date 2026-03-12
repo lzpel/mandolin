@@ -454,43 +454,36 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
-	pub r#user:User,
+pub struct PathsPagePostRequestBodyContentApplicationJsonSchema{
+	pub r#path_image:Vec<String>,
+	pub r#script:String,
+	pub r#view_image:Vec<String>,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthEmailPostRequestBodyContentApplicationJsonSchema{
 	pub r#email:String,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsPagePostRequestBodyContentApplicationJsonSchema{
-	pub r#path_image:Vec<String>,
-	pub r#script:String,
-	pub r#view_image:Vec<String>,
+pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
+	pub r#user:User,
 }
 
 // following part is only for client
 
 #[cfg(feature = "mandolin_client")]
-pub struct ApiClient {
-    base_url: String,
-    client: reqwest::Client,
+pub trait ApiClient {
+    fn get_client(&self) -> &reqwest::Client;
+    fn get_base_url(&self) -> &str;
 }
 
 #[cfg(feature = "mandolin_client")]
-impl ApiClient {
-    pub fn new(base_url: impl Into<String>) -> Self {
-        Self { base_url: base_url.into(), client: reqwest::Client::new() }
-    }
-}
-
-#[cfg(feature = "mandolin_client")]
-impl ApiInterface for ApiClient {
+impl<T: ApiClient + Sync> ApiInterface for T {
 
     // GET /auth/callback_oauth
     fn auth_api_callback_oauth(&self, req: AuthApiCallbackOauthRequest) -> impl Future<Output = AuthApiCallbackOauthResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/auth/callback_oauth"
+        let url = format!("{}{}", self.get_base_url(), "/auth/callback_oauth"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .query(&[("code", req.r#code.to_string())])
@@ -511,9 +504,9 @@ impl ApiInterface for ApiClient {
 
     // POST /auth/email
     fn auth_api_email(&self, req: AuthApiEmailRequest) -> impl Future<Output = AuthApiEmailResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/auth/email"
+        let url = format!("{}{}", self.get_base_url(), "/auth/email"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
                 .json(&req.body)
@@ -533,9 +526,9 @@ impl ApiInterface for ApiClient {
 
     // GET /auth/google
     fn auth_api_google(&self, req: AuthApiGoogleRequest) -> impl Future<Output = AuthApiGoogleResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/auth/google"
+        let url = format!("{}{}", self.get_base_url(), "/auth/google"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -552,9 +545,9 @@ impl ApiInterface for ApiClient {
 
     // GET /auth/out
     fn auth_api_out(&self, req: AuthApiOutRequest) -> impl Future<Output = AuthApiOutResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/auth/out"
+        let url = format!("{}{}", self.get_base_url(), "/auth/out"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -571,9 +564,9 @@ impl ApiInterface for ApiClient {
 
     // GET /page
     fn page_api_get(&self, req: PageApiGetRequest) -> impl Future<Output = PageApiGetResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/page"
+        let url = format!("{}{}", self.get_base_url(), "/page"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -594,9 +587,9 @@ impl ApiInterface for ApiClient {
 
     // POST /page
     fn page_api_push(&self, req: PageApiPushRequest) -> impl Future<Output = PageApiPushResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/page"
+        let url = format!("{}{}", self.get_base_url(), "/page"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
                 .json(&req.body)
@@ -618,9 +611,9 @@ impl ApiInterface for ApiClient {
 
     // POST /page/upload
     fn page_api_upload(&self, req: PageApiUploadRequest) -> impl Future<Output = PageApiUploadResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/page/upload"
+        let url = format!("{}{}", self.get_base_url(), "/page/upload"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
                 .query(&[("fileName", req.r#fileName.to_string())])
@@ -641,9 +634,9 @@ impl ApiInterface for ApiClient {
 
     // GET /user
     fn user_api_user_get(&self, req: UserApiUserGetRequest) -> impl Future<Output = UserApiUserGetResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/user"
+        let url = format!("{}{}", self.get_base_url(), "/user"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.get(&url)
                 .send().await {
@@ -664,9 +657,9 @@ impl ApiInterface for ApiClient {
 
     // POST /user
     fn user_api_user_set(&self, req: UserApiUserSetRequest) -> impl Future<Output = UserApiUserSetResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/user"
+        let url = format!("{}{}", self.get_base_url(), "/user"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.post(&url)
                 .json(&req.body)
@@ -688,9 +681,9 @@ impl ApiInterface for ApiClient {
 
     // DELETE /user
     fn user_api_user_pop(&self, req: UserApiUserPopRequest) -> impl Future<Output = UserApiUserPopResponse> + Send {
-        let url = format!("{}{}", self.base_url, "/user"
+        let url = format!("{}{}", self.get_base_url(), "/user"
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.delete(&url)
                 .send().await {

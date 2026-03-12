@@ -501,24 +501,17 @@ pub struct AuthContext{
 // following part is only for client
 
 #[cfg(feature = "mandolin_client")]
-pub struct ApiClient {
-    base_url: String,
-    client: reqwest::Client,
+pub trait ApiClient {
+    fn get_client(&self) -> &reqwest::Client;
+    fn get_base_url(&self) -> &str;
 }
 
 #[cfg(feature = "mandolin_client")]
-impl ApiClient {
-    pub fn new(base_url: impl Into<String>) -> Self {
-        Self { base_url: base_url.into(), client: reqwest::Client::new() }
-    }
-}
-
-#[cfg(feature = "mandolin_client")]
-impl ApiInterface for ApiClient {
+impl<T: ApiClient + Sync> ApiInterface for T {
 {%- call(pointer, operation, method, path_key) FOREACH_OPERATION() %}
     // {{method|upper}} {{path_key}}
     fn {{OPERATION_NAME(pointer,operation)}}(&self, req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> impl Future<Output = {{OPERATION_RESPONSE_NAME(pointer,operation)}}> + Send {
-        let url = format!("{}{}", self.base_url, "{{path_key}}"
+        let url = format!("{}{}", self.get_base_url(), "{{path_key}}"
 {%- for parameter_ref in operation.parameters %}
 {%- set parameter = parameter_ref|deref %}
 {%- if parameter.in == "path" %}
@@ -526,7 +519,7 @@ impl ApiInterface for ApiClient {
 {%- endif %}
 {%- endfor %}
         );
-        let client = self.client.clone();
+        let client = self.get_client().clone();
         async move {
             let r = match client.{{method}}(&url)
 {%- for parameter_ref in operation.parameters %}
