@@ -180,7 +180,7 @@ pub type {{SCHEMA_NAME(pointer)}}={{SCHEMA(pointer, schema)}};
 {# リクエストstructを生成するマクロ #}
 {# パラメータ（path/query/header）とリクエストボディを含む #}
 {# $ref要素を処理するためparametersとrequestBodyにderefフィルタを適用する #}
-{%- macro OPERATION_REQUEST(pointer, operation, type_request, type_security) -%}
+{%- macro OPERATION_REQUEST(pointer, operation, type_security) -%}
 // Request type for {{OPERATION_NAME(pointer, operation)}}
 #[derive(Debug)]
 pub struct {{OPERATION_REQUEST_NAME(pointer, operation)}}{
@@ -195,20 +195,16 @@ pub struct {{OPERATION_REQUEST_NAME(pointer, operation)}}{
 {%- break %}
 {%- endfor %}
 {%- endif %}
-	pub request: {{type_request}},
 {%- if operation.security %}
 	pub security: {{type_security}}, /*{{operation.security}}*/
 {%- endif %}
-}
-impl AsRef<{{type_request}}> for {{OPERATION_REQUEST_NAME(pointer,operation)}}{
-	fn as_ref(&self) -> &{{type_request}}{&self.request}
 }
 {%- endmacro -%}
 
 {# レスポンスenumを生成するマクロ #}
 {# HTTPステータスコードごとにバリアントを持つ。Rawバリアントでカスタムレスポンスも可能 #}
 {# $ref要素を処理するためresponsesにderefフィルタを適用する #}
-{%- macro OPERATION_RESPONSE(pointer,operation,raw_response_type) -%}
+{%- macro OPERATION_RESPONSE(pointer,operation) -%}
 // Response type for {{OPERATION_NAME(pointer,operation)}}
 #[derive(Debug)]
 pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
@@ -224,9 +220,6 @@ pub enum {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 {%- endif %}
 {%- endwith %}
 {%- endfor %}
-{%- if raw_response_type %}
-	Raw({{ raw_response_type }}),// Variant for custom responses
-{%- endif %}
 }
 impl Default for {{OPERATION_RESPONSE_NAME(pointer,operation)}}{
 	fn default() -> Self{
@@ -250,9 +243,6 @@ impl axum::response::IntoResponse for {{OPERATION_RESPONSE_NAME(pointer,operatio
 .unwrap(),
 {%- endwith %}
 {%- endfor %}
-{%- if raw_response_type %}
-			Self::Raw(v)=>v,
-{%- endif %}
 		}
 	}
 }
@@ -463,8 +453,8 @@ pub struct AuthContext{
 {%- if path_item[method] is defined %}
 {%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
 {%- set operation = path_item[method] %}
-{{OPERATION_REQUEST(pointer, operation, "http::Request<()>", "AuthContext")}}
-{{OPERATION_RESPONSE(pointer, operation, "axum::response::Response")}}
+{{OPERATION_REQUEST(pointer, operation, "AuthContext")}}
+{{OPERATION_RESPONSE(pointer, operation)}}
 {%- endif %}
 {%- endfor %}
 {%- endfor %}
@@ -509,6 +499,26 @@ use axum;
 use axum::http;
 use axum::extract::FromRequest;
 
+/// Axum-specific API interface trait
+/// All ApiInterface implementors automatically satisfy this via blanket impl.
+/// Override methods here for axum-specific behavior (streaming, custom headers, etc.)
+pub trait ApiInterfaceAxum: ApiInterface + Sync{
+{%- for path_key, path_item in spec.paths|items %}
+{%- for method in methods %}
+{%- if path_item[method] is defined %}
+{%- set pointer = "#/paths/" + path_key|encode + "/" + method %}
+{%- set operation = path_item[method] %}
+	// {{method|upper}} {{path_key}}
+	fn {{OPERATION_NAME(pointer,operation)}}(&self, _raw: http::Request<()>, req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::{{OPERATION_NAME(pointer,operation)}}(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+}
+impl<T: ApiInterface + Sync> ApiInterfaceAxum for T{}
+
 /// Helper function to generate text responses
 fn text_response(code: http::StatusCode, body: String)->axum::response::Response{
 	axum::response::Response::builder()
@@ -519,7 +529,7 @@ fn text_response(code: http::StatusCode, body: String)->axum::response::Response
 }
 
 /// Returns axum::Router with root handlers for all operations registered
-pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
+pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
 {%- for path_key, path_item in spec.paths|items %}
 {%- for method in methods %}
@@ -534,7 +544,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::{{OPERATION_NAME(pointer,operation)}}(i.as_ref(), {{OPERATION_REQUEST_NAME(pointer,operation)}}{
+			let ret=<S as ApiInterfaceAxum>::{{OPERATION_NAME(pointer,operation)}}(i.as_ref(), http::Request::from_parts(parts.clone(), ()), {{OPERATION_REQUEST_NAME(pointer,operation)}}{
 {%- for parameter_ref in operation.parameters %}
 {%- set parameter = parameter_ref|deref %}
 			r#{{parameter.name}}:{let v={{parameter.in}}.get("{{parameter.name}}")
@@ -559,7 +569,6 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 {%- break %}
 {%- endfor %},
 {%- endif %}
-			request: http::Request::from_parts(parts.clone(), ()),
 {%- if operation.security %}
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
@@ -567,7 +576,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			},
 {%- endif %}
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 {%- endif %}
 {%- endfor %}
@@ -604,7 +613,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 }
 
 /// Mount the router to the server's URL prefix with nest_service
-pub fn axum_router<S: ApiInterface + Sync + Send + 'static>(instance: S)->axum::Router{
+pub fn axum_router<S: ApiInterfaceAxum + Sync + Send + 'static>(instance: S)->axum::Router{
 	let instance_arc=std::sync::Arc::new(instance);
 {%- if spec.servers|length > 0 %}
 	let mut router = axum::Router::new();

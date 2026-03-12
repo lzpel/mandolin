@@ -109,11 +109,7 @@ pub struct AuthContext{
 // Request type for auth_api_user_get
 #[derive(Debug)]
 pub struct AuthApiUserGetRequest{
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for AuthApiUserGetRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for auth_api_user_get
 #[derive(Debug)]
@@ -122,7 +118,6 @@ pub enum AuthApiUserGetResponse{
 	Status400(String),
 	Status403,
 	Status404,
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiUserGetResponse{
 	fn default() -> Self{
@@ -136,23 +131,17 @@ impl axum::response::IntoResponse for AuthApiUserGetResponse{
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
 // Request type for auth_api_out
 #[derive(Debug)]
 pub struct AuthApiOutRequest{
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for AuthApiOutRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for auth_api_out
 #[derive(Debug)]
 pub enum AuthApiOutResponse{
 	Status204,
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiOutResponse{
 	fn default() -> Self{
@@ -163,7 +152,6 @@ impl axum::response::IntoResponse for AuthApiOutResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status204=> axum::response::Response::builder().status(http::StatusCode::from_u16(204).unwrap()).body(axum::body::Body::empty()).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -171,10 +159,6 @@ impl axum::response::IntoResponse for AuthApiOutResponse{
 #[derive(Debug)]
 pub struct AuthApiSigninRequest{
 	pub body: PathsAuthSigninPostRequestBodyContentApplicationJsonSchema,
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for AuthApiSigninRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for auth_api_signin
 #[derive(Debug)]
@@ -182,7 +166,6 @@ pub enum AuthApiSigninResponse{
 	Status200(User),
 	Status400(String),
 	Status404,
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiSigninResponse{
 	fn default() -> Self{
@@ -195,7 +178,6 @@ impl axum::response::IntoResponse for AuthApiSigninResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -203,10 +185,6 @@ impl axum::response::IntoResponse for AuthApiSigninResponse{
 #[derive(Debug)]
 pub struct AuthApiSignupRequest{
 	pub body: PathsAuthSignupPostRequestBodyContentApplicationJsonSchema,
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for AuthApiSignupRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for auth_api_signup
 #[derive(Debug)]
@@ -214,7 +192,6 @@ pub enum AuthApiSignupResponse{
 	Status200(User),
 	Status400(String),
 	Status403,
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiSignupResponse{
 	fn default() -> Self{
@@ -227,7 +204,6 @@ impl axum::response::IntoResponse for AuthApiSignupResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -235,11 +211,7 @@ impl axum::response::IntoResponse for AuthApiSignupResponse{
 #[derive(Debug)]
 pub struct AuthApiUpdateRequest{
 	pub body: PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema,
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for AuthApiUpdateRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for auth_api_update
 #[derive(Debug)]
@@ -247,7 +219,6 @@ pub enum AuthApiUpdateResponse{
 	Status200(User),
 	Status400(String),
 	Status403,
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiUpdateResponse{
 	fn default() -> Self{
@@ -260,23 +231,17 @@ impl axum::response::IntoResponse for AuthApiUpdateResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).body(axum::body::Body::empty()).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
 // Request type for background_cron
 #[derive(Debug)]
 pub struct BackgroundCronRequest{
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for BackgroundCronRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for background_cron
 #[derive(Debug)]
 pub enum BackgroundCronResponse{
 	Status204,
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for BackgroundCronResponse{
 	fn default() -> Self{
@@ -287,24 +252,18 @@ impl axum::response::IntoResponse for BackgroundCronResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status204=> axum::response::Response::builder().status(http::StatusCode::from_u16(204).unwrap()).body(axum::body::Body::empty()).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
 // Request type for images_list
 #[derive(Debug)]
 pub struct ImagesListRequest{
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for ImagesListRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for images_list
 #[derive(Debug)]
 pub enum ImagesListResponse{
 	Status200(Vec<String>),
 	Status400(String),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for ImagesListResponse{
 	fn default() -> Self{
@@ -316,25 +275,19 @@ impl axum::response::IntoResponse for ImagesListResponse{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
 // Request type for jobs_list
 #[derive(Debug)]
 pub struct JobsListRequest{
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for JobsListRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for jobs_list
 #[derive(Debug)]
 pub enum JobsListResponse{
 	Status200(Vec<Job>),
 	Status400(String),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for JobsListResponse{
 	fn default() -> Self{
@@ -346,7 +299,6 @@ impl axum::response::IntoResponse for JobsListResponse{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -354,18 +306,13 @@ impl axum::response::IntoResponse for JobsListResponse{
 #[derive(Debug)]
 pub struct JobsPushRequest{
 	pub body: PathsJobPostRequestBodyContentMultipartFormDataSchema,
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for JobsPushRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for jobs_push
 #[derive(Debug)]
 pub enum JobsPushResponse{
 	Status200(Job),
 	Status400(String),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for JobsPushResponse{
 	fn default() -> Self{
@@ -377,7 +324,6 @@ impl axum::response::IntoResponse for JobsPushResponse{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -385,11 +331,7 @@ impl axum::response::IntoResponse for JobsPushResponse{
 #[derive(Debug)]
 pub struct JobsDeleteRequest{
 	pub id:Uuid,
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for JobsDeleteRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for jobs_delete
 #[derive(Debug)]
@@ -397,7 +339,6 @@ pub enum JobsDeleteResponse{
 	Status204,
 	Status400(String),
 	Status404,
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for JobsDeleteResponse{
 	fn default() -> Self{
@@ -410,7 +351,6 @@ impl axum::response::IntoResponse for JobsDeleteResponse{
 			Self::Status204=> axum::response::Response::builder().status(http::StatusCode::from_u16(204).unwrap()).body(axum::body::Body::empty()).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -420,11 +360,7 @@ pub struct JobsFileCatRequest{
 	pub id:Uuid,
 	pub path:String,
 	pub limit:Option<i32>,
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for JobsFileCatRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for jobs_file_cat
 #[derive(Debug)]
@@ -432,7 +368,6 @@ pub enum JobsFileCatResponse{
 	Status200(Vec<u8>),
 	Status400(String),
 	Status404,
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for JobsFileCatResponse{
 	fn default() -> Self{
@@ -445,7 +380,6 @@ impl axum::response::IntoResponse for JobsFileCatResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/octet-stream").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -454,11 +388,7 @@ impl axum::response::IntoResponse for JobsFileCatResponse{
 pub struct JobsFileLsRequest{
 	pub id:Uuid,
 	pub path:Option<String>,
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for JobsFileLsRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for jobs_file_ls
 #[derive(Debug)]
@@ -466,7 +396,6 @@ pub enum JobsFileLsResponse{
 	Status200(Vec<String>),
 	Status400(String),
 	Status404,
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for JobsFileLsResponse{
 	fn default() -> Self{
@@ -479,7 +408,6 @@ impl axum::response::IntoResponse for JobsFileLsResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -487,11 +415,7 @@ impl axum::response::IntoResponse for JobsFileLsResponse{
 #[derive(Debug)]
 pub struct JobsTasklistRequest{
 	pub id:Uuid,
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for JobsTasklistRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for jobs_tasklist
 #[derive(Debug)]
@@ -499,7 +423,6 @@ pub enum JobsTasklistResponse{
 	Status200(Vec<Task>),
 	Status400(String),
 	Status404,
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for JobsTasklistResponse{
 	fn default() -> Self{
@@ -512,24 +435,18 @@ impl axum::response::IntoResponse for JobsTasklistResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status404=> axum::response::Response::builder().status(http::StatusCode::from_u16(404).unwrap()).body(axum::body::Body::empty()).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
 // Request type for status_interface_status
 #[derive(Debug)]
 pub struct StatusInterfaceStatusRequest{
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for StatusInterfaceStatusRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for status_interface_status
 #[derive(Debug)]
 pub enum StatusInterfaceStatusResponse{
 	Status200(Vec<Device>),
 	Status400(String),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for StatusInterfaceStatusResponse{
 	fn default() -> Self{
@@ -541,7 +458,6 @@ impl axum::response::IntoResponse for StatusInterfaceStatusResponse{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -602,15 +518,11 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
-	pub r#email:String,
-	pub r#password:String,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthSignupPostRequestBodyContentApplicationJsonSchema{
-	pub r#email:String,
-	pub r#name:String,
-	pub r#password:String,
+pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
+	pub r#config:Option<String>,
+	pub r#files:Vec<Vec<u8>>,
+	pub r#image:String,
+	pub r#paths:Vec<String>,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
@@ -619,11 +531,15 @@ pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
 	pub r#password_new:String,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
-	pub r#config:Option<String>,
-	pub r#files:Vec<Vec<u8>>,
-	pub r#image:String,
-	pub r#paths:Vec<String>,
+pub struct PathsAuthSignupPostRequestBodyContentApplicationJsonSchema{
+	pub r#email:String,
+	pub r#name:String,
+	pub r#password:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
+	pub r#email:String,
+	pub r#password:String,
 }
 
 // following part is only for server
@@ -631,6 +547,83 @@ pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
 use axum;
 use axum::http;
 use axum::extract::FromRequest;
+
+/// Axum-specific API interface trait
+/// All ApiInterface implementors automatically satisfy this via blanket impl.
+/// Override methods here for axum-specific behavior (streaming, custom headers, etc.)
+pub trait ApiInterfaceAxum: ApiInterface + Sync{
+	// GET /auth
+	fn auth_api_user_get(&self, _raw: http::Request<()>, req: AuthApiUserGetRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::auth_api_user_get(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /auth/out
+	fn auth_api_out(&self, _raw: http::Request<()>, req: AuthApiOutRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::auth_api_out(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// POST /auth/signin
+	fn auth_api_signin(&self, _raw: http::Request<()>, req: AuthApiSigninRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::auth_api_signin(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// POST /auth/signup
+	fn auth_api_signup(&self, _raw: http::Request<()>, req: AuthApiSignupRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::auth_api_signup(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// POST /auth/update
+	fn auth_api_update(&self, _raw: http::Request<()>, req: AuthApiUpdateRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::auth_api_update(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /cron
+	fn background_cron(&self, _raw: http::Request<()>, req: BackgroundCronRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::background_cron(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /image
+	fn images_list(&self, _raw: http::Request<()>, req: ImagesListRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::images_list(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /job
+	fn jobs_list(&self, _raw: http::Request<()>, req: JobsListRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::jobs_list(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// POST /job
+	fn jobs_push(&self, _raw: http::Request<()>, req: JobsPushRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::jobs_push(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// DELETE /job/{id}
+	fn jobs_delete(&self, _raw: http::Request<()>, req: JobsDeleteRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::jobs_delete(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /job/{id}/cat
+	fn jobs_file_cat(&self, _raw: http::Request<()>, req: JobsFileCatRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::jobs_file_cat(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /job/{id}/ls
+	fn jobs_file_ls(&self, _raw: http::Request<()>, req: JobsFileLsRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::jobs_file_ls(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /job/{id}/task
+	fn jobs_tasklist(&self, _raw: http::Request<()>, req: JobsTasklistRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::jobs_tasklist(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /status
+	fn status_interface_status(&self, _raw: http::Request<()>, req: StatusInterfaceStatusRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::status_interface_status(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+}
+impl<T: ApiInterface + Sync> ApiInterfaceAxum for T{}
 
 /// Helper function to generate text responses
 fn text_response(code: http::StatusCode, body: String)->axum::response::Response{
@@ -642,7 +635,7 @@ fn text_response(code: http::StatusCode, body: String)->axum::response::Response
 }
 
 /// Returns axum::Router with root handlers for all operations registered
-pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
+pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
 	let i = instance.clone();
 	let router = router.route("/auth", axum::routing::get(|
@@ -652,14 +645,13 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::auth_api_user_get(i.as_ref(), AuthApiUserGetRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::auth_api_user_get(i.as_ref(), http::Request::from_parts(parts.clone(), ()), AuthApiUserGetRequest{
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/auth/out", axum::routing::get(|
@@ -669,10 +661,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::auth_api_out(i.as_ref(), AuthApiOutRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::auth_api_out(i.as_ref(), http::Request::from_parts(parts.clone(), ()), AuthApiOutRequest{
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/auth/signin", axum::routing::post(|
@@ -682,11 +673,10 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::auth_api_signin(i.as_ref(), AuthApiSigninRequest{
+			let ret=<S as ApiInterfaceAxum>::auth_api_signin(i.as_ref(), http::Request::from_parts(parts.clone(), ()), AuthApiSigninRequest{
 			body:match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(http::StatusCode::BAD_REQUEST, v)},
-			request: http::Request::from_parts(parts.clone(), ()),
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/auth/signup", axum::routing::post(|
@@ -696,11 +686,10 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::auth_api_signup(i.as_ref(), AuthApiSignupRequest{
+			let ret=<S as ApiInterfaceAxum>::auth_api_signup(i.as_ref(), http::Request::from_parts(parts.clone(), ()), AuthApiSignupRequest{
 			body:match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(http::StatusCode::BAD_REQUEST, v)},
-			request: http::Request::from_parts(parts.clone(), ()),
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/auth/update", axum::routing::post(|
@@ -710,15 +699,14 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::auth_api_update(i.as_ref(), AuthApiUpdateRequest{
+			let ret=<S as ApiInterfaceAxum>::auth_api_update(i.as_ref(), http::Request::from_parts(parts.clone(), ()), AuthApiUpdateRequest{
 			body:match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(http::StatusCode::BAD_REQUEST, v)},
-			request: http::Request::from_parts(parts.clone(), ()),
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/cron", axum::routing::get(|
@@ -728,10 +716,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::background_cron(i.as_ref(), BackgroundCronRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::background_cron(i.as_ref(), http::Request::from_parts(parts.clone(), ()), BackgroundCronRequest{
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/image", axum::routing::get(|
@@ -741,10 +728,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::images_list(i.as_ref(), ImagesListRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::images_list(i.as_ref(), http::Request::from_parts(parts.clone(), ()), ImagesListRequest{
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/job", axum::routing::get(|
@@ -754,14 +740,13 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::jobs_list(i.as_ref(), JobsListRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::jobs_list(i.as_ref(), http::Request::from_parts(parts.clone(), ()), JobsListRequest{
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/job", axum::routing::post(|
@@ -771,7 +756,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::jobs_push(i.as_ref(), JobsPushRequest{
+			let ret=<S as ApiInterfaceAxum>::jobs_push(i.as_ref(), http::Request::from_parts(parts.clone(), ()), JobsPushRequest{
 			body:{
 	let r=http::Request::from_parts(parts.clone(), body);
 	let v=match axum::extract::Multipart::from_request(r, &()).await{Ok(v)=>v,Err(e)=>return text_response(http::StatusCode::BAD_REQUEST, e.body_text())};
@@ -792,13 +777,12 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 	Err(e)=>return text_response(http::StatusCode::BAD_REQUEST,e)
 }
 },
-			request: http::Request::from_parts(parts.clone(), ()),
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/job/{id}", axum::routing::delete(|
@@ -808,15 +792,14 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::jobs_delete(i.as_ref(), JobsDeleteRequest{
+			let ret=<S as ApiInterfaceAxum>::jobs_delete(i.as_ref(), http::Request::from_parts(parts.clone(), ()), JobsDeleteRequest{
 			r#id:{let v=path.get("id").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: id in path={:?}", path))}},
-			request: http::Request::from_parts(parts.clone(), ()),
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/job/{id}/cat", axum::routing::get(|
@@ -826,17 +809,16 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::jobs_file_cat(i.as_ref(), JobsFileCatRequest{
+			let ret=<S as ApiInterfaceAxum>::jobs_file_cat(i.as_ref(), http::Request::from_parts(parts.clone(), ()), JobsFileCatRequest{
 			r#id:{let v=path.get("id").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: id in path={:?}", path))}},
 			r#path:{let v=query.get("path").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: path in query={:?}", query))}},
 			r#limit:{let v=query.get("limit").and_then(|v| v.parse().ok());v},
-			request: http::Request::from_parts(parts.clone(), ()),
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/job/{id}/ls", axum::routing::get(|
@@ -846,16 +828,15 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::jobs_file_ls(i.as_ref(), JobsFileLsRequest{
+			let ret=<S as ApiInterfaceAxum>::jobs_file_ls(i.as_ref(), http::Request::from_parts(parts.clone(), ()), JobsFileLsRequest{
 			r#id:{let v=path.get("id").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: id in path={:?}", path))}},
 			r#path:{let v=query.get("path").and_then(|v| v.parse().ok());v},
-			request: http::Request::from_parts(parts.clone(), ()),
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/job/{id}/task", axum::routing::get(|
@@ -865,15 +846,14 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::jobs_tasklist(i.as_ref(), JobsTasklistRequest{
+			let ret=<S as ApiInterfaceAxum>::jobs_tasklist(i.as_ref(), http::Request::from_parts(parts.clone(), ()), JobsTasklistRequest{
 			r#id:{let v=path.get("id").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: id in path={:?}", path))}},
-			request: http::Request::from_parts(parts.clone(), ()),
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/status", axum::routing::get(|
@@ -883,10 +863,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::status_interface_status(i.as_ref(), StatusInterfaceStatusRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::status_interface_status(i.as_ref(), http::Request::from_parts(parts.clone(), ()), StatusInterfaceStatusRequest{
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let router = router.route("/openapi.json", axum::routing::get(|| async move{
 			r###"{"components":{"schemas":{"Device":{"properties":{"memory_size_megabytes":{"format":"int32","type":"integer"},"memory_used_megabytes":{"format":"int32","type":"integer"},"name":{"type":"string"}},"required":["name","memory_used_megabytes","memory_size_megabytes"],"type":"object"},"Job":{"properties":{"id":{"$ref":"#/components/schemas/UUID"},"id_root":{"$ref":"#/components/schemas/UUID"},"name":{"type":"string"},"status":{"items":{"$ref":"#/components/schemas/Task"},"type":"array"}},"required":["id","id_root","name","status"],"type":"object"},"JobRequest":{"properties":{"archive":{"format":"byte","type":"string"},"image":{"type":"string"},"json":{"type":"string"}},"required":["json","image","archive"],"type":"object"},"Task":{"properties":{"code":{"format":"int32","type":"integer"},"path":{"items":{"type":"string"},"type":"array"},"target":{"type":"string"},"time_end":{"format":"int32","type":"integer"},"time_run":{"format":"int32","type":"integer"}},"required":["target","code","time_run","time_end","path"],"type":"object"},"UUID":{"format":"uuid","type":"string"},"User":{"properties":{"auth_email":{"type":"string"},"auth_email_password":{"type":"string"},"id":{"$ref":"#/components/schemas/UUID"},"name":{"type":"string"},"picture":{"type":"string"}},"required":["id","name","picture","auth_email","auth_email_password"],"type":"object"}},"securitySchemes":{"BearerAuth":{"scheme":"Bearer","type":"http"}}},"info":{"title":"API overview","version":"0.0.0"},"openapi":"3.0.0","paths":{"/auth":{"get":{"description":"\tユーザー情報を取得します、認証が必要","operationId":"AuthApi_user_get","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"description":"Access is forbidden."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/auth/out":{"get":{"description":"\tログアウト","operationId":"AuthApi_out","responses":{"204":{"description":"There is no content to send for this request, but the headers may be useful. "}}}},"/auth/signin":{"post":{"description":"\tログイン","operationId":"AuthApi_signin","requestBody":{"content":{"application/json":{"schema":{"properties":{"email":{"type":"string"},"password":{"type":"string"}},"required":["email","password"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}}}},"/auth/signup":{"post":{"description":"\tユーザー登録","operationId":"AuthApi_signup","requestBody":{"content":{"application/json":{"schema":{"properties":{"email":{"type":"string"},"name":{"type":"string"},"password":{"type":"string"}},"required":["name","email","password"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"description":"Access is forbidden."}}}},"/auth/update":{"post":{"description":"\tユーザー情報更新","operationId":"AuthApi_update","requestBody":{"content":{"application/json":{"schema":{"properties":{"name":{"type":"string"},"password":{"type":"string"},"password_new":{"type":"string"}},"required":["name","password","password_new"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"description":"Access is forbidden."}},"security":[{"BearerAuth":[]}]}},"/cron":{"get":{"description":"\tタスクキューを進めます。実行可能なプロセスが存在すれば実行し、状態を更新します。1分毎など定期的に呼び出してください。","operationId":"Background_cron","responses":{"204":{"description":"There is no content to send for this request, but the headers may be useful. "}}}},"/image":{"get":{"description":"\tジョブのランナーとして指定可能なdocker image一覧です。FaceSimulatorはその一つです。","operationId":"Images_list","responses":{"200":{"content":{"application/json":{"schema":{"items":{"type":"string"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}}}},"/job":{"get":{"description":"\tジョブ一覧を返します、認証が必要","operationId":"Jobs_list","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/Job"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}},"security":[{"BearerAuth":[]}]},"post":{"description":"\t新規にジョブを開始します。\n\t- files(required): 実行に必要なファイル一覧、アップロードされます。不要なら0件も可能。\n\t- paths(required): filesと1対1対応するパス一覧。\n\t- image(required): ジョブを実行するdocker image。\n\t- config: config用jsonファイル。指定しなければfileから推測されます（トップレベルかつ.json拡張子が付いたファイル）。","operationId":"Jobs_push","requestBody":{"content":{"multipart/form-data":{"encoding":{"files":{"contentType":"*/*"},"paths":{"contentType":"text/plain"}},"schema":{"properties":{"config":{"type":"string"},"files":{"items":{"format":"binary","type":"string"},"type":"array"},"image":{"type":"string"},"paths":{"items":{"type":"string"},"type":"array"}},"required":["files","paths","image"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Job"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}},"security":[{"BearerAuth":[]}]}},"/job/{id}":{"delete":{"description":"\tジョブを削除します、認証が必要","operationId":"Jobs_delete","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"}],"responses":{"204":{"description":"There is no content to send for this request, but the headers may be useful. "},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/job/{id}/cat":{"get":{"description":"\tジョブのファイルを配信します。path_fileは/（スラッシュ）を含めて良いです。","operationId":"Jobs_file_cat","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"},{"explode":false,"in":"query","name":"path","required":true,"schema":{"type":"string"},"style":"form"},{"explode":false,"in":"query","name":"limit","schema":{"format":"int32","type":"integer"},"style":"form"}],"responses":{"200":{"content":{"application/octet-stream":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/job/{id}/ls":{"get":{"description":"\tジョブのファイル一覧を返します、認証が必要","operationId":"Jobs_file_ls","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"},{"explode":false,"in":"query","name":"path","schema":{"type":"string"},"style":"form"}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"type":"string"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/job/{id}/task":{"get":{"description":"\tジョブのタスク一覧を返します、認証が必要","operationId":"Jobs_tasklist","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/Task"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"404":{"description":"The server cannot find the requested resource."}},"security":[{"BearerAuth":[]}]}},"/status":{"get":{"description":"\tシステム情報（GPUの使用状態）と稼働中のタスクを取得","operationId":"StatusInterface_status","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/Device"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}}}}},"servers":[{"description":"開発用","url":"/api","variables":{}}]}"###
@@ -920,7 +899,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 }
 
 /// Mount the router to the server's URL prefix with nest_service
-pub fn axum_router<S: ApiInterface + Sync + Send + 'static>(instance: S)->axum::Router{
+pub fn axum_router<S: ApiInterfaceAxum + Sync + Send + 'static>(instance: S)->axum::Router{
 	let instance_arc=std::sync::Arc::new(instance);
 	let mut router = axum::Router::new();
 	router = router.nest_service("/api", axum_router_operations(instance_arc.clone()));

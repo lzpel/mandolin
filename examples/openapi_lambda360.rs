@@ -89,16 +89,11 @@ pub struct AuthContext{
 // Request type for hello_say_hello
 #[derive(Debug)]
 pub struct HelloSayHelloRequest{
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for HelloSayHelloRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for hello_say_hello
 #[derive(Debug)]
 pub enum HelloSayHelloResponse{
 	Status200(String),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for HelloSayHelloResponse{
 	fn default() -> Self{
@@ -109,7 +104,6 @@ impl axum::response::IntoResponse for HelloSayHelloResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -117,16 +111,11 @@ impl axum::response::IntoResponse for HelloSayHelloResponse{
 #[derive(Debug)]
 pub struct ShapeComputeRequest{
 	pub body: Box<ShapeNode>,
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for ShapeComputeRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for shape_compute
 #[derive(Debug)]
 pub enum ShapeComputeResponse{
 	Status200(Vec<u8>),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for ShapeComputeResponse{
 	fn default() -> Self{
@@ -137,7 +126,6 @@ impl axum::response::IntoResponse for ShapeComputeResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "model/gltf-binary").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -145,16 +133,11 @@ impl axum::response::IntoResponse for ShapeComputeResponse{
 #[derive(Debug)]
 pub struct StepExistsRequest{
 	pub sha256:String,
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for StepExistsRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for step_exists
 #[derive(Debug)]
 pub enum StepExistsResponse{
 	Status200(FileExists),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for StepExistsResponse{
 	fn default() -> Self{
@@ -165,7 +148,6 @@ impl axum::response::IntoResponse for StepExistsResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -173,16 +155,11 @@ impl axum::response::IntoResponse for StepExistsResponse{
 #[derive(Debug)]
 pub struct ViewerViewRequest{
 	pub sha256:String,
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for ViewerViewRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for viewer_view
 #[derive(Debug)]
 pub enum ViewerViewResponse{
 	Status200(Vec<u8>),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for ViewerViewResponse{
 	fn default() -> Self{
@@ -193,7 +170,6 @@ impl axum::response::IntoResponse for ViewerViewResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "model/gltf-binary").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -310,6 +286,33 @@ use axum;
 use axum::http;
 use axum::extract::FromRequest;
 
+/// Axum-specific API interface trait
+/// All ApiInterface implementors automatically satisfy this via blanket impl.
+/// Override methods here for axum-specific behavior (streaming, custom headers, etc.)
+pub trait ApiInterfaceAxum: ApiInterface + Sync{
+	// GET /hello
+	fn hello_say_hello(&self, _raw: http::Request<()>, req: HelloSayHelloRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::hello_say_hello(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// POST /shape
+	fn shape_compute(&self, _raw: http::Request<()>, req: ShapeComputeRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::shape_compute(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /step/{sha256}
+	fn step_exists(&self, _raw: http::Request<()>, req: StepExistsRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::step_exists(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /view
+	fn viewer_view(&self, _raw: http::Request<()>, req: ViewerViewRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::viewer_view(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+}
+impl<T: ApiInterface + Sync> ApiInterfaceAxum for T{}
+
 /// Helper function to generate text responses
 fn text_response(code: http::StatusCode, body: String)->axum::response::Response{
 	axum::response::Response::builder()
@@ -320,7 +323,7 @@ fn text_response(code: http::StatusCode, body: String)->axum::response::Response
 }
 
 /// Returns axum::Router with root handlers for all operations registered
-pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
+pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
 	let i = instance.clone();
 	let router = router.route("/hello", axum::routing::get(|
@@ -330,10 +333,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::hello_say_hello(i.as_ref(), HelloSayHelloRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::hello_say_hello(i.as_ref(), http::Request::from_parts(parts.clone(), ()), HelloSayHelloRequest{
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/shape", axum::routing::post(|
@@ -343,11 +345,10 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::shape_compute(i.as_ref(), ShapeComputeRequest{
+			let ret=<S as ApiInterfaceAxum>::shape_compute(i.as_ref(), http::Request::from_parts(parts.clone(), ()), ShapeComputeRequest{
 			body:match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(http::StatusCode::BAD_REQUEST, v)},
-			request: http::Request::from_parts(parts.clone(), ()),
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/step/{sha256}", axum::routing::get(|
@@ -357,11 +358,10 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::step_exists(i.as_ref(), StepExistsRequest{
+			let ret=<S as ApiInterfaceAxum>::step_exists(i.as_ref(), http::Request::from_parts(parts.clone(), ()), StepExistsRequest{
 			r#sha256:{let v=path.get("sha256").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: sha256 in path={:?}", path))}},
-			request: http::Request::from_parts(parts.clone(), ()),
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/view", axum::routing::get(|
@@ -371,11 +371,10 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::viewer_view(i.as_ref(), ViewerViewRequest{
+			let ret=<S as ApiInterfaceAxum>::viewer_view(i.as_ref(), http::Request::from_parts(parts.clone(), ()), ViewerViewRequest{
 			r#sha256:{let v=query.get("sha256").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: sha256 in query={:?}", query))}},
-			request: http::Request::from_parts(parts.clone(), ()),
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let router = router.route("/openapi.json", axum::routing::get(|| async move{
 			r###"{"components":{"schemas":{"FileExists":{"properties":{"exists":{"type":"boolean"},"expiresAt":{"format":"date-time","type":"string"},"uploadUrl":{"type":"string"}},"required":["exists"],"type":"object"},"IntersectNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン共通部分 (BRepAlgoAPI_Common)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["intersect"],"type":"string"}},"required":["op","a","b"],"type":"object"},"NumberOrExpr":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"RotateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"回転","properties":{"axis":{"description":"回転軸ベクトル [ax, ay, az]","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"deg":{"allOf":[{"$ref":"#/components/schemas/NumberOrExpr"}],"description":"回転角度 (度)"},"op":{"enum":["rotate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","axis","deg"],"type":"object"},"ScaleNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"一様拡大縮小","properties":{"factor":{"$ref":"#/components/schemas/NumberOrExpr"},"op":{"enum":["scale"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","factor"],"type":"object"},"ShapeNode":{"anyOf":[{"$ref":"#/components/schemas/StepNode"},{"$ref":"#/components/schemas/UnionShapeNode"},{"$ref":"#/components/schemas/IntersectNode"},{"$ref":"#/components/schemas/SubtractNode"},{"$ref":"#/components/schemas/ScaleNode"},{"$ref":"#/components/schemas/TranslateNode"},{"$ref":"#/components/schemas/RotateNode"},{"$ref":"#/components/schemas/StretchNode"}],"description":"★ここが主役：discriminated union を “ShapeNode” として定義\nこれが OpenAPI で oneOf + discriminator になりやすい"},"ShapeNodeBase":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"StepNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"STEPファイルの読み込み","properties":{"content_hash":{"description":"キャッシュ無効化用コンテンツハッシュ \"sha256:\u003chex64\u003e\"","type":"string"},"op":{"enum":["step"],"type":"string"},"path":{"description":"STEPファイルのパス (S3キー等)","type":"string"}},"required":["op","path"],"type":"object"},"StretchNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"伸縮: 切断面で形状を分割して指定方向に伸ばす","properties":{"cut":{"description":"切断面の座標 [cx, cy, cz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"delta":{"description":"各軸方向の伸縮量 [dx, dy, dz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"op":{"enum":["stretch"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","cut","delta"],"type":"object"},"SubtractNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["subtract"],"type":"string"}},"required":["op","a","b"],"type":"object"},"TranslateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"平行移動","properties":{"op":{"enum":["translate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"},"xyz":{"description":"移動量 [x, y, z] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"}},"required":["op","shape","xyz"],"type":"object"},"UnionShapeNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン合体 (BRepAlgoAPI_Fuse)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["union"],"type":"string"}},"required":["op","a","b"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/hello":{"get":{"operationId":"Hello_sayHello","responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}},"/shape":{"post":{"description":"ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す","operationId":"Shape_compute","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ShapeNode"}}},"required":true},"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}},"/step/{sha256}":{"get":{"operationId":"Step_exists","parameters":[{"in":"path","name":"sha256","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/FileExists"}}},"description":"The request has succeeded."}}}},"/view":{"get":{"operationId":"Viewer_view","parameters":[{"explode":false,"in":"query","name":"sha256","required":true,"schema":{"type":"string"},"style":"form"}],"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"/api","variables":{}}]}"###
@@ -409,7 +408,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 }
 
 /// Mount the router to the server's URL prefix with nest_service
-pub fn axum_router<S: ApiInterface + Sync + Send + 'static>(instance: S)->axum::Router{
+pub fn axum_router<S: ApiInterfaceAxum + Sync + Send + 'static>(instance: S)->axum::Router{
 	let instance_arc=std::sync::Arc::new(instance);
 	let mut router = axum::Router::new();
 	router = router.nest_service("/api", axum_router_operations(instance_arc.clone()));

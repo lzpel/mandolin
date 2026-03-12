@@ -103,17 +103,12 @@ pub struct AuthContext{
 pub struct AuthApiCallbackOauthRequest{
 	pub code:String,
 	pub state:String,
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for AuthApiCallbackOauthRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for auth_api_callback_oauth
 #[derive(Debug)]
 pub enum AuthApiCallbackOauthResponse{
 	Status200(String),
 	Status400(String),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiCallbackOauthResponse{
 	fn default() -> Self{
@@ -125,7 +120,6 @@ impl axum::response::IntoResponse for AuthApiCallbackOauthResponse{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -133,17 +127,12 @@ impl axum::response::IntoResponse for AuthApiCallbackOauthResponse{
 #[derive(Debug)]
 pub struct AuthApiEmailRequest{
 	pub body: PathsAuthEmailPostRequestBodyContentApplicationJsonSchema,
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for AuthApiEmailRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for auth_api_email
 #[derive(Debug)]
 pub enum AuthApiEmailResponse{
 	Status204(()),
 	Status400(String),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiEmailResponse{
 	fn default() -> Self{
@@ -155,23 +144,17 @@ impl axum::response::IntoResponse for AuthApiEmailResponse{
 		match self{
 			Self::Status204(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(204).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
 // Request type for auth_api_google
 #[derive(Debug)]
 pub struct AuthApiGoogleRequest{
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for AuthApiGoogleRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for auth_api_google
 #[derive(Debug)]
 pub enum AuthApiGoogleResponse{
 	Status200(String),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiGoogleResponse{
 	fn default() -> Self{
@@ -182,23 +165,17 @@ impl axum::response::IntoResponse for AuthApiGoogleResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
 // Request type for auth_api_out
 #[derive(Debug)]
 pub struct AuthApiOutRequest{
-	pub request: http::Request<()>,
-}
-impl AsRef<http::Request<()>> for AuthApiOutRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for auth_api_out
 #[derive(Debug)]
 pub enum AuthApiOutResponse{
 	Status204(()),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for AuthApiOutResponse{
 	fn default() -> Self{
@@ -209,18 +186,13 @@ impl axum::response::IntoResponse for AuthApiOutResponse{
 	fn into_response(self) -> axum::response::Response{
 		match self{
 			Self::Status204(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(204).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
 // Request type for page_api_get
 #[derive(Debug)]
 pub struct PageApiGetRequest{
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for PageApiGetRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for page_api_get
 #[derive(Debug)]
@@ -228,7 +200,6 @@ pub enum PageApiGetResponse{
 	Status200(Vec<Page>),
 	Status400(String),
 	Status403(()),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for PageApiGetResponse{
 	fn default() -> Self{
@@ -241,7 +212,6 @@ impl axum::response::IntoResponse for PageApiGetResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -249,11 +219,7 @@ impl axum::response::IntoResponse for PageApiGetResponse{
 #[derive(Debug)]
 pub struct PageApiPushRequest{
 	pub body: PathsPagePostRequestBodyContentApplicationJsonSchema,
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for PageApiPushRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for page_api_push
 #[derive(Debug)]
@@ -261,7 +227,6 @@ pub enum PageApiPushResponse{
 	Status200(Page),
 	Status400(String),
 	Status403(()),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for PageApiPushResponse{
 	fn default() -> Self{
@@ -274,7 +239,6 @@ impl axum::response::IntoResponse for PageApiPushResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -283,18 +247,13 @@ impl axum::response::IntoResponse for PageApiPushResponse{
 pub struct PageApiUploadRequest{
 	pub fileName:String,
 	pub expiresIn:Option<i32>,
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for PageApiUploadRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for page_api_upload
 #[derive(Debug)]
 pub enum PageApiUploadResponse{
 	Status200(Vec<String>),
 	Status400(String),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for PageApiUploadResponse{
 	fn default() -> Self{
@@ -306,18 +265,13 @@ impl axum::response::IntoResponse for PageApiUploadResponse{
 		match self{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
 // Request type for user_api_user_get
 #[derive(Debug)]
 pub struct UserApiUserGetRequest{
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for UserApiUserGetRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for user_api_user_get
 #[derive(Debug)]
@@ -325,7 +279,6 @@ pub enum UserApiUserGetResponse{
 	Status200(User),
 	Status400(String),
 	Status403(()),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for UserApiUserGetResponse{
 	fn default() -> Self{
@@ -338,7 +291,6 @@ impl axum::response::IntoResponse for UserApiUserGetResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -346,11 +298,7 @@ impl axum::response::IntoResponse for UserApiUserGetResponse{
 #[derive(Debug)]
 pub struct UserApiUserSetRequest{
 	pub body: PathsUserPostRequestBodyContentApplicationJsonSchema,
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for UserApiUserSetRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for user_api_user_set
 #[derive(Debug)]
@@ -358,7 +306,6 @@ pub enum UserApiUserSetResponse{
 	Status200(User),
 	Status400(String),
 	Status403(()),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for UserApiUserSetResponse{
 	fn default() -> Self{
@@ -371,18 +318,13 @@ impl axum::response::IntoResponse for UserApiUserSetResponse{
 			Self::Status200(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(200).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
 // Request type for user_api_user_pop
 #[derive(Debug)]
 pub struct UserApiUserPopRequest{
-	pub request: http::Request<()>,
 	pub security: AuthContext, /*[{"BearerAuth": []}]*/
-}
-impl AsRef<http::Request<()>> for UserApiUserPopRequest{
-	fn as_ref(&self) -> &http::Request<()>{&self.request}
 }
 // Response type for user_api_user_pop
 #[derive(Debug)]
@@ -390,7 +332,6 @@ pub enum UserApiUserPopResponse{
 	Status204(()),
 	Status400(String),
 	Status403(()),
-	Raw(axum::response::Response),// Variant for custom responses
 }
 impl Default for UserApiUserPopResponse{
 	fn default() -> Self{
@@ -403,7 +344,6 @@ impl axum::response::IntoResponse for UserApiUserPopResponse{
 			Self::Status204(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(204).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
 			Self::Status400(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(400).unwrap()).header(http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
 			Self::Status403(v)=> axum::response::Response::builder().status(http::StatusCode::from_u16(403).unwrap()).header(http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
-			Self::Raw(v)=>v,
 		}
 	}
 }
@@ -470,10 +410,6 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
-	pub r#user:User,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthEmailPostRequestBodyContentApplicationJsonSchema{
 	pub r#email:String,
 }
@@ -483,12 +419,73 @@ pub struct PathsPagePostRequestBodyContentApplicationJsonSchema{
 	pub r#script:String,
 	pub r#view_image:Vec<String>,
 }
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
+	pub r#user:User,
+}
 
 // following part is only for server
 
 use axum;
 use axum::http;
 use axum::extract::FromRequest;
+
+/// Axum-specific API interface trait
+/// All ApiInterface implementors automatically satisfy this via blanket impl.
+/// Override methods here for axum-specific behavior (streaming, custom headers, etc.)
+pub trait ApiInterfaceAxum: ApiInterface + Sync{
+	// GET /auth/callback_oauth
+	fn auth_api_callback_oauth(&self, _raw: http::Request<()>, req: AuthApiCallbackOauthRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::auth_api_callback_oauth(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// POST /auth/email
+	fn auth_api_email(&self, _raw: http::Request<()>, req: AuthApiEmailRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::auth_api_email(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /auth/google
+	fn auth_api_google(&self, _raw: http::Request<()>, req: AuthApiGoogleRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::auth_api_google(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /auth/out
+	fn auth_api_out(&self, _raw: http::Request<()>, req: AuthApiOutRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::auth_api_out(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /page
+	fn page_api_get(&self, _raw: http::Request<()>, req: PageApiGetRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::page_api_get(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// POST /page
+	fn page_api_push(&self, _raw: http::Request<()>, req: PageApiPushRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::page_api_push(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// POST /page/upload
+	fn page_api_upload(&self, _raw: http::Request<()>, req: PageApiUploadRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::page_api_upload(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// GET /user
+	fn user_api_user_get(&self, _raw: http::Request<()>, req: UserApiUserGetRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::user_api_user_get(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// POST /user
+	fn user_api_user_set(&self, _raw: http::Request<()>, req: UserApiUserSetRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::user_api_user_set(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+	// DELETE /user
+	fn user_api_user_pop(&self, _raw: http::Request<()>, req: UserApiUserPopRequest) -> impl Future<Output = axum::response::Response> + Send{
+		let fut = <Self as ApiInterface>::user_api_user_pop(self, req);
+		async move{ axum::response::IntoResponse::into_response(fut.await) }
+	}
+}
+impl<T: ApiInterface + Sync> ApiInterfaceAxum for T{}
 
 /// Helper function to generate text responses
 fn text_response(code: http::StatusCode, body: String)->axum::response::Response{
@@ -500,7 +497,7 @@ fn text_response(code: http::StatusCode, body: String)->axum::response::Response
 }
 
 /// Returns axum::Router with root handlers for all operations registered
-pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
+pub fn axum_router_operations<S: ApiInterfaceAxum + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
 	let i = instance.clone();
 	let router = router.route("/auth/callback_oauth", axum::routing::get(|
@@ -510,12 +507,11 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::auth_api_callback_oauth(i.as_ref(), AuthApiCallbackOauthRequest{
+			let ret=<S as ApiInterfaceAxum>::auth_api_callback_oauth(i.as_ref(), http::Request::from_parts(parts.clone(), ()), AuthApiCallbackOauthRequest{
 			r#code:{let v=query.get("code").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: code in query={:?}", query))}},
 			r#state:{let v=query.get("state").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: state in query={:?}", query))}},
-			request: http::Request::from_parts(parts.clone(), ()),
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/auth/email", axum::routing::post(|
@@ -525,11 +521,10 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::auth_api_email(i.as_ref(), AuthApiEmailRequest{
+			let ret=<S as ApiInterfaceAxum>::auth_api_email(i.as_ref(), http::Request::from_parts(parts.clone(), ()), AuthApiEmailRequest{
 			body:match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(http::StatusCode::BAD_REQUEST, v)},
-			request: http::Request::from_parts(parts.clone(), ()),
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/auth/google", axum::routing::get(|
@@ -539,10 +534,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::auth_api_google(i.as_ref(), AuthApiGoogleRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::auth_api_google(i.as_ref(), http::Request::from_parts(parts.clone(), ()), AuthApiGoogleRequest{
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/auth/out", axum::routing::get(|
@@ -552,10 +546,9 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::auth_api_out(i.as_ref(), AuthApiOutRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::auth_api_out(i.as_ref(), http::Request::from_parts(parts.clone(), ()), AuthApiOutRequest{
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/page", axum::routing::get(|
@@ -565,14 +558,13 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::page_api_get(i.as_ref(), PageApiGetRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::page_api_get(i.as_ref(), http::Request::from_parts(parts.clone(), ()), PageApiGetRequest{
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/page", axum::routing::post(|
@@ -582,15 +574,14 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::page_api_push(i.as_ref(), PageApiPushRequest{
+			let ret=<S as ApiInterfaceAxum>::page_api_push(i.as_ref(), http::Request::from_parts(parts.clone(), ()), PageApiPushRequest{
 			body:match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(http::StatusCode::BAD_REQUEST, v)},
-			request: http::Request::from_parts(parts.clone(), ()),
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/page/upload", axum::routing::post(|
@@ -600,16 +591,15 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::page_api_upload(i.as_ref(), PageApiUploadRequest{
+			let ret=<S as ApiInterfaceAxum>::page_api_upload(i.as_ref(), http::Request::from_parts(parts.clone(), ()), PageApiUploadRequest{
 			r#fileName:{let v=query.get("fileName").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(http::StatusCode::from_u16(400).unwrap(), format!("parse error: fileName in query={:?}", query))}},
 			r#expiresIn:{let v=query.get("expiresIn").and_then(|v| v.parse().ok());v},
-			request: http::Request::from_parts(parts.clone(), ()),
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/user", axum::routing::get(|
@@ -619,14 +609,13 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::user_api_user_get(i.as_ref(), UserApiUserGetRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::user_api_user_get(i.as_ref(), http::Request::from_parts(parts.clone(), ()), UserApiUserGetRequest{
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/user", axum::routing::post(|
@@ -636,15 +625,14 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::user_api_user_set(i.as_ref(), UserApiUserSetRequest{
+			let ret=<S as ApiInterfaceAxum>::user_api_user_set(i.as_ref(), http::Request::from_parts(parts.clone(), ()), UserApiUserSetRequest{
 			body:match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(http::StatusCode::BAD_REQUEST, v)},
-			request: http::Request::from_parts(parts.clone(), ()),
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let i = instance.clone();
 	let router = router.route("/user", axum::routing::delete(|
@@ -654,14 +642,13 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			request: http::Request<axum::body::Body>,
 		| async move{
 			let (parts, body) = request.into_parts();
-			let ret=S::user_api_user_pop(i.as_ref(), UserApiUserPopRequest{
-			request: http::Request::from_parts(parts.clone(), ()),
+			let ret=<S as ApiInterfaceAxum>::user_api_user_pop(i.as_ref(), http::Request::from_parts(parts.clone(), ()), UserApiUserPopRequest{
 			security: match i.as_ref().authorize(http::Request::from_parts(parts.clone(), ())).await {
 				Ok(v)=>v,
 				Err(e)=>return text_response(http::StatusCode::UNAUTHORIZED, e)
 			},
 		}).await;
-		axum::response::IntoResponse::into_response(ret)
+		ret
 	}));
 	let router = router.route("/openapi.json", axum::routing::get(|| async move{
 			r###"{"components":{"schemas":{"NotFoundResponse":{"properties":{"body":{"type":"null"}},"required":["body"],"type":"object"},"Page":{"properties":{"content":{"type":"string"},"id":{"$ref":"#/components/schemas/UUID"},"id_root":{"$ref":"#/components/schemas/UUID"},"name":{"type":"string"},"path_image":{"items":{"type":"string"},"type":"array"},"path_model":{"type":"string"},"progress":{"format":"int32","type":"integer"},"script":{"type":"string"},"view_image":{"items":{"type":"string"},"type":"array"}},"required":["id","id_root","name","content","path_model","path_image","view_image","script","progress"],"type":"object"},"Plan":{"properties":{"currency":{"enum":["JPY","USD"],"type":"string"},"description":{"type":"string"},"id":{"$ref":"#/components/schemas/UUID"},"name":{"type":"string"},"priceMonthly":{"format":"int32","type":"integer"}},"required":["id","name","priceMonthly","currency"],"type":"object"},"Subscription":{"properties":{"id":{"$ref":"#/components/schemas/UUID"},"id_node":{"$ref":"#/components/schemas/UUID"},"id_root":{"$ref":"#/components/schemas/UUID"},"status":{"enum":["active","trialing","canceled","past_due"],"type":"string"}},"required":["id","id_root","id_node","status"],"type":"object"},"UUID":{"format":"uuid","type":"string"},"User":{"properties":{"auth_email":{"type":"string"},"auth_email_password":{"type":"string"},"auth_google":{"type":"string"},"id":{"$ref":"#/components/schemas/UUID"},"is_active":{"type":"boolean"},"name":{"type":"string"},"picture":{"type":"string"}},"required":["id","name","picture","auth_email","auth_google","auth_email_password","is_active"],"type":"object"}},"securitySchemes":{"BearerAuth":{"scheme":"Bearer","type":"http"}}},"info":{"title":"Sarod","version":"0.0.0"},"openapi":"3.1.0","paths":{"/auth/callback_oauth":{"get":{"description":"Adds a user.\nFor OAuth callback.","operationId":"AuthApi_callback_oauth","parameters":[{"explode":false,"in":"query","name":"code","required":true,"schema":{"type":"string"},"style":"form"},{"explode":false,"in":"query","name":"state","required":true,"schema":{"type":"string"},"style":"form"}],"responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}}}},"/auth/email":{"post":{"description":"Sends a link to the specified email address to verify it.\nOnly those who click the link can reach the user addition screen.\nuri: Extract domain from frontend for callback\nemail: Email address","operationId":"AuthApi_email","requestBody":{"content":{"application/json":{"schema":{"properties":{"email":{"type":"string"}},"required":["email"],"type":"object"}}},"required":true},"responses":{"204":{"content":{"application/json":{"schema":{"type":"null"}}},"description":"There is no content to send for this request, but the headers may be useful. "},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}}}},"/auth/google":{"get":{"description":"Google login","operationId":"AuthApi_google","responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}},"/auth/out":{"get":{"description":"Logout","operationId":"AuthApi_out","responses":{"204":{"content":{"application/json":{"schema":{"type":"null"}}},"description":"There is no content to send for this request, but the headers may be useful. "}}}},"/page":{"get":{"description":"Returns a list of videos for the home screen. Requires authentication.","operationId":"PageApi_get","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/Page"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"content":{"application/json":{"schema":{"type":"null"}}},"description":"Access is forbidden."}},"security":[{"BearerAuth":[]}]},"post":{"description":"Adds/updates a video. Requires authentication.","operationId":"PageApi_push","requestBody":{"content":{"application/json":{"schema":{"properties":{"path_image":{"items":{"type":"string"},"type":"array"},"script":{"type":"string"},"view_image":{"items":{"type":"string"},"type":"array"}},"required":["path_image","view_image","script"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Page"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"content":{"application/json":{"schema":{"type":"null"}}},"description":"Access is forbidden."}},"security":[{"BearerAuth":[]}]}},"/page/upload":{"post":{"description":"Returns a URL for uploading large files to a temporary area.","operationId":"PageApi_upload","parameters":[{"explode":false,"in":"query","name":"fileName","required":true,"schema":{"type":"string"},"style":"form"},{"explode":false,"in":"query","name":"expiresIn","schema":{"format":"int32","type":"integer"},"style":"form"}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"type":"string"},"type":"array"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."}},"security":[{"BearerAuth":[]}]}},"/user":{"delete":{"description":"Deletes a user. Requires authentication.","operationId":"UserApi_user_pop","responses":{"204":{"content":{"application/json":{"schema":{"type":"null"}}},"description":"There is no content to send for this request, but the headers may be useful. "},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"content":{"application/json":{"schema":{"type":"null"}}},"description":"Access is forbidden."}},"security":[{"BearerAuth":[]}]},"get":{"description":"Retrieves user information. Requires authentication.","operationId":"UserApi_user_get","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"content":{"application/json":{"schema":{"type":"null"}}},"description":"Access is forbidden."}},"security":[{"BearerAuth":[]}]},"post":{"description":"Sets user name or profile. Requires authentication.","operationId":"UserApi_user_set","requestBody":{"content":{"application/json":{"schema":{"properties":{"user":{"$ref":"#/components/schemas/User"}},"required":["user"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}},"description":"The request has succeeded."},"400":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The server could not understand the request due to invalid syntax."},"403":{"content":{"application/json":{"schema":{"type":"null"}}},"description":"Access is forbidden."}},"security":[{"BearerAuth":[]}]}}},"servers":[{"description":"For development","url":"/api","variables":{}}]}"###
@@ -695,7 +682,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 }
 
 /// Mount the router to the server's URL prefix with nest_service
-pub fn axum_router<S: ApiInterface + Sync + Send + 'static>(instance: S)->axum::Router{
+pub fn axum_router<S: ApiInterfaceAxum + Sync + Send + 'static>(instance: S)->axum::Router{
 	let instance_arc=std::sync::Arc::new(instance);
 	let mut router = axum::Router::new();
 	router = router.nest_service("/api", axum_router_operations(instance_arc.clone()));
