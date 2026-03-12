@@ -578,17 +578,17 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
+	pub r#name:String,
+	pub r#password:String,
+	pub r#password_new:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
 	pub r#config:Option<String>,
 	pub r#files:Vec<Vec<u8>>,
 	pub r#image:String,
 	pub r#paths:Vec<String>,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
-	pub r#name:String,
-	pub r#password:String,
-	pub r#password_new:String,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
@@ -940,7 +940,7 @@ use axum::http;
 use axum::extract::FromRequest;
 
 /// Axum-specific API interface trait
-/// All ApiInterface implementors automatically satisfy this via blanket impl.
+/// Implement this trait alongside ApiInterface to use axum_router.
 /// Override methods here for axum-specific behavior (streaming, custom headers, etc.)
 pub trait ApiInterfaceAxum: ApiInterface + Sync{
 	/// Authentication process: Generate AuthContext from request
@@ -1030,7 +1030,6 @@ pub trait ApiInterfaceAxum: ApiInterface + Sync{
 		async move{ axum::response::IntoResponse::into_response(fut.await) }
 	}
 }
-impl<T: ApiInterface + Sync> ApiInterfaceAxum for T{}
 
 /// Helper function to generate text responses
 fn text_response(code: http::StatusCode, body: String)->axum::response::Response{

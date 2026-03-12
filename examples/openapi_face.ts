@@ -191,17 +191,16 @@ type StatusInterfaceStatusResponse =
 
 
 
+type PathsAuthSigninPostRequestBodyContentApplicationJsonSchema = {
+	email:string,
+	password:string,
+}
+
 type PathsJobPostRequestBodyContentMultipartFormDataSchema = {
 	config:string|undefined,
 	files:ArrayBuffer[],
 	image:string,
 	paths:string[],
-}
-
-type PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema = {
-	name:string,
-	password:string,
-	password_new:string,
 }
 
 type PathsAuthSignupPostRequestBodyContentApplicationJsonSchema = {
@@ -210,9 +209,10 @@ type PathsAuthSignupPostRequestBodyContentApplicationJsonSchema = {
 	password:string,
 }
 
-type PathsAuthSigninPostRequestBodyContentApplicationJsonSchema = {
-	email:string,
+type PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema = {
+	name:string,
 	password:string,
+	password_new:string,
 }
 
 /// API Interface: Define handlers for each operation
