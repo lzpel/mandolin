@@ -730,6 +730,14 @@ impl ApiInterface for TestServer{
 	// async fn {{OPERATION_NAME(pointer,operation)}}(&self, _req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> {{OPERATION_RESPONSE_NAME(pointer,operation)}}{Default::default()}
 {%- endcall %}
 }
+impl ApiInterfaceAxum for TestServer{
+	// Override for axum-specific behavior (e.g. custom auth, streaming, custom headers)
+	// async fn authorize(&self, _req: http::Request<()>) -> Result<AuthContext, String>{ Ok(Default::default()) }
+{%- call(pointer, operation, method, path_key) FOREACH_OPERATION() %}
+	// {{method|upper}} {{path_key}}
+	// async fn {{OPERATION_NAME(pointer,operation)}}(&self, _raw: http::Request<()>, req: {{OPERATION_REQUEST_NAME(pointer,operation)}}) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::{{OPERATION_NAME(pointer,operation)}}(self, req).await) }
+{%- endcall %}
+}
 
 {{ UTILITY() }}
 

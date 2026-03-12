@@ -578,12 +578,6 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
-	pub r#name:String,
-	pub r#password:String,
-	pub r#password_new:String,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
 	pub r#config:Option<String>,
 	pub r#files:Vec<Vec<u8>>,
@@ -591,14 +585,20 @@ pub struct PathsJobPostRequestBodyContentMultipartFormDataSchema{
 	pub r#paths:Vec<String>,
 }
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
-	pub r#email:String,
-	pub r#password:String,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthSignupPostRequestBodyContentApplicationJsonSchema{
 	pub r#email:String,
 	pub r#name:String,
+	pub r#password:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthUpdatePostRequestBodyContentApplicationJsonSchema{
+	pub r#name:String,
+	pub r#password:String,
+	pub r#password_new:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsAuthSigninPostRequestBodyContentApplicationJsonSchema{
+	pub r#email:String,
 	pub r#password:String,
 }
 
@@ -1377,6 +1377,52 @@ impl ApiInterface for TestServer{
 
 	// GET /status
 	// async fn status_interface_status(&self, _req: StatusInterfaceStatusRequest) -> StatusInterfaceStatusResponse{Default::default()}
+}
+impl ApiInterfaceAxum for TestServer{
+	// Override for axum-specific behavior (e.g. custom auth, streaming, custom headers)
+	// async fn authorize(&self, _req: http::Request<()>) -> Result<AuthContext, String>{ Ok(Default::default()) }
+
+	// GET /auth
+	// async fn auth_api_user_get(&self, _raw: http::Request<()>, req: AuthApiUserGetRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::auth_api_user_get(self, req).await) }
+
+	// GET /auth/out
+	// async fn auth_api_out(&self, _raw: http::Request<()>, req: AuthApiOutRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::auth_api_out(self, req).await) }
+
+	// POST /auth/signin
+	// async fn auth_api_signin(&self, _raw: http::Request<()>, req: AuthApiSigninRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::auth_api_signin(self, req).await) }
+
+	// POST /auth/signup
+	// async fn auth_api_signup(&self, _raw: http::Request<()>, req: AuthApiSignupRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::auth_api_signup(self, req).await) }
+
+	// POST /auth/update
+	// async fn auth_api_update(&self, _raw: http::Request<()>, req: AuthApiUpdateRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::auth_api_update(self, req).await) }
+
+	// GET /cron
+	// async fn background_cron(&self, _raw: http::Request<()>, req: BackgroundCronRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::background_cron(self, req).await) }
+
+	// GET /image
+	// async fn images_list(&self, _raw: http::Request<()>, req: ImagesListRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::images_list(self, req).await) }
+
+	// GET /job
+	// async fn jobs_list(&self, _raw: http::Request<()>, req: JobsListRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::jobs_list(self, req).await) }
+
+	// POST /job
+	// async fn jobs_push(&self, _raw: http::Request<()>, req: JobsPushRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::jobs_push(self, req).await) }
+
+	// DELETE /job/{id}
+	// async fn jobs_delete(&self, _raw: http::Request<()>, req: JobsDeleteRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::jobs_delete(self, req).await) }
+
+	// GET /job/{id}/cat
+	// async fn jobs_file_cat(&self, _raw: http::Request<()>, req: JobsFileCatRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::jobs_file_cat(self, req).await) }
+
+	// GET /job/{id}/ls
+	// async fn jobs_file_ls(&self, _raw: http::Request<()>, req: JobsFileLsRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::jobs_file_ls(self, req).await) }
+
+	// GET /job/{id}/task
+	// async fn jobs_tasklist(&self, _raw: http::Request<()>, req: JobsTasklistRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::jobs_tasklist(self, req).await) }
+
+	// GET /status
+	// async fn status_interface_status(&self, _raw: http::Request<()>, req: StatusInterfaceStatusRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::status_interface_status(self, req).await) }
 }
 
 /// Estimates the origin URL (scheme://host) from an HTTP request

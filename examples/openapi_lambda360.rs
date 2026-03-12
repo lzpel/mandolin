@@ -557,6 +557,22 @@ impl ApiInterface for TestServer{
 	// GET /view
 	// async fn viewer_view(&self, _req: ViewerViewRequest) -> ViewerViewResponse{Default::default()}
 }
+impl ApiInterfaceAxum for TestServer{
+	// Override for axum-specific behavior (e.g. custom auth, streaming, custom headers)
+	// async fn authorize(&self, _req: http::Request<()>) -> Result<AuthContext, String>{ Ok(Default::default()) }
+
+	// GET /hello
+	// async fn hello_say_hello(&self, _raw: http::Request<()>, req: HelloSayHelloRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::hello_say_hello(self, req).await) }
+
+	// POST /shape
+	// async fn shape_compute(&self, _raw: http::Request<()>, req: ShapeComputeRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::shape_compute(self, req).await) }
+
+	// GET /step/{sha256}
+	// async fn step_exists(&self, _raw: http::Request<()>, req: StepExistsRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::step_exists(self, req).await) }
+
+	// GET /view
+	// async fn viewer_view(&self, _raw: http::Request<()>, req: ViewerViewRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::viewer_view(self, req).await) }
+}
 
 /// Estimates the origin URL (scheme://host) from an HTTP request
 /// Priority: Forwarded > X-Forwarded-* > Host

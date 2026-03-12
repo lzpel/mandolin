@@ -454,10 +454,6 @@ pub struct User{
 
 
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
-	pub r#user:User,
-}
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsPagePostRequestBodyContentApplicationJsonSchema{
 	pub r#path_image:Vec<String>,
 	pub r#script:String,
@@ -466,6 +462,10 @@ pub struct PathsPagePostRequestBodyContentApplicationJsonSchema{
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct PathsAuthEmailPostRequestBodyContentApplicationJsonSchema{
 	pub r#email:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsUserPostRequestBodyContentApplicationJsonSchema{
+	pub r#user:User,
 }
 
 // following part is only for client
@@ -1028,6 +1028,40 @@ impl ApiInterface for TestServer{
 
 	// DELETE /user
 	// async fn user_api_user_pop(&self, _req: UserApiUserPopRequest) -> UserApiUserPopResponse{Default::default()}
+}
+impl ApiInterfaceAxum for TestServer{
+	// Override for axum-specific behavior (e.g. custom auth, streaming, custom headers)
+	// async fn authorize(&self, _req: http::Request<()>) -> Result<AuthContext, String>{ Ok(Default::default()) }
+
+	// GET /auth/callback_oauth
+	// async fn auth_api_callback_oauth(&self, _raw: http::Request<()>, req: AuthApiCallbackOauthRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::auth_api_callback_oauth(self, req).await) }
+
+	// POST /auth/email
+	// async fn auth_api_email(&self, _raw: http::Request<()>, req: AuthApiEmailRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::auth_api_email(self, req).await) }
+
+	// GET /auth/google
+	// async fn auth_api_google(&self, _raw: http::Request<()>, req: AuthApiGoogleRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::auth_api_google(self, req).await) }
+
+	// GET /auth/out
+	// async fn auth_api_out(&self, _raw: http::Request<()>, req: AuthApiOutRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::auth_api_out(self, req).await) }
+
+	// GET /page
+	// async fn page_api_get(&self, _raw: http::Request<()>, req: PageApiGetRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::page_api_get(self, req).await) }
+
+	// POST /page
+	// async fn page_api_push(&self, _raw: http::Request<()>, req: PageApiPushRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::page_api_push(self, req).await) }
+
+	// POST /page/upload
+	// async fn page_api_upload(&self, _raw: http::Request<()>, req: PageApiUploadRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::page_api_upload(self, req).await) }
+
+	// GET /user
+	// async fn user_api_user_get(&self, _raw: http::Request<()>, req: UserApiUserGetRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::user_api_user_get(self, req).await) }
+
+	// POST /user
+	// async fn user_api_user_set(&self, _raw: http::Request<()>, req: UserApiUserSetRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::user_api_user_set(self, req).await) }
+
+	// DELETE /user
+	// async fn user_api_user_pop(&self, _raw: http::Request<()>, req: UserApiUserPopRequest) -> axum::response::Response{ axum::response::IntoResponse::into_response(<Self as ApiInterface>::user_api_user_pop(self, req).await) }
 }
 
 /// Estimates the origin URL (scheme://host) from an HTTP request
